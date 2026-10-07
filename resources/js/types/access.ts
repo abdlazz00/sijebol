@@ -48,3 +48,14 @@ export interface Option {
     id: number;
     name: string;
 }
+
+export type SchoolLevel = 'SMA' | 'SMK' | 'MA';
+
+export type SchoolRow = {
+    id: number;
+    name: string;
+    npsn: string;
+    level: SchoolLevel;
+    address: string | null;
+    users_count: number;
+};
