@@ -9,6 +9,13 @@ const dateFmt = new Intl.DateTimeFormat('id-ID', {
     year: 'numeric',
     timeZone: TZ,
 });
+const dayFmt = new Intl.DateTimeFormat('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    timeZone: TZ,
+});
 const timeFmt = new Intl.DateTimeFormat('id-ID', {
     hour: '2-digit',
     minute: '2-digit',
@@ -43,6 +50,12 @@ function ymd(value: string | Date): [number, number, number] | null {
 export function formatDate(value: DateInput): string {
     const d = toDate(value);
     return d ? dateFmt.format(d) : EMPTY;
+}
+
+/** "Rabu, 7 Okt 2026". */
+export function formatDateWithDay(value: DateInput): string {
+    const d = toDate(value);
+    return d ? dayFmt.format(d) : EMPTY;
 }
 
 export function formatTime(value: DateInput): string {

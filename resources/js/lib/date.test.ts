@@ -3,6 +3,7 @@ import {
     calculateAge,
     formatDate,
     formatDateTime,
+    formatDateWithDay,
     formatTime,
     relativeTime,
 } from './date';
@@ -10,6 +11,11 @@ import {
 describe('date', () => {
     it('memformat tanggal Indonesia', () => {
         expect(formatDate('2026-10-07')).toBe('7 Okt 2026');
+    });
+
+    it('memformat tanggal dengan nama hari', () => {
+        expect(formatDateWithDay('2026-10-07')).toBe('Rabu, 7 Okt 2026');
+        expect(formatDateWithDay(null)).toBe('—');
     });
 
     it('memformat waktu dengan titik (zona Asia/Jakarta)', () => {
