@@ -62,8 +62,11 @@ class NewPasswordController extends Controller
             return redirect()->route('login')->with('status', __($status));
         }
 
+        // Pengguna tidak ada dan token salah memakai pesan yang sama agar akun tidak bisa ditebak.
         throw ValidationException::withMessages([
-            'email' => [trans($status)],
+            'email' => [in_array($status, [Password::INVALID_USER, Password::INVALID_TOKEN], true)
+                ? 'Link reset tidak berlaku atau sudah kedaluwarsa.'
+                : trans($status)],
         ]);
     }
 }

@@ -58,3 +58,29 @@ test('password can be reset with valid token', function () {
         return true;
     });
 });
+
+test('email tidak terdaftar mendapat respons yang sama dengan email terdaftar', function () {
+    Notification::fake();
+
+    $this->from('/forgot-password')->post('/forgot-password', ['email' => 'tidakada@example.com'])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status');
+
+    Notification::assertNothingSent();
+});
+
+test('reset dengan token tidak valid tidak membedakan pengguna tidak ada dan token salah', function () {
+    $user = User::factory()->create();
+
+    $unknownUser = $this->post('/reset-password', [
+        'token' => 'ngawur', 'email' => 'tidakada@example.com',
+        'password' => 'abcd1234', 'password_confirmation' => 'abcd1234',
+    ])->assertSessionHasErrors('email');
+
+    $badToken = $this->post('/reset-password', [
+        'token' => 'ngawur', 'email' => $user->email,
+        'password' => 'abcd1234', 'password_confirmation' => 'abcd1234',
+    ])->assertSessionHasErrors('email');
+
+    expect(session('errors')->first('email'))->toBe('Link reset tidak berlaku atau sudah kedaluwarsa.');
+});

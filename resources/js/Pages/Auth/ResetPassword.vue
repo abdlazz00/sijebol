@@ -1,15 +1,16 @@
 <script setup lang="ts">
-import InputError from '@/Components/InputError.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import TextInput from '@/Components/TextInput.vue';
-import GuestLayout from '@/Layouts/GuestLayout.vue';
-import { Head, useForm } from '@inertiajs/vue3';
+import FormField from '@/Components/shared/FormField.vue';
+import InlineAlert from '@/Components/shared/InlineAlert.vue';
+import PasswordInput from '@/Components/shared/PasswordInput.vue';
+import PasswordRules from '@/Components/shared/PasswordRules.vue';
+import { Button } from '@/Components/ui/button';
+import AuthLayout from '@/Layouts/AuthLayout.vue';
+import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
+import { Link, useForm } from '@inertiajs/vue3';
+import { LoaderCircle, Lock } from '@lucide/vue';
+import { ref } from 'vue';
 
-const props = defineProps<{
-    email: string;
-    token: string;
-}>();
+const props = defineProps<{ email: string; token: string }>();
 
 const form = useForm({
     token: props.token,
@@ -17,81 +18,97 @@ const form = useForm({
     password: '',
     password_confirmation: '',
 });
+const mismatch = ref('');
 
-const submit = () => {
+function submit() {
+    mismatch.value = '';
+    if (form.password !== form.password_confirmation) {
+        mismatch.value = 'Konfirmasi password tidak sama.';
+        return focusFirstInvalid();
+    }
+
     form.post(route('password.store'), {
-        onFinish: () => {
-            form.reset('password', 'password_confirmation');
-        },
+        onError: focusFirstInvalid,
+        onFinish: () => form.reset('password', 'password_confirmation'),
     });
-};
+}
 </script>
 
 <template>
-    <GuestLayout>
-        <Head title="Reset Password" />
-
-        <form @submit.prevent="submit">
-            <div>
-                <InputLabel for="email" value="Email" />
-
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autofocus
-                    autocomplete="username"
-                />
-
-                <InputError class="mt-2" :message="form.errors.email" />
+    <AuthLayout title="Atur ulang password">
+        <form class="flex flex-col gap-8" novalidate @submit.prevent="submit">
+            <div class="flex flex-col gap-2">
+                <h1 class="text-2xl leading-8 font-semibold">
+                    Atur ulang password
+                </h1>
+                <p class="text-muted-foreground text-sm leading-5">
+                    Buat password baru untuk akun Anda.
+                </p>
             </div>
 
-            <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+            <div class="flex flex-col gap-4">
+                <InlineAlert v-if="form.errors.email">
+                    {{ form.errors.email }}
+                    <Link
+                        :href="route('password.request')"
+                        class="font-medium underline"
+                        >Minta link baru</Link
+                    >
+                </InlineAlert>
 
-                <TextInput
-                    id="password"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password"
-                    required
-                    autocomplete="new-password"
-                />
+                <div
+                    class="bg-secondary flex items-center justify-between gap-2 rounded-lg p-3 text-sm leading-5"
+                >
+                    <span class="min-w-0 break-all">{{ email }}</span>
+                    <Lock
+                        class="text-muted-foreground size-4 shrink-0"
+                        aria-hidden="true"
+                    />
+                </div>
 
-                <InputError class="mt-2" :message="form.errors.password" />
-            </div>
+                <FormField
+                    v-slot="{ id, describedBy, invalid }"
+                    label="Password baru"
+                    :error="form.errors.password"
+                >
+                    <PasswordInput
+                        :id="id"
+                        v-model="form.password"
+                        autocomplete="new-password"
+                        autofocus
+                        :aria-invalid="invalid"
+                        :aria-describedby="describedBy"
+                    />
+                </FormField>
+                <PasswordRules :password="form.password" />
 
-            <div class="mt-4">
-                <InputLabel
-                    for="password_confirmation"
-                    value="Confirm Password"
-                />
+                <FormField
+                    v-slot="{ id, describedBy, invalid }"
+                    label="Konfirmasi password"
+                    :error="mismatch"
+                >
+                    <PasswordInput
+                        :id="id"
+                        v-model="form.password_confirmation"
+                        autocomplete="new-password"
+                        :aria-invalid="invalid"
+                        :aria-describedby="describedBy"
+                    />
+                </FormField>
 
-                <TextInput
-                    id="password_confirmation"
-                    type="password"
-                    class="mt-1 block w-full"
-                    v-model="form.password_confirmation"
-                    required
-                    autocomplete="new-password"
-                />
-
-                <InputError
-                    class="mt-2"
-                    :message="form.errors.password_confirmation"
-                />
-            </div>
-
-            <div class="mt-4 flex items-center justify-end">
-                <PrimaryButton
-                    :class="{ 'opacity-25': form.processing }"
+                <Button
+                    type="submit"
+                    class="h-10 w-full"
                     :disabled="form.processing"
                 >
-                    Reset Password
-                </PrimaryButton>
+                    <LoaderCircle
+                        v-if="form.processing"
+                        class="size-4 animate-spin"
+                        aria-hidden="true"
+                    />
+                    Simpan password
+                </Button>
             </div>
         </form>
-    </GuestLayout>
+    </AuthLayout>
 </template>
