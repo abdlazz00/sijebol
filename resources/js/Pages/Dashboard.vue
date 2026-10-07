@@ -1,24 +1,20 @@
 <script setup lang="ts">
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import EmptyState from '@/Components/shared/EmptyState.vue';
+import PageHeader from '@/Components/shared/PageHeader.vue';
+import AppLayout from '@/Layouts/AppLayout.vue';
 </script>
 
 <template>
-    <Head title="Dashboard" />
-
-    <AuthenticatedLayout>
-        <template #header>
-            <h2 class="text-xl leading-tight font-semibold text-gray-800">
-                Dashboard
-            </h2>
-        </template>
-
-        <div class="py-12">
-            <div class="mx-auto max-w-7xl sm:px-6 lg:px-8">
-                <div class="overflow-hidden bg-white shadow-xs sm:rounded-lg">
-                    <div class="p-6 text-gray-900">You're logged in!</div>
-                </div>
-            </div>
+    <AppLayout title="Beranda">
+        <PageHeader
+            title="Beranda"
+            description="Ringkasan akan tampil di sini."
+        />
+        <div class="bg-card rounded-lg border">
+            <EmptyState
+                title="Belum ada data"
+                description="Blok beranda dibangun bersama modul terkait."
+            />
         </div>
-    </AuthenticatedLayout>
+    </AppLayout>
 </template>
