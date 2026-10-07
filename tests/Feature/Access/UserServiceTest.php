@@ -99,6 +99,23 @@ test('super-admin aktif terakhir tidak dapat dinonaktifkan atau diturunkan', fun
     expect($second->fresh()->is_active)->toBeFalse();
 });
 
+test('pengguna terikat sekolah hanya dapat mengelola pengguna di sekolahnya sendiri', function () {
+    [$a, $b] = School::factory()->count(2)->create();
+    $perms = [...$this->operatorRole->permissions->pluck('name')->all(), 'user.buat', 'user.ubah'];
+    $koordinator = makeUserWith($perms, $a, true, 'koordinator');
+
+    expect(fn () => $this->service->create(payload(['role_id' => $this->operatorRole->id, 'school_id' => $b->id]), $koordinator))
+        ->toThrow(AccessRuleException::class);
+
+    ['user' => $ok] = $this->service->create(
+        payload(['email' => 'a@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $a->id]), $koordinator);
+    expect($ok->school_id)->toBe($a->id);
+
+    expect(fn () => $this->service->update($ok, payload([
+        'email' => 'a@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $b->id,
+    ]), $koordinator))->toThrow(AccessRuleException::class);
+});
+
 test('kirim ulang aktivasi hanya untuk akun belum aktif dan mencabut token lama', function () {
     ['user' => $user, 'token' => $old] = $this->service->create(
         payload(['role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);

@@ -119,6 +119,10 @@ class UserService
         if (! $role->is_school_scoped && $schoolId !== null) {
             throw new AccessRuleException('Role ini tidak terikat sekolah; kosongkan sekolah.');
         }
+        // Pelaku yang terikat sekolah tidak boleh menempatkan pengguna di sekolah lain atau tanpa sekolah.
+        if ($actor->school_id !== null && $schoolId !== $actor->school_id) {
+            throw new AccessRuleException('Anda hanya dapat mengelola pengguna di sekolah Anda sendiri.');
+        }
     }
 
     private function assertNotLastSuperAdmin(User $user, string $message): void
