@@ -9,10 +9,12 @@ import RowActions from '@/Components/shared/RowActions.vue';
 import SearchInput from '@/Components/shared/SearchInput.vue';
 import SelectField from '@/Components/shared/SelectField.vue';
 import StatusBadge from '@/Components/shared/StatusBadge.vue';
+import UserStatusItems from '@/Components/shared/UserStatusItems.vue';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import { Button } from '@/Components/ui/button';
 import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { useDataTable } from '@/composables/useDataTable';
+import { useDeactivateDialog } from '@/composables/useDeactivateDialog';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { humanize, initials } from '@/lib/format';
@@ -20,19 +22,10 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { relativeTime } from '@/lib/date';
 import { userStatus } from '@/lib/status';
 import type { Option, Paginator, UserRow } from '@/types/access';
-import { Link, router } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
-import {
-    Eye,
-    Mail,
-    Pencil,
-    Plus,
-    Search,
-    UserCheck,
-    UserRoundX,
-    Users,
-} from '@lucide/vue';
-import { computed, ref, watch } from 'vue';
+import { Eye, Pencil, Plus, Search, Users } from '@lucide/vue';
+import { computed, watch } from 'vue';
 
 const props = defineProps<{
     users: Paginator<UserRow>;
@@ -76,43 +69,8 @@ const columns = [
 ];
 
 const canEdit = (u: UserRow) => u.can_manage && can(PERMISSIONS.UserUbah);
-const canResend = (u: UserRow) =>
-    u.can_manage &&
-    can(PERMISSIONS.UserKirimUlangAktivasi) &&
-    ['menunggu', 'kedaluwarsa'].includes(u.status);
-const canDeactivate = (u: UserRow) =>
-    u.can_manage && can(PERMISSIONS.UserNonaktifkan) && u.status !== 'nonaktif';
-const canActivate = (u: UserRow) =>
-    u.can_manage && can(PERMISSIONS.UserNonaktifkan) && u.status === 'nonaktif';
 
-const confirmOpen = ref(false);
-const target = ref<UserRow | null>(null);
-
-function askDeactivate(user: UserRow) {
-    target.value = user;
-    confirmOpen.value = true;
-}
-
-function deactivate() {
-    if (target.value)
-        router.post(
-            route('pengguna.deactivate', target.value.id),
-            {},
-            { preserveScroll: true },
-        );
-}
-
-function activate(user: UserRow) {
-    router.post(
-        route('pengguna.activate', user.id),
-        {},
-        { preserveScroll: true },
-    );
-}
-
-function resend(user: UserRow) {
-    router.post(route('pengguna.resend', user.id));
-}
+const dialog = useDeactivateDialog();
 </script>
 
 <template>
@@ -262,36 +220,10 @@ function resend(user: UserRow) {
                                         Ubah
                                     </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    v-if="canResend(row)"
-                                    class="h-10 gap-3 px-3 text-sm font-medium"
-                                    @select="resend(row)"
-                                >
-                                    <Mail class="size-4" aria-hidden="true" />
-                                    Kirim ulang aktivasi
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    v-if="canDeactivate(row)"
-                                    class="text-danger focus:text-danger h-10 gap-3 px-3 text-sm font-medium"
-                                    @select="askDeactivate(row)"
-                                >
-                                    <UserRoundX
-                                        class="size-4"
-                                        aria-hidden="true"
-                                    />
-                                    Nonaktifkan
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    v-if="canActivate(row)"
-                                    class="text-primary focus:text-primary h-10 gap-3 px-3 text-sm font-medium"
-                                    @select="activate(row)"
-                                >
-                                    <UserCheck
-                                        class="size-4"
-                                        aria-hidden="true"
-                                    />
-                                    Aktifkan
-                                </DropdownMenuItem>
+                                <UserStatusItems
+                                    :user="row"
+                                    @deactivate="dialog.ask"
+                                />
                             </RowActions>
                         </div>
                     </template>
@@ -332,12 +264,12 @@ function resend(user: UserRow) {
         </div>
 
         <ConfirmDialog
-            v-model:open="confirmOpen"
-            :title="`Nonaktifkan ${target?.name ?? ''}?`"
-            :description="`${target?.name ?? 'Pengguna'} tidak dapat mengakses SIJEBOL setelah akun dinonaktifkan. Data pengguna tetap tersimpan.`"
+            v-model:open="dialog.open.value"
+            :title="`Nonaktifkan ${dialog.target.value?.name ?? ''}?`"
+            :description="`${dialog.target.value?.name ?? 'Pengguna'} tidak dapat mengakses SIJEBOL setelah akun dinonaktifkan. Data pengguna tetap tersimpan.`"
             confirm-label="Nonaktifkan"
             destructive
-            @confirm="deactivate"
+            @confirm="dialog.confirm"
         />
     </AppLayout>
 </template>

@@ -7,14 +7,14 @@ import {
 } from '@/Components/ui/dropdown-menu';
 import { Ellipsis } from '@lucide/vue';
 
-defineProps<{ label: string }>();
+defineProps<{ label: string; outlined?: boolean }>();
 </script>
 
 <template>
     <DropdownMenu>
         <DropdownMenuTrigger as-child>
             <Button
-                variant="ghost"
+                :variant="outlined ? 'outline' : 'ghost'"
                 size="icon"
                 class="size-10"
                 :aria-label="label"
