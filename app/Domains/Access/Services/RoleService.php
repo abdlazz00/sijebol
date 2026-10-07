@@ -77,6 +77,9 @@ class RoleService
         if ($role->isProtected()) {
             throw new AccessRuleException('Role super-admin dilindungi dan tidak dapat dihapus.');
         }
+        if (! AccessGuard::canGrantRole($actor, $role)) {
+            throw new AccessRuleException('Anda tidak dapat menghapus role dengan izin di luar izin Anda.');
+        }
         if ($this->roles->userCount($role) > 0) {
             throw new AccessRuleException('Role masih dipakai pengguna dan tidak dapat dihapus.');
         }

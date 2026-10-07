@@ -58,6 +58,7 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 ---
 
 ## Fase 1 — Akses dan autentikasi
+n**Track BE: SELESAI 2026-10-07** (rencana: `plans/2026-10-07-fase-1-backend.md`). Penyimpangan: `admin-kecamatan` memegang semua izin (anti eskalasi); tidak ada SchoolPolicy/RolePolicy/UserPolicy (Gate `manage-user`); tanpa penghapusan sesi saat nonaktifkan (middleware `EnsureAccountIsActive`); `Auth/Activate`, `Sekolah/*`, `Role/*`, `Pengguna/*` adalah nama halaman Inertia yang harus dibuat Track FE; filter daftar memakai `filter[...]`.
 
 **Tujuan:** admin dapat membuat role, sekolah, dan user; operator dapat aktivasi akun dan login; semua akses terkendali RBAC dengan scope sekolah.
 

@@ -69,6 +69,16 @@ test('super-admin tidak dapat diubah atau dihapus', function () {
         ->and(fn () => $this->service->delete($role, $this->super))->toThrow(AccessRuleException::class);
 });
 
+test('role dengan izin di luar milik penyunting tidak dapat dihapus olehnya', function () {
+    $tinggi = Role::create(['name' => 'tinggi']);
+    $tinggi->givePermissionTo(['siswa.buat']); // di luar izin penyunting
+
+    expect(fn () => $this->service->delete($tinggi, $this->admin))->toThrow(AccessRuleException::class);
+
+    $this->service->delete($tinggi, $this->super); // super-admin boleh
+    expect(Role::where('name', 'tinggi')->exists())->toBeFalse();
+});
+
 test('hapus ditolak bila role masih dipakai', function () {
     $role = Role::create(['name' => 'dipakai']);
     User::factory()->create()->assignRole($role);
