@@ -67,7 +67,7 @@ const crumbs = [
                 <div class="flex min-w-0 flex-1 items-center gap-4">
                     <Avatar class="size-16 shrink-0">
                         <AvatarFallback
-                            class="bg-neutral-soft text-2xl font-semibold text-slate-600"
+                            class="bg-neutral-soft text-neutral-foreground text-2xl font-semibold"
                         >
                             {{ initials(user.name) }}
                         </AvatarFallback>

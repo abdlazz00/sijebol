@@ -53,12 +53,14 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 7. Layout `AuthLayout` (split screen) dan `AppLayout` (sidebar, topbar) sebagai kerangka dengan menu statis sementara.
 8. Konfigurasi ESLint, Prettier, `vue-tsc`; skrip `npm run build`, `lint`, `typecheck`.
 
+**Status Track FE (2026-10-07): sebagian selesai** (rencana: `plans/2026-10-07-fase-1-frontend.md`). Selesai dari desain Figma: Login, `AppLayout` (sidebar server, topbar, drawer), Beranda, Pengguna (daftar, form tambah/ubah, layar berhasil/kirim ulang, detail), Role & Permission (daftar, form matriks), review `impeccable` dan `ponytail`. **Belum ada desain Figma, ditunda:** Aktivasi akun, Lupa/Reset password, Sekolah (daftar dan form), Profil, halaman error 403/404/500. **Ditunda lain:** kartu Aktivitas terbaru di detail pengguna (menunggu `activities` dari backend); state "gagal memuat" daftar; banner akun nonaktif di Login (backend memakai pesan gagal seragam). Penyimpangan: checkbox "Role terikat sekolah" ditambahkan di form role karena backend mewajibkannya dan Figma tidak memuatnya.
+
 **Exit criteria FE:** `npm run build`, `lint`, dan `typecheck` lulus; halaman login memakai `AuthLayout` dan terlihat sesuai token; halaman contoh memakai `AppLayout`.
 
 ---
 
 ## Fase 1 — Akses dan autentikasi
-n**Track BE: SELESAI 2026-10-07** (rencana: `plans/2026-10-07-fase-1-backend.md`). Penyimpangan: `admin-kecamatan` memegang semua izin (anti eskalasi); tidak ada SchoolPolicy/RolePolicy/UserPolicy (Gate `manage-user`); tanpa penghapusan sesi saat nonaktifkan (middleware `EnsureAccountIsActive`); `Auth/Activate`, `Sekolah/*`, `Role/*`, `Pengguna/*` adalah nama halaman Inertia yang harus dibuat Track FE; filter daftar memakai `filter[...]`.
+**Track BE: SELESAI 2026-10-07** (rencana: `plans/2026-10-07-fase-1-backend.md`). Penyimpangan: `admin-kecamatan` memegang semua izin (anti eskalasi); tidak ada SchoolPolicy/RolePolicy/UserPolicy (Gate `manage-user`); tanpa penghapusan sesi saat nonaktifkan (middleware `EnsureAccountIsActive`); `Auth/Activate`, `Sekolah/*`, `Role/*`, `Pengguna/*` adalah nama halaman Inertia yang harus dibuat Track FE; filter daftar memakai `filter[...]`.
 
 **Tujuan:** admin dapat membuat role, sekolah, dan user; operator dapat aktivasi akun dan login; semua akses terkendali RBAC dengan scope sekolah.
 

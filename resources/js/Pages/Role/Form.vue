@@ -7,10 +7,12 @@ import { Checkbox } from '@/Components/ui/checkbox';
 import { Input } from '@/Components/ui/input';
 import { Textarea } from '@/Components/ui/textarea';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import type { CatalogModule } from '@/lib/permissionMatrix';
 import { Link, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from '@lucide/vue';
-import { computed } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
+import { computed, ref, watch } from 'vue';
 
 interface FormRole {
     id: number;
@@ -42,6 +44,13 @@ const total = computed(() =>
     props.catalog.reduce((sum, module) => sum + module.actions.length, 0),
 );
 
+// Pengumuman penghitung ditunda agar pembaca layar tidak membacanya di setiap centang.
+const announced = ref('');
+const announce = useDebounceFn(() => {
+    announced.value = `${form.permissions.length} dari ${total.value} permission dipilih`;
+}, 800);
+watch(() => form.permissions.length, announce);
+
 const title = computed(() => (isEdit.value ? 'Ubah role' : 'Tambah role'));
 const crumbs = computed(() => [
     { label: 'Role & Permission', href: route('role.index') },
@@ -59,8 +68,10 @@ const permissionsError = computed(
 function submit() {
     if (readonly.value) return;
 
-    if (props.role) form.put(route('role.update', props.role.id));
-    else form.post(route('role.store'));
+    const options = { onError: focusFirstInvalid };
+
+    if (props.role) form.put(route('role.update', props.role.id), options);
+    else form.post(route('role.store'), options);
 }
 </script>
 
@@ -168,11 +179,12 @@ function submit() {
                         <h2 class="text-base leading-6 font-semibold">
                             Matriks permission
                         </h2>
-                        <p class="text-sm leading-5 font-medium" role="status">
+                        <p class="text-sm leading-5 font-medium">
                             {{ form.permissions.length }} dari
                             {{ total }} permission dipilih
                         </p>
                     </div>
+                    <span class="sr-only" role="status">{{ announced }}</span>
                     <p class="text-muted-foreground text-xs leading-4">
                         Hanya permission yang Anda miliki yang dapat diberikan.
                         Pilih semua berlaku per modul.
@@ -192,10 +204,6 @@ function submit() {
                     :catalog="catalog"
                     :disabled="readonly"
                 />
-                <p class="text-muted-foreground p-4 text-xs leading-4">
-                    — Tidak tersedia di sistem · Checkbox abu-abu: izin tidak
-                    Anda miliki.
-                </p>
             </section>
 
             <div

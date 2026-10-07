@@ -155,7 +155,7 @@ const dialog = useDeactivateDialog();
                         <div class="flex items-center gap-3">
                             <Avatar class="size-8">
                                 <AvatarFallback
-                                    class="bg-neutral-soft text-xs font-semibold text-slate-600"
+                                    class="bg-neutral-soft text-neutral-foreground text-xs font-semibold"
                                 >
                                     {{ initials(row.name) }}
                                 </AvatarFallback>

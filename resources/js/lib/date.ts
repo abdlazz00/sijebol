@@ -16,35 +16,12 @@ const dayFmt = new Intl.DateTimeFormat('id-ID', {
     year: 'numeric',
     timeZone: TZ,
 });
-const timeFmt = new Intl.DateTimeFormat('id-ID', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-    timeZone: TZ,
-});
-const ymdFmt = new Intl.DateTimeFormat('en-CA', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    timeZone: TZ,
-});
 const rtf = new Intl.RelativeTimeFormat('id-ID', { numeric: 'always' });
 
 function toDate(value: DateInput): Date | null {
     if (!value) return null;
     const d = value instanceof Date ? value : new Date(value);
     return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function ymd(value: string | Date): [number, number, number] | null {
-    if (typeof value === 'string') {
-        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-        return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-    }
-    const parts = Object.fromEntries(
-        ymdFmt.formatToParts(value).map((p) => [p.type, p.value]),
-    );
-    return [Number(parts.year), Number(parts.month), Number(parts.day)];
 }
 
 export function formatDate(value: DateInput): string {
@@ -56,16 +33,6 @@ export function formatDate(value: DateInput): string {
 export function formatDateWithDay(value: DateInput): string {
     const d = toDate(value);
     return d ? dayFmt.format(d) : EMPTY;
-}
-
-export function formatTime(value: DateInput): string {
-    const d = toDate(value);
-    return d ? timeFmt.format(d) : EMPTY;
-}
-
-export function formatDateTime(value: DateInput): string {
-    const d = toDate(value);
-    return d ? `${dateFmt.format(d)} ${timeFmt.format(d)}` : EMPTY;
 }
 
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
@@ -88,17 +55,4 @@ export function relativeTime(value: DateInput, now: Date = new Date()): string {
         }
     }
     return 'baru saja';
-}
-
-/** Hanya untuk tampilan; kelayakan umur ditentukan server. */
-export function calculateAge(
-    birthDate: string,
-    on: string | Date = new Date(),
-): number | null {
-    const b = ymd(birthDate);
-    const o = ymd(on);
-    if (!b || !o) return null;
-    let age = o[0] - b[0];
-    if (o[1] < b[1] || (o[1] === b[1] && o[2] < b[2])) age--;
-    return age;
 }

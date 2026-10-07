@@ -39,6 +39,7 @@
     --danger: #b91c1c;
     --danger-soft: #fee2e2;
     --neutral-soft: #e2e8f0;
+    --neutral-foreground: #475569;
 
     --sidebar: #0b2a5b;
     --sidebar-foreground: #ffffff;
@@ -85,6 +86,7 @@
     --color-danger: var(--danger);
     --color-danger-soft: var(--danger-soft);
     --color-neutral-soft: var(--neutral-soft);
+    --color-neutral-foreground: var(--neutral-foreground);
 
     --color-sidebar: var(--sidebar);
     --color-sidebar-foreground: var(--sidebar-foreground);
@@ -108,5 +110,18 @@
     }
     body {
         @apply bg-background font-sans text-foreground antialiased;
+    }
+}
+
+/* Pengguna yang meminta gerak minimal: panel dan menu muncul langsung, spinner tetap berputar sebagai penanda proses. */
+@media (prefers-reduced-motion: reduce) {
+    [data-slot^='dialog'],
+    [data-slot^='sheet'],
+    [data-slot^='dropdown-menu'],
+    [data-slot^='select'],
+    [data-slot^='combobox'],
+    [data-slot^='tooltip'] {
+        animation-duration: 1ms !important;
+        transition-duration: 1ms !important;
     }
 }

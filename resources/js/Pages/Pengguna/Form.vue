@@ -6,6 +6,7 @@ import SelectField from '@/Components/shared/SelectField.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { humanize } from '@/lib/format';
 import type { Option } from '@/types/access';
 import { Link, useForm } from '@inertiajs/vue3';
@@ -84,10 +85,12 @@ function validate(): boolean {
 
 function submit() {
     form.clearErrors();
-    if (!validate()) return;
+    if (!validate()) return focusFirstInvalid();
 
-    if (props.user) form.put(route('pengguna.update', props.user.id));
-    else form.post(route('pengguna.store'));
+    const options = { onError: focusFirstInvalid };
+
+    if (props.user) form.put(route('pengguna.update', props.user.id), options);
+    else form.post(route('pengguna.store'), options);
 }
 
 const crumbs = computed(() => [

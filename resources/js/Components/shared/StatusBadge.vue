@@ -8,7 +8,7 @@ const classes: Record<BadgeVariant, string> = {
     success: 'bg-success-soft text-success',
     warning: 'bg-warning-soft text-warning',
     danger: 'bg-danger-soft text-danger',
-    neutral: 'bg-neutral-soft text-slate-700',
+    neutral: 'bg-neutral-soft text-neutral-foreground',
     info: 'bg-primary-soft text-primary',
 };
 
