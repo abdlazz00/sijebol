@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 #[UseFactory(SchoolFactory::class)]
 class School extends Model
 {
     /** @use HasFactory<SchoolFactory> */
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = ['name', 'npsn', 'level', 'address'];
 
@@ -21,5 +23,14 @@ class School extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('akses')
+            ->logOnly(['name', 'npsn', 'level', 'address'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
     }
 }

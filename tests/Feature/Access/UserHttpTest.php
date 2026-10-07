@@ -92,6 +92,20 @@ test('operator tidak dapat membuka pengguna sekolah lain (404)', function () {
     $this->get('/pengguna')->assertInertia(fn (Assert $p) => $p->has('users.data', 1));
 });
 
+test('aksi nonaktifkan, aktifkan, dan kirim ulang pada pengguna sekolah lain mengembalikan 404', function () {
+    [$a, $b] = School::factory()->count(2)->create();
+    $opA = makeUserWith(['user.nonaktifkan', 'user.kirim-ulang-aktivasi'], $a, true, 'opA');
+    $targetB = User::factory()->pending()->create(['school_id' => $b->id])->assignRole('operator-sekolah');
+
+    $this->actingAs($opA);
+    $this->post("/pengguna/{$targetB->id}/nonaktifkan")->assertNotFound();
+    $this->post("/pengguna/{$targetB->id}/aktifkan")->assertNotFound();
+    $this->post("/pengguna/{$targetB->id}/kirim-ulang-aktivasi")->assertNotFound();
+
+    expect($targetB->fresh()->is_active)->toBeTrue()
+        ->and($targetB->activations()->count())->toBe(0);
+});
+
 test('pelanggaran aturan bisnis menjadi flash error', function () {
     $this->actingAs($this->admin)->from('/pengguna')->post("/pengguna/{$this->admin->id}/nonaktifkan")
         ->assertRedirect('/pengguna')->assertSessionHas('error');
