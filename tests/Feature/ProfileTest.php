@@ -32,3 +32,23 @@ test('nomor HP tidak valid ditolak', function () {
 
     $this->actingAs($user)->patch('/profile', ['name' => 'X', 'phone' => 'abc'])->assertSessionHasErrors('phone');
 });
+
+test('halaman profil menerima data profil pengguna', function () {
+    $user = makeUserWith([], roleName: 'admin-kecamatan');
+    $user->update(['phone' => '081234567890']);
+
+    $this->actingAs($user)->get('/profile')
+        ->assertInertia(fn ($page) => $page->component('Profile/Edit')
+            ->where('profile.name', $user->name)
+            ->where('profile.email', $user->email)
+            ->where('profile.phone', '081234567890')
+            ->where('profile.role', 'admin-kecamatan'));
+});
+
+test('nomor HP kosong disimpan sebagai null', function () {
+    $user = User::factory()->create(['phone' => '081234567890']);
+
+    $this->actingAs($user)->patch('/profile', ['name' => 'X', 'phone' => ''])->assertSessionHasNoErrors();
+
+    expect($user->fresh()->phone)->toBeNull();
+});
