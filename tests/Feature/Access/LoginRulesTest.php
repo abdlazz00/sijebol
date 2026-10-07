@@ -38,7 +38,8 @@ test('lima percobaan gagal mengunci login dan mencatat log', function () {
     foreach (range(1, 5) as $_) {
         attempt('a@x.test', 'salah');
     }
-    attempt('a@x.test', 'password')->assertSessionHasErrors('email');
+    attempt('a@x.test', 'password')->assertSessionHasErrors('throttle');
+    expect(session('errors')->first('throttle'))->toContain('Terlalu banyak percobaan. Coba lagi dalam');
 
     $this->assertGuest();
     expect(Activity::where('description', 'login.terkunci')->exists())->toBeTrue();
