@@ -9,6 +9,11 @@ export type PageProps<
     T extends Record<string, unknown> = Record<string, unknown>,
 > = T & {
     auth: {
-        user: User;
+        user: User | null;
+        permissions: string[];
+    };
+    flash: {
+        success?: string | null;
+        error?: string | null;
     };
 };
