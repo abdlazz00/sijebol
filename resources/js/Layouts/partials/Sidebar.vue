@@ -37,7 +37,9 @@ function isActive(href: string) {
                     :key="item.href"
                     :href="item.href"
                     :title="collapsed ? item.label : undefined"
-                    class="hover:bg-sidebar-accent flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors"
+                    :aria-label="item.label"
+                    :aria-current="isActive(item.href) ? 'page' : undefined"
+                    class="hover:bg-sidebar-accent flex h-10 items-center gap-3 rounded-lg px-3 text-sm font-medium transition-colors focus-visible:ring-2 focus-visible:ring-white focus-visible:outline-none"
                     :class="
                         isActive(item.href)
                             ? 'bg-sidebar-primary text-sidebar-primary-foreground'

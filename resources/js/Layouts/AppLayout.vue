@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Sheet, SheetContent, SheetTitle } from '@/Components/ui/sheet';
 import { Toaster } from '@/Components/ui/sonner';
 import { useFlash } from '@/composables/useFlash';
 import { Head } from '@inertiajs/vue3';
@@ -25,7 +26,7 @@ watch(
 
 <template>
     <Head :title="title" />
-    <div class="bg-background flex min-h-screen">
+    <div class="bg-background flex min-h-dvh">
         <aside
             class="hidden shrink-0 transition-[width] lg:block"
             :class="collapsed ? 'w-[72px]' : 'w-[264px]'"
@@ -35,15 +36,15 @@ watch(
             </div>
         </aside>
 
-        <div v-if="drawerOpen" class="fixed inset-0 z-40 lg:hidden">
-            <div
-                class="absolute inset-0 bg-black/40"
-                @click="drawerOpen = false"
-            />
-            <div class="absolute inset-y-0 left-0 w-[264px]">
+        <Sheet v-model:open="drawerOpen">
+            <SheetContent
+                side="left"
+                class="border-sidebar-border bg-sidebar [&>button]:hover:bg-sidebar-accent w-[264px] p-0 text-white sm:max-w-[264px] [&>button]:text-white"
+            >
+                <SheetTitle class="sr-only">Menu navigasi</SheetTitle>
                 <Sidebar :collapsed="false" />
-            </div>
-        </div>
+            </SheetContent>
+        </Sheet>
 
         <div class="flex min-w-0 flex-1 flex-col">
             <Topbar

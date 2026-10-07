@@ -48,7 +48,11 @@ const user = computed(() => page.props.auth.user);
         </div>
         <DropdownMenu v-if="user">
             <DropdownMenuTrigger as-child>
-                <Button variant="ghost" class="h-10 gap-2 px-2">
+                <Button
+                    variant="ghost"
+                    class="h-10 gap-2 px-2"
+                    :aria-label="`Menu pengguna ${user.name}`"
+                >
                     <Avatar class="size-8">
                         <AvatarFallback class="bg-primary-soft text-primary">
                             {{ initials(user.name) }}

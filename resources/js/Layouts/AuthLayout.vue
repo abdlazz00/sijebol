@@ -6,7 +6,7 @@ defineProps<{ title?: string }>();
 
 <template>
     <Head :title="title" />
-    <div class="bg-card flex min-h-screen flex-col lg:flex-row">
+    <div class="bg-card flex min-h-dvh flex-col lg:flex-row">
         <aside
             class="bg-sidebar text-sidebar-foreground flex flex-col justify-between p-6 lg:w-[45%] lg:p-12"
         >

@@ -1,6 +1,4 @@
 
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap');
-
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn-vue/tailwind.css';
@@ -26,7 +24,7 @@
     --secondary: #f8fafc;
     --secondary-foreground: #0f172a;
     --muted: #f8fafc;
-    --muted-foreground: #64748b;
+    --muted-foreground: #5b6b80;
     --accent: #e8effd;
     --accent-foreground: #1d4ed8;
     --destructive: #b91c1c;

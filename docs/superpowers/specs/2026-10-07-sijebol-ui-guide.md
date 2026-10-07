@@ -21,7 +21,7 @@ Terkait: `2026-10-07-sijebol-v1-design.md` (spec sistem).
 | `surface-subtle` | `#F8FAFC` | Header tabel, area sekunder |
 | `border` | `#E2E8F0` | Garis kartu, tabel, input |
 | `text` | `#0F172A` | Teks utama |
-| `text-muted` | `#64748B` | Label, teks bantu, metadata |
+| `text-muted` | `#5B6B80` | Label, teks bantu, metadata |
 | `sidebar` | `#0B2A5B` | Latar sidebar dan panel kiri halaman auth |
 | `sidebar-hover` | `#14397A` | Hover item sidebar |
 | `sidebar-text` | `#FFFFFF` | Teks di atas sidebar |
