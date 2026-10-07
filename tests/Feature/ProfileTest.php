@@ -12,23 +12,23 @@ test('profile page is displayed', function () {
     $response->assertOk();
 });
 
-test('profile information can be updated', function () {
-    $user = User::factory()->create();
+test('nama dan nomor HP dapat diubah, email tidak', function () {
+    $user = User::factory()->create(['email' => 'tetap@x.test']);
 
-    $response = $this
-        ->actingAs($user)
-        ->patch('/profile', [
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
-
-    $response
-        ->assertSessionHasNoErrors()
-        ->assertRedirect('/profile');
+    $this->actingAs($user)->patch('/profile', [
+        'name' => 'Nama Baru',
+        'phone' => '081234567890',
+        'email' => 'dicoba@x.test',
+    ])->assertSessionHasNoErrors()->assertRedirect('/profile');
 
     $user->refresh();
+    expect($user->name)->toBe('Nama Baru')
+        ->and($user->phone)->toBe('081234567890')
+        ->and($user->email)->toBe('tetap@x.test');
+});
 
-    $this->assertSame('Test User', $user->name);
-    $this->assertSame('test@example.com', $user->email);
-    $this->assertNull($user->email_verified_at);
+test('nomor HP tidak valid ditolak', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->patch('/profile', ['name' => 'X', 'phone' => 'abc'])->assertSessionHasErrors('phone');
 });
