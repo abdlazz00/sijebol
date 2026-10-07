@@ -8,6 +8,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/Components/ui/table';
+import { cn } from '@/lib/utils';
 import EmptyState from './EmptyState.vue';
 
 interface Column {
@@ -16,21 +17,32 @@ interface Column {
     class?: string;
 }
 
-defineProps<{ columns: Column[]; rows: T[]; loading?: boolean }>();
+withDefaults(
+    defineProps<{
+        columns: Column[];
+        rows: T[];
+        loading?: boolean;
+        rowClass?: string;
+        tableClass?: string;
+    }>(),
+    { rowClass: 'h-12', tableClass: '' },
+);
 </script>
 
 <template>
     <div class="bg-card overflow-x-auto rounded-lg border">
-        <Table>
+        <Table :class="tableClass">
             <TableHeader class="bg-secondary">
                 <TableRow>
                     <TableHead
                         v-for="column in columns"
                         :key="column.key"
-                        :class="[
-                            'text-muted-foreground text-xs font-medium',
-                            column.class,
-                        ]"
+                        :class="
+                            cn(
+                                'text-muted-foreground h-10 px-4 text-xs font-medium',
+                                column.class,
+                            )
+                        "
                     >
                         {{ column.label }}
                     </TableHead>
@@ -38,8 +50,17 @@ defineProps<{ columns: Column[]; rows: T[]; loading?: boolean }>();
             </TableHeader>
             <TableBody>
                 <template v-if="loading">
-                    <TableRow v-for="n in 5" :key="n" data-skeleton-row>
-                        <TableCell v-for="column in columns" :key="column.key">
+                    <TableRow
+                        v-for="n in 8"
+                        :key="n"
+                        data-skeleton-row
+                        :class="rowClass"
+                    >
+                        <TableCell
+                            v-for="column in columns"
+                            :key="column.key"
+                            class="px-4"
+                        >
                             <Skeleton class="h-4 w-full" />
                         </TableCell>
                     </TableRow>
@@ -48,12 +69,12 @@ defineProps<{ columns: Column[]; rows: T[]; loading?: boolean }>();
                     <TableRow
                         v-for="(row, index) in rows"
                         :key="index"
-                        class="hover:bg-primary-soft h-12"
+                        :class="cn('hover:bg-primary-soft', rowClass)"
                     >
                         <TableCell
                             v-for="column in columns"
                             :key="column.key"
-                            :class="column.class"
+                            :class="cn('px-4', column.class)"
                         >
                             <slot :name="`cell-${column.key}`" :row="row">{{
                                 row[column.key]

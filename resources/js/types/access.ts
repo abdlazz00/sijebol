@@ -22,7 +22,7 @@ export interface Paginator<T> {
 
 export type UserStatusKey = 'aktif' | 'menunggu' | 'kedaluwarsa' | 'nonaktif';
 
-export interface UserRow {
+export type UserRow = {
     id: number;
     name: string;
     email: string;
@@ -32,9 +32,9 @@ export interface UserRow {
     status: UserStatusKey;
     last_login_at: string | null;
     can_manage: boolean;
-}
+};
 
-export interface RoleRow {
+export type RoleRow = {
     id: number;
     name: string;
     description: string | null;
@@ -42,7 +42,7 @@ export interface RoleRow {
     permissions_count: number;
     is_school_scoped: boolean;
     protected: boolean;
-}
+};
 
 export interface Option {
     id: number;

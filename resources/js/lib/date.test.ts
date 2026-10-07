@@ -41,6 +41,12 @@ describe('date', () => {
         expect(calculateAge('abc', '2026-10-07')).toBeNull();
     });
 
+    it('waktu relatif ringkas tanpa "yang"', () => {
+        const now = new Date('2026-10-07T07:30:00Z');
+        expect(relativeTime('2026-10-07T05:30:00Z', now)).toBe('2 jam lalu');
+        expect(relativeTime('2026-10-06T07:30:00Z', now)).toBe('1 hari lalu');
+    });
+
     it('waktu relatif', () => {
         const now = new Date('2026-10-07T07:30:00Z');
         expect(relativeTime('2026-10-07T07:28:00Z', now)).toMatch(/2 menit/);

@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { reactive, ref } from 'vue';
 
 type FilterValue = string | number | null;
 
@@ -12,6 +12,7 @@ export function useDataTable(
     initial: Record<string, FilterValue> = {},
 ) {
     const filters = reactive<Record<string, FilterValue>>({ ...initial });
+    const loading = ref(false);
 
     function apply() {
         const filter = Object.fromEntries(
@@ -23,6 +24,8 @@ export function useDataTable(
             preserveState: true,
             preserveScroll: true,
             replace: true,
+            onStart: () => (loading.value = true),
+            onFinish: () => (loading.value = false),
         });
     }
 
@@ -32,5 +35,5 @@ export function useDataTable(
         apply();
     }
 
-    return { filters, apply, reset };
+    return { filters, loading, apply, reset };
 }

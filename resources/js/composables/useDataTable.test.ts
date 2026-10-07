@@ -5,6 +5,12 @@ vi.mock('@inertiajs/vue3', () => ({ router: { get: vi.fn() } }));
 import { router } from '@inertiajs/vue3';
 import { useDataTable } from './useDataTable';
 
+const baseOptions = {
+    preserveState: true,
+    preserveScroll: true,
+    replace: true,
+};
+
 describe('useDataTable', () => {
     beforeEach(() => vi.clearAllMocks());
 
@@ -18,19 +24,36 @@ describe('useDataTable', () => {
         expect(router.get).toHaveBeenCalledWith(
             '/pengguna',
             { filter: { search: 'budi' } },
-            { preserveState: true, preserveScroll: true, replace: true },
+            expect.objectContaining(baseOptions),
         );
     });
 
-    it('reset mengembalikan nilai awal lalu memuat ulang', () => {
-        const { filters, reset } = useDataTable('/pengguna', { search: '' });
+    it('reset mengosongkan semua filter lalu memuat ulang', () => {
+        const { filters, reset } = useDataTable('/pengguna', {
+            search: 'awal',
+        });
         filters.search = 'x';
         reset();
         expect(filters.search).toBe('');
         expect(router.get).toHaveBeenCalledWith(
             '/pengguna',
             {},
-            expect.any(Object),
+            expect.objectContaining(baseOptions),
         );
+    });
+
+    it('loading menyala saat permintaan berjalan dan padam saat selesai', () => {
+        const { apply, loading } = useDataTable('/pengguna');
+        apply();
+        const options = vi.mocked(router.get).mock.calls[0][2] as {
+            onStart: () => void;
+            onFinish: () => void;
+        };
+
+        expect(loading.value).toBe(false);
+        options.onStart();
+        expect(loading.value).toBe(true);
+        options.onFinish();
+        expect(loading.value).toBe(false);
     });
 });

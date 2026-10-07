@@ -28,7 +28,7 @@ const ymdFmt = new Intl.DateTimeFormat('en-CA', {
     day: '2-digit',
     timeZone: TZ,
 });
-const rtf = new Intl.RelativeTimeFormat('id-ID', { numeric: 'auto' });
+const rtf = new Intl.RelativeTimeFormat('id-ID', { numeric: 'always' });
 
 function toDate(value: DateInput): Date | null {
     if (!value) return null;
@@ -82,7 +82,9 @@ export function relativeTime(value: DateInput, now: Date = new Date()): string {
     const diff = Math.round((d.getTime() - now.getTime()) / 1000);
     for (const [unit, seconds] of UNITS) {
         if (Math.abs(diff) >= seconds) {
-            return rtf.format(Math.round(diff / seconds), unit);
+            return rtf
+                .format(Math.round(diff / seconds), unit)
+                .replace(' yang lalu', ' lalu');
         }
     }
     return 'baru saja';
