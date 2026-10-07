@@ -84,3 +84,13 @@ test('reset dengan token tidak valid tidak membedakan pengguna tidak ada dan tok
 
     expect(session('errors')->first('email'))->toBe('Link reset tidak berlaku atau sudah kedaluwarsa.');
 });
+
+test('permintaan berulang untuk email terdaftar tetap tidak menampilkan error throttle', function () {
+    Notification::fake();
+    $user = User::factory()->create();
+
+    $this->post('/forgot-password', ['email' => $user->email])->assertSessionHasNoErrors();
+    $this->post('/forgot-password', ['email' => $user->email])
+        ->assertSessionHasNoErrors()
+        ->assertSessionHas('status');
+});
