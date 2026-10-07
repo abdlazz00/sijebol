@@ -1,8 +1,6 @@
 <script setup lang="ts">
-import FormField from '@/Components/shared/FormField.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
-import PasswordInput from '@/Components/shared/PasswordInput.vue';
-import PasswordRules from '@/Components/shared/PasswordRules.vue';
+import NewPasswordFields from '@/Components/shared/NewPasswordFields.vue';
 import { Button } from '@/Components/ui/button';
 import AuthLayout from '@/Layouts/AuthLayout.vue';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
@@ -66,35 +64,13 @@ function submit() {
                     />
                 </div>
 
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Password baru"
+                <NewPasswordFields
+                    v-model:password="form.password"
+                    v-model:confirmation="form.password_confirmation"
                     :error="form.errors.password"
-                >
-                    <PasswordInput
-                        :id="id"
-                        v-model="form.password"
-                        autocomplete="new-password"
-                        autofocus
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
-                <PasswordRules :password="form.password" />
-
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Konfirmasi password"
-                    :error="mismatch"
-                >
-                    <PasswordInput
-                        :id="id"
-                        v-model="form.password_confirmation"
-                        autocomplete="new-password"
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
+                    :confirmation-error="mismatch"
+                    autofocus
+                />
 
                 <Button
                     type="submit"

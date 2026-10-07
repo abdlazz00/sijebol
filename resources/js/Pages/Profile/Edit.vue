@@ -2,7 +2,7 @@
 import FormField from '@/Components/shared/FormField.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import PasswordInput from '@/Components/shared/PasswordInput.vue';
-import PasswordRules from '@/Components/shared/PasswordRules.vue';
+import NewPasswordFields from '@/Components/shared/NewPasswordFields.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -188,34 +188,12 @@ function savePassword() {
                     />
                 </FormField>
 
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Password baru"
+                <NewPasswordFields
+                    v-model:password="password.password"
+                    v-model:confirmation="password.password_confirmation"
                     :error="password.errors.password"
-                >
-                    <PasswordInput
-                        :id="id"
-                        v-model="password.password"
-                        autocomplete="new-password"
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
-                <PasswordRules :password="password.password" />
-
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Konfirmasi password"
-                    :error="passwordErrors.password_confirmation"
-                >
-                    <PasswordInput
-                        :id="id"
-                        v-model="password.password_confirmation"
-                        autocomplete="new-password"
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
+                    :confirmation-error="passwordErrors.password_confirmation"
+                />
 
                 <div class="flex justify-end">
                     <Button
