@@ -5,6 +5,7 @@ namespace App\Domains\Access\Http\Controllers;
 use App\Domains\Access\Enums\UserStatus;
 use App\Domains\Access\Http\Requests\UserRequest;
 use App\Domains\Access\Models\Role;
+use App\Domains\Access\Services\AccessGuard;
 use App\Domains\Access\Services\RoleService;
 use App\Domains\Access\Services\UserService;
 use App\Domains\Schools\Services\SchoolService;
@@ -140,7 +141,9 @@ class UserController extends Controller
     private function formOptions(): array
     {
         return [
-            'roles' => $this->roles->list()->map(fn (Role $r) => $r->only(['id', 'name', 'is_school_scoped']))->values(),
+            'roles' => $this->roles->list()
+                ->filter(fn (Role $r) => AccessGuard::canGrantRole(request()->user(), $r))
+                ->map(fn (Role $r) => $r->only(['id', 'name', 'is_school_scoped']))->values(),
             'schools' => $this->schools->options(),
         ];
     }

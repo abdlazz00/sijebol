@@ -50,7 +50,7 @@ function onChange(value: unknown) {
     >
         <SelectTrigger
             :id="id"
-            class="h-10 w-full bg-white px-3"
+            class="w-full bg-white px-3 data-[size=default]:h-10"
             :aria-invalid="invalid"
             :aria-describedby="describedBy"
         >
