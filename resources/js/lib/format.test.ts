@@ -1,5 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { formatNumber, initials, maskNik } from './format';
+import { formatNumber, humanize, initials, maskNik } from './format';
+
+describe('humanize', () => {
+    it('mengubah slug menjadi teks berkapital awal', () => {
+        expect(humanize('admin-kecamatan')).toBe('Admin kecamatan');
+        expect(humanize('kirim-ulang-aktivasi')).toBe('Kirim ulang aktivasi');
+        expect(humanize('user')).toBe('User');
+    });
+
+    it('aman untuk nilai kosong', () => {
+        expect(humanize(null)).toBe('—');
+        expect(humanize('')).toBe('—');
+        expect(humanize(undefined)).toBe('—');
+    });
+});
 
 describe('format', () => {
     it('menyamarkan NIK 16 digit', () => {

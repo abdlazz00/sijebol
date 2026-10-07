@@ -1,8 +1,11 @@
+import type { MenuGroup } from './access';
+
 export interface User {
     id: number;
     name: string;
     email: string;
     email_verified_at?: string;
+    role?: string | null;
 }
 
 export type PageProps<
@@ -16,4 +19,5 @@ export type PageProps<
         success?: string | null;
         error?: string | null;
     };
+    menu: MenuGroup[];
 };

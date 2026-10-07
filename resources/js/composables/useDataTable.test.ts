@@ -17,7 +17,7 @@ describe('useDataTable', () => {
         apply();
         expect(router.get).toHaveBeenCalledWith(
             '/pengguna',
-            { search: 'budi' },
+            { filter: { search: 'budi' } },
             { preserveState: true, preserveScroll: true, replace: true },
         );
     });
