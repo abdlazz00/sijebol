@@ -24,7 +24,9 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 ---
 
-## Fase 0 — Setup project
+## Fase 0 — Setup project (SELESAI 2026-10-07)
+
+**Penyimpangan dari rencana awal:** `BaseRepository`, `RepositoryServiceProvider`, trait `ScopedBySchool`, dan folder domain kosong ditunda ke Fase 1 (belum ada konsumennya). Database MySQL. Tailwind di-upgrade ke v4, ikon memakai `@lucide/vue`. Penamaan folder FE mengikuti Breeze (`Components`, `Layouts`, `Pages`). Alur confirm-password dan hapus-akun Breeze dihapus. Rincian: `plans/2026-10-07-fase-0-setup-project.md`.
 
 **Tujuan:** kerangka BE dan FE siap dikembangkan, dengan tooling kualitas dan konvensi folder terpasang.
 
