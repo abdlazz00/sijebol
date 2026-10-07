@@ -45,7 +45,7 @@ class RoleController extends Controller
 
     public function edit(Request $request, Role $role): Response
     {
-        $role->load('permissions');
+        $role->load('permissions')->loadCount('users');
 
         return Inertia::render('Role/Form', [
             'role' => [
@@ -53,6 +53,7 @@ class RoleController extends Controller
                 'name' => $role->name,
                 'description' => $role->description,
                 'is_school_scoped' => $role->is_school_scoped,
+                'users_count' => $role->users_count,
                 'permissions' => $role->permissions->pluck('name')->values(),
                 'protected' => $role->isProtected(),
             ],

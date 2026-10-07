@@ -17,8 +17,13 @@ withDefaults(
         description: string;
         confirmLabel?: string;
         destructive?: boolean;
+        confirmDisabled?: boolean;
     }>(),
-    { confirmLabel: 'Ya, lanjutkan', destructive: false },
+    {
+        confirmLabel: 'Ya, lanjutkan',
+        destructive: false,
+        confirmDisabled: false,
+    },
 );
 
 const emit = defineEmits<{ confirm: [] }>();
@@ -36,10 +41,12 @@ function confirm() {
                 <DialogTitle>{{ title }}</DialogTitle>
                 <DialogDescription>{{ description }}</DialogDescription>
             </DialogHeader>
+            <slot />
             <DialogFooter>
                 <Button variant="outline" @click="open = false">Batal</Button>
                 <Button
                     :variant="destructive ? 'destructive' : 'default'"
+                    :disabled="confirmDisabled"
                     @click="confirm"
                 >
                     {{ confirmLabel }}
