@@ -942,7 +942,7 @@ class PruneActivityLog extends Command
 - Create: `resources/js/types/notification.ts`, `resources/js/Components/shared/NotificationItem.vue`, `resources/js/Components/shared/NotificationBell.vue`
 
 **Interfaces:**
-- Produces: `formatTime(value): string` ("08.00"), `formatDateTime(value): string` ("6 Okt 2026 08.00"→ gunakan format spec "6 Okt 2026 · 08.00": `${formatDate} · ${formatTime}`); `type NotificationRow = { id; title; body; url; read_at: string|null; created_at: string }`; `type ActivityRow` sesuai Task 5; `usePolling(callback: () => void, intervalMs: number): void` (jalan saat tab terlihat, berhenti saat tersembunyi, lanjut + panggil sekali saat terlihat lagi, bersih saat unmount); `<NotificationItem :notification="row" @read="id" />`.
+- Produces: `formatTime(value): string` ("08.00"), `formatDateTime(value): string` ("6 Okt 2026 08.00"→ gunakan format spec "6 Okt 2026 · 08.00": `${formatDate} · ${formatTime}`); `type NotificationRow = { id; title; body; url; read_at: string|null; created_at: string }`; `type ActivityRow` sesuai Task 5; `<NotificationItem :notification="row" @read="id" />`.
 
 - [ ] **Step 1: Tes yang gagal** — `date.test.ts`: `formatTime('2026-10-07T07:30:00Z')` → `'14.30'`; `formatDateTime('2026-10-07T07:30:00Z')` → `'7 Okt 2026 · 14.30'`; null → `'—'`.
 - [ ] **Step 2: Jalankan** `npm test` → FAIL.
