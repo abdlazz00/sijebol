@@ -5,7 +5,9 @@
     "scripts": {
         "build": "vue-tsc && vite build",
         "dev": "vite",
-        "lint": "eslint resources/js --ext .js,.ts,.vue --ignore-path .gitignore --fix"
+        "lint": "eslint resources/js --ext .js,.ts,.vue --ignore-path .gitignore --max-warnings 0",
+        "format": "prettier --write resources/js",
+        "typecheck": "vue-tsc --noEmit"
     },
     "devDependencies": {
         "@inertiajs/vue3": "^2.0.0",
