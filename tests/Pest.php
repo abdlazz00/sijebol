@@ -10,7 +10,11 @@ use Tests\TestCase;
 
 pest()->extend(TestCase::class)
     ->use(RefreshDatabase::class)
-    ->beforeEach(fn () => config(['inertia.testing.ensure_pages_exist' => false]))
+    ->beforeEach(function () {
+        // Test BE tidak boleh bergantung pada build FE: halaman Inertia boleh belum ada di manifest Vite.
+        test()->withoutVite();
+        config(['inertia.testing.ensure_pages_exist' => false]);
+    })
     ->in('Feature');
 
 /**
