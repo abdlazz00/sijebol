@@ -22,6 +22,10 @@
 - Commit: pesan detail, **tanpa** `Co-Authored-By` atau atribusi AI (aturan `CLAUDE.md`).
 - Setelah semua task: review `impeccable` (FE) dan `ponytail:ponytail-review`, perbaiki temuan valid, verifikasi akhir.
 
+## Rulings (hasil review ponytail atas rencana)
+
+- Repository notifikasi dipertahankan walau tipis (membungkus `$user->notifications()`) karena pola service-repository adalah aturan proyek dari user; dipotong: `usePolling` (diganti `usePoll` bawaan Inertia), `NotificationService::toUser`, query `types()`, dan komponen dialog terpisah.
+
 ## Review Focus
 
 - Query penerima harus memakai `withoutGlobalScopes()`: scope sekolah (`ScopedBySchool`) tidak boleh menyaring penerima saat pengirim operator atau saat dijalankan di queue (Task 2).
@@ -30,7 +34,7 @@
 - Log dengan pelaku `null` (sistem) atau subjek yang sudah dihapus tetap tampil (Task 5).
 - Filter `to` inklusif sampai akhir hari dan memakai zona waktu Asia/Jakarta (Task 5).
 - `notifications` bernilai `null` untuk tamu/halaman Error; bell tidak error dan tidak melakukan polling (Task 7).
-- Polling berhenti saat tab tersembunyi dan lanjut saat terlihat lagi (Task 7).
+- Polling (`usePoll`) berhenti saat tab tersembunyi dan tidak berjalan untuk tamu (Task 7).
 
 ## File Structure
 
@@ -182,7 +186,6 @@ abstract class BaseNotification extends Notification implements ShouldQueue
 - Consumes: `BaseNotification` (Task 1), helper `makeUserWith(array $permissions, ?School $school, bool $scoped, string $roleName)` dari `tests/Pest.php`.
 - Produces:
   - `NotificationService::toPermission(string $permission, BaseNotification $notification, ?int $schoolId = null): int`
-  - `toUser(User $user, BaseNotification $notification): void`
   - `list(User $user, bool $unreadOnly): LengthAwarePaginator` (item sudah dipetakan lewat `row()`)
   - `markRead(User $user, string $id): void` (404 bila bukan milik user), `markAllRead(User $user): void`
   - `summary(User $user): array{unread_count: int, latest: list<array>}`
@@ -397,11 +400,6 @@ class NotificationService
         return $recipients->count();
     }
 
-    public function toUser(User $user, BaseNotification $notification): void
-    {
-        $user->notify($notification);
-    }
-
     /** @return LengthAwarePaginator<int, array<string, mixed>> */
     public function list(User $user, bool $unreadOnly): LengthAwarePaginator
     {
@@ -594,7 +592,7 @@ Di `HandleInertiaRequests::share`, tambahkan setelah `'menu'`: `'notifications' 
 - Test: `tests/Feature/Notifications/AccountActivatedTest.php`
 
 **Interfaces:**
-- Consumes: `NotificationService::toUser` (Task 2), `User::creator()` (relasi `created_by`).
+- Consumes: `User::creator()` (relasi `created_by`); memakai `$creator->notify(...)` langsung (satu penerima, tanpa service).
 - Produces: `new AccountActivatedNotification(User $activated)`.
 
 - [ ] **Step 1: Tes yang gagal** — baca `tests/Feature/Access/ActivationServiceTest.php` untuk cara membuat token (`ActivationService::issue`) dan ikuti.
@@ -669,7 +667,7 @@ Di `ActivationService::complete`, setelah `activity(...)->log('aktivasi.selesai'
 ```php
 $creator = $user->creator;
 if ($creator !== null && $creator->is_active) {
-    app(NotificationService::class)->toUser($creator, new AccountActivatedNotification($user));
+    $creator->notify(new AccountActivatedNotification($user));
 }
 ```
 (Notifikasi antre sehingga tidak memperlambat respons.)
@@ -688,8 +686,8 @@ if ($creator !== null && $creator->is_active) {
 **Interfaces:**
 - Produces:
   - `ActivityPropertyMasker::apply(array $values): array`
-  - `ActivityLogRepositoryInterface`: `paginate(int $perPage = 25): LengthAwarePaginator` (filter dari query string via QueryBuilder), `types(): Collection<int,string>`, `causers(): Collection<int, User>` (id, name), `recentFor(User $user, int $limit = 10): Collection<int, Activity>`
-  - `ActivityLogService::list(): LengthAwarePaginator` (baris `ActivityRow`), `typeOptions(): list<array{value:string,label:string}>`, `userOptions(): list<array{id:int,name:string}>`, `recentFor(User $user): list<ActivityRow>`
+  - `ActivityLogRepositoryInterface`: `paginate(int $perPage = 25): LengthAwarePaginator` (filter dari query string via QueryBuilder), `causers(): Collection<int, User>` (id, name), `recentFor(User $user, int $limit = 10): Collection<int, Activity>`
+  - `ActivityLogService::list(): LengthAwarePaginator` (baris `ActivityRow`), `typeOptions(): list<array{value:string,label:string}>` (dari kunci `trans('activity.types')`, tanpa query), `userOptions(): list<array{id:int,name:string}>`, `recentFor(User $user): list<ActivityRow>`
   - `ActivityRow` = `array{id: int, created_at: string, causer: ?array{id:int,name:string}, type: string, type_label: string, action: string, subject: array{type: string, label: string}, changes: list<array{field: string, old: mixed, new: mixed}>}`
   - Rute `log.index` (GET `/log`, `can:log.lihat`), Inertia `Log/Index` props `{ activities, filters, types, users }`; prop baru `activities: list<ActivityRow>|null` pada `Pengguna/Show`.
 
@@ -734,13 +732,13 @@ test('filter pengguna, jenis, dan rentang tanggal (to inklusif)', function () {
     $a = User::factory()->create(['name' => 'Aa']);
     $b = User::factory()->create(['name' => 'Bb']);
     activity('akses')->causedBy($a)->log('login');
-    activity('data')->causedBy($b)->log('updated');
+    activity('default')->causedBy($b)->log('updated');
     $akhir = activity('akses')->causedBy($a)->log('logout');
     $akhir->forceFill(['created_at' => Carbon::parse('2026-10-05 23:30', 'Asia/Jakarta')->utc()])->save();
 
     $this->actingAs($viewer);
     $this->get("/log?filter[user]={$a->id}")->assertInertia(fn ($p) => $p->has('activities.data', 2));
-    $this->get('/log?filter[type]=data')->assertInertia(fn ($p) => $p->has('activities.data', 1));
+    $this->get('/log?filter[type]=default')->assertInertia(fn ($p) => $p->has('activities.data', 1));
     $this->get('/log?filter[from]=2026-10-05&filter[to]=2026-10-05')
         ->assertInertia(fn ($p) => $p->has('activities.data', 1)->where('activities.data.0.action', 'Logout'));
 });
@@ -833,7 +831,7 @@ final class ActivityPropertyMasker
 <?php
 
 return [
-    'types' => ['akses' => 'Akses', 'data' => 'Data', 'default' => 'Data'],
+    'types' => ['akses' => 'Akses', 'default' => 'Data'],
     'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah'],
     'actions' => [
         'login' => 'Login', 'logout' => 'Logout', 'lockout' => 'Akun terkunci sementara',
@@ -856,7 +854,7 @@ QueryBuilder::for(Activity::query()->with(['causer', 'subject'])->latest('create
         AllowedFilter::callback('to', fn (Builder $q, $v) => $q->where('created_at', '<=', Carbon::parse($v, 'Asia/Jakarta')->endOfDay()->setTimezone(config('app.timezone')))),
     )->paginate($perPage)->withQueryString();
 ```
-`types()` = `Activity::query()->distinct()->orderBy('log_name')->pluck('log_name')`; `causers()` = `User::query()->withoutGlobalScopes()->whereIn('id', Activity::query()->where('causer_type', User::class)->select('causer_id'))->orderBy('name')->get(['id','name'])`; `recentFor($user, $limit)` = activity di mana (`causer_type = User` dan `causer_id = id`) atau (`subject_type = User` dan `subject_id = id`), `with(['causer','subject'])->latest('created_at')->latest('id')->limit($limit)->get()`.
+`causers()` = `User::query()->withoutGlobalScopes()->whereIn('id', Activity::query()->where('causer_type', User::class)->select('causer_id'))->orderBy('name')->get(['id','name'])`; `recentFor($user, $limit)` = activity di mana (`causer_type = User` dan `causer_id = id`) atau (`subject_type = User` dan `subject_id = id`), `with(['causer','subject'])->latest('created_at')->latest('id')->limit($limit)->get()`.
 
 `ActivityLogService::row(Activity $a): array`: `type_label` = `label('types', $a->log_name)`; `action` = `label('actions', $a->description)`; `subject` = `['type' => label('subjects', class_basename($a->subject_type ?? '')), 'label' => nama subjek (`$a->subject?->name ?? $a->subject?->title`) atau `'#'.$a->subject_id` bila subjek hilang, atau `'—'` bila `subject_type` null]`; `causer` = `$a->causer ? ['id'=>..., 'name'=>...] : null`; `changes`: `$new = ActivityPropertyMasker::apply((array) ($a->properties['attributes'] ?? []))`, `$old = ActivityPropertyMasker::apply((array) ($a->properties['old'] ?? []))`, daftar `['field' => $k, 'old' => $old[$k] ?? null, 'new' => $v]` untuk tiap `$new`; `label($prefix, $key)` = `Lang::has("activity.$prefix.$key") ? __("activity.$prefix.$key") : (string) $key` — **cek**: kunci berisi titik (mis. `aktivasi.selesai`) tidak bisa dipakai di `Lang::has` dot-notation; gunakan `trans("activity.$prefix")` mengambil array lalu `$array[$key] ?? $key` agar aman.
 
@@ -941,50 +939,20 @@ class PruneActivityLog extends Command
 
 **Files:**
 - Modify: `docs/superpowers/specs/2026-10-07-sijebol-ui-guide.md` (tambah 5.17 Log Aktivitas, dari spec Fase 2 §4.2), `resources/js/lib/date.ts` + `date.test.ts` (kembalikan `formatTime`/`formatDateTime`), `resources/js/types/index.d.ts` (prop `notifications`), `resources/js/config/menuIcons.ts` (`'scroll-text': ScrollText`), `resources/js/Layouts/partials/Topbar.vue` (ganti dropdown bell)
-- Create: `resources/js/types/notification.ts`, `resources/js/Components/shared/NotificationItem.vue`, `resources/js/Components/shared/NotificationBell.vue`, `resources/js/composables/usePolling.ts` (+ `usePolling.test.ts`)
+- Create: `resources/js/types/notification.ts`, `resources/js/Components/shared/NotificationItem.vue`, `resources/js/Components/shared/NotificationBell.vue`
 
 **Interfaces:**
 - Produces: `formatTime(value): string` ("08.00"), `formatDateTime(value): string` ("6 Okt 2026 08.00"→ gunakan format spec "6 Okt 2026 · 08.00": `${formatDate} · ${formatTime}`); `type NotificationRow = { id; title; body; url; read_at: string|null; created_at: string }`; `type ActivityRow` sesuai Task 5; `usePolling(callback: () => void, intervalMs: number): void` (jalan saat tab terlihat, berhenti saat tersembunyi, lanjut + panggil sekali saat terlihat lagi, bersih saat unmount); `<NotificationItem :notification="row" @read="id" />`.
 
-- [ ] **Step 1: Tes yang gagal** — `date.test.ts`: `formatTime('2026-10-07T07:30:00Z')` → `'14.30'`; `formatDateTime('2026-10-07T07:30:00Z')` → `'7 Okt 2026 · 14.30'`; null → `'—'`. `usePolling.test.ts` (fake timers + `document.visibilityState` stub): callback dipanggil tiap interval saat `visible`, tidak dipanggil saat `hidden`, dipanggil sekali saat kembali `visible`, berhenti setelah unmount.
+- [ ] **Step 1: Tes yang gagal** — `date.test.ts`: `formatTime('2026-10-07T07:30:00Z')` → `'14.30'`; `formatDateTime('2026-10-07T07:30:00Z')` → `'7 Okt 2026 · 14.30'`; null → `'—'`.
 - [ ] **Step 2: Jalankan** `npm test` → FAIL.
-- [ ] **Step 3: Implementasi util.** `date.ts`: tambahkan `timeFmt` (`id-ID`, `hour:'2-digit'`, `minute:'2-digit'`, `hourCycle:'h23'`, zona `Asia/Jakarta`), `formatTime`, `formatDateTime = d => ${formatDate(d)} · ${formatTime(d)}` (kembalikan `—` bila tidak valid). `usePolling`:
-
-```ts
-import { onBeforeUnmount, onMounted } from 'vue';
-
-/** Memanggil callback berkala hanya saat tab terlihat; segera menyegarkan saat tab kembali terlihat. */
-export function usePolling(callback: () => void, intervalMs: number) {
-    let timer: ReturnType<typeof setInterval> | undefined;
-
-    const start = () => {
-        stop();
-        timer = setInterval(callback, intervalMs);
-    };
-    const stop = () => clearInterval(timer);
-    const onVisibility = () => {
-        if (document.visibilityState === 'visible') {
-            callback();
-            start();
-        } else stop();
-    };
-
-    onMounted(() => {
-        if (document.visibilityState === 'visible') start();
-        document.addEventListener('visibilitychange', onVisibility);
-    });
-    onBeforeUnmount(() => {
-        stop();
-        document.removeEventListener('visibilitychange', onVisibility);
-    });
-}
-```
+- [ ] **Step 3: Implementasi util.** `date.ts`: tambahkan `timeFmt` (`id-ID`, `hour:'2-digit'`, `minute:'2-digit'`, `hourCycle:'h23'`, zona `Asia/Jakarta`), `formatTime`, `formatDateTime = d => ${formatDate(d)} · ${formatTime(d)}` (kembalikan `—` bila tidak valid). Polling memakai `usePoll` bawaan Inertia (tidak ada composable sendiri).
 - [ ] **Step 4: Panduan UI 5.17** — tambahkan bagian sebelum "6. Pola lintas halaman" dengan isi spec §4.2 (header, filter, tabel, dialog detail, mobile) dan tambah baris `log` ke daftar menu bila ada.
 - [ ] **Step 5: `NotificationItem.vue`** — props `{ notification: NotificationRow }`, emit `read: [id: string]`. Markup: `<li>` dengan `<Link :href="notification.url" @click="emit('read', notification.id)">` badan: titik biru `size-2 rounded-full bg-primary` (hanya bila `read_at === null`, sisanya spacer), judul satu baris `truncate text-sm` (`font-semibold` bila belum dibaca), deskripsi `truncate text-xs text-muted-foreground`, waktu `relativeTime(created_at)` `text-xs`; latar `bg-primary-soft/40` bila belum dibaca; tombol ikon `Check` (`size-8`, `aria-label="Tandai dibaca"`) hanya bila belum dibaca, terlihat `sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100` dan selalu tampil di mobile; klik tombol `@click.prevent.stop` emit `read`.
-- [ ] **Step 6: `NotificationBell.vue`** — props tidak ada; baca `usePage<PageProps>().props.notifications` (bisa `null` → render tombol bell tanpa badge dan tanpa polling). `DropdownMenu` (komponen shadcn yang sama dengan Topbar): trigger `Button` ghost `size-10` dengan `Bell` + badge `absolute` (`min-w-4 h-4 rounded-full bg-danger text-[10px] text-white`, teks `9+` bila >9, tidak dirender bila 0), `aria-label` = `Notifikasi, N belum dibaca` / `Notifikasi`. Konten: header (`h-16`, "Notifikasi" + tombol teks "Tandai semua dibaca" bila `unread_count > 0` → `router.post(route('notifikasi.read-all'), {}, { preserveScroll: true })`), daftar `latest` (maks 8) dengan `NotificationItem` (`@read` → `router.post(route('notifikasi.read', id), {}, { preserveScroll: true, preserveState: true })`), empty state yang sudah ada ("Belum ada notifikasi"), footer `Link` "Lihat semua" ke `route('notifikasi.index')`. `usePolling(() => router.reload({ only: ['notifications'] }), 60_000)` hanya bila `notifications !== null`.
+- [ ] **Step 6: `NotificationBell.vue`** — props tidak ada; baca `usePage<PageProps>().props.notifications` (bisa `null` → render tombol bell tanpa badge dan tanpa polling). `DropdownMenu` (komponen shadcn yang sama dengan Topbar): trigger `Button` ghost `size-10` dengan `Bell` + badge `absolute` (`min-w-4 h-4 rounded-full bg-danger text-[10px] text-white`, teks `9+` bila >9, tidak dirender bila 0), `aria-label` = `Notifikasi, N belum dibaca` / `Notifikasi`. Konten: header (`h-16`, "Notifikasi" + tombol teks "Tandai semua dibaca" bila `unread_count > 0` → `router.post(route('notifikasi.read-all'), {}, { preserveScroll: true })`), daftar `latest` (maks 8) dengan `NotificationItem` (`@read` → `router.post(route('notifikasi.read', id), {}, { preserveScroll: true, preserveState: true })`), empty state yang sudah ada ("Belum ada notifikasi"), footer `Link` "Lihat semua" ke `route('notifikasi.index')`. `usePoll(60_000, { only: ['notifications'] })` (dari `@inertiajs/vue3`; otomatis menjeda saat tab tersembunyi) — dipanggil hanya bila `notifications !== null` di awal `setup` (tamu/halaman Error tidak berpolling).
 - [ ] **Step 7: Topbar** — ganti seluruh blok `DropdownMenu` bell (±30 baris) dengan `<NotificationBell />`; hapus impor yang tak terpakai. Tambah `ScrollText` di `menuIcons.ts` (+ tes `menuIcons.test.ts` untuk kunci `'scroll-text'`). Tambahkan `notifications: { unread_count: number; latest: NotificationRow[] } | null` ke `PageProps`.
 - [ ] **Step 8: Cek** — `npm run format && npm test && npm run typecheck && npm run lint && npm run build` bersih.
-- [ ] **Step 9: Verifikasi browser** — buat 2 notifikasi via tinker untuk Sari; bell menampilkan badge "2", dropdown berisi 2 item, tandai satu → badge "1" tanpa reload penuh, "Tandai semua dibaca" → badge hilang; set `document.visibilityState` hidden tidak mengirim request (periksa `performance.getEntriesByType('resource')` atau tab Network via evaluate); halaman Error/tamu tidak error; mobile 390 dropdown tidak melebihi layar.
+- [ ] **Step 9: Verifikasi browser** — buat 2 notifikasi via tinker untuk Sari; bell menampilkan badge "2", dropdown berisi 2 item, tandai satu → badge "1" tanpa reload penuh, "Tandai semua dibaca" → badge hilang; dengan `document.visibilityState` hidden tidak ada request polling (hitung `performance.getEntriesByType('resource')` sebelum/sesudah menunggu >60 dtk memakai interval pendek sementara bila perlu); halaman Error/tamu tidak error; mobile 390 dropdown tidak melebihi layar.
 - [ ] **Step 10: Commit** — "feat: tambah lonceng notifikasi dengan polling dan utilitas waktu".
 
 ---
@@ -1008,16 +976,15 @@ export function usePolling(callback: () => void, intervalMs: number) {
 ### Task 9: Halaman Log Aktivitas
 
 **Files:**
-- Create: `resources/js/Pages/Log/Index.vue`, `resources/js/Components/shared/ActivityDetailDialog.vue`
+- Create: `resources/js/Pages/Log/Index.vue`
 
 **Interfaces:**
 - Consumes: props `{ activities: Paginator<ActivityRow>, filters: Record<string,string|undefined>, types: {value,label}[], users: {id,name}[] }`; `useDataTable('/log', { user, type, from, to })`; `DataTable`, `FormField`, `SelectField`, `Input` (type=date), `Pagination`, `EmptyState`, `Dialog*`, `formatDateTime`, `relativeTime`.
 
-- [ ] **Step 1: Index.vue** — pola `Pengguna/Index.vue`: `PageHeader title="Log Aktivitas" description="Rekam jejak aktivitas di SIJEBOL."`; filter grid: Pengguna (`SelectField all-label="Semua pengguna"`, opsi dari `users`), Jenis (`SelectField all-label="Semua jenis"`, opsi `types`), Dari tanggal & Sampai tanggal (`Input type="date" class="h-10"`), semuanya memicu `apply` (`watch` pada keempat nilai); `DataTable` kolom Waktu (`class="w-[168px]"`; < 24 jam → `relativeTime`, selain itu `formatDateTime`; atribut `title` = `formatDateTime`), Pengguna (`causer?.name ?? 'Sistem'`), Aksi (`action`), Subjek (`subject.type` + `subject.label` di bawahnya kecil), Ringkasan (dua perubahan pertama `field: lama → baru`, `truncate`, kosong → "—"), Aksi (tombol teks "Detail" membuka dialog); state: loading skeleton (bawaan), `EmptyState` "Belum ada aktivitas" dan hasil-filter-kosong dengan "Reset filter"; petunjuk "↔ Geser tabel" mobile; `table-class="min-w-[960px]"`; `Pagination`.
-- [ ] **Step 2: `ActivityDetailDialog.vue`** — props `{ activity: ActivityRow | null }`, `v-model:open`; `DialogTitle` = `activity.action`, deskripsi = `${causer ?? 'Sistem'} · ${formatDateTime(created_at)}`; baris subjek; bila `changes.length` tabel Kolom / Sebelum / Sesudah (nilai null → "—", objek/array → `JSON.stringify`), kosong → "Tidak ada perubahan data."; tombol "Tutup".
-- [ ] **Step 3: Cek** format/typecheck/lint/build.
-- [ ] **Step 4: Verifikasi browser** — login sebagai Sari (admin kecamatan memiliki `log.lihat`; bila tidak, cek `AccessSeeder`), menu "Log Aktivitas" muncul; filter pengguna/jenis/tanggal mengubah URL `filter[...]` dan hasil; dialog detail menampilkan sebelum/sesudah (ubah satu sekolah dulu untuk membuat log); operator melihat 403 (halaman Error); mobile 390 tanpa overflow.
-- [ ] **Step 5: Commit** — "feat: tambah halaman log aktivitas dengan filter dan detail".
+- [ ] **Step 1: Index.vue** — pola `Pengguna/Index.vue`: `PageHeader title="Log Aktivitas" description="Rekam jejak aktivitas di SIJEBOL."`; filter grid: Pengguna (`SelectField all-label="Semua pengguna"`, opsi dari `users`), Jenis (`SelectField all-label="Semua jenis"`, opsi `types`), Dari tanggal & Sampai tanggal (`Input type="date" class="h-10"`), semuanya memicu `apply` (`watch` pada keempat nilai); `DataTable` kolom Waktu (`class="w-[168px]"`; < 24 jam → `relativeTime`, selain itu `formatDateTime`; atribut `title` = `formatDateTime`), Pengguna (`causer?.name ?? 'Sistem'`), Aksi (`action`), Subjek (`subject.type` + `subject.label` di bawahnya kecil), Ringkasan (dua perubahan pertama `field: lama → baru`, `truncate`, kosong → "—"), Aksi (tombol teks "Detail" membuka dialog yang ditulis inline di halaman ini: `DialogTitle` = `activity.action`, deskripsi = `${causer ?? 'Sistem'} · ${formatDateTime(created_at)}`, baris subjek, tabel Kolom / Sebelum / Sesudah bila `changes.length` (null → "—", objek/array → `JSON.stringify`), kosong → "Tidak ada perubahan data.", tombol "Tutup"); state: loading skeleton (bawaan), `EmptyState` "Belum ada aktivitas" dan hasil-filter-kosong dengan "Reset filter"; petunjuk "↔ Geser tabel" mobile; `table-class="min-w-[960px]"`; `Pagination`.
+- [ ] **Step 2: Cek** format/typecheck/lint/build.
+- [ ] **Step 3: Verifikasi browser** — login sebagai Sari (admin kecamatan memiliki `log.lihat`; bila tidak, cek `AccessSeeder`), menu "Log Aktivitas" muncul; filter pengguna/jenis/tanggal mengubah URL `filter[...]` dan hasil; dialog detail menampilkan sebelum/sesudah (ubah satu sekolah dulu untuk membuat log); operator melihat 403 (halaman Error); mobile 390 tanpa overflow.
+- [ ] **Step 4: Commit** — "feat: tambah halaman log aktivitas dengan filter dan detail".
 
 ---
 
