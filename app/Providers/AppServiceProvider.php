@@ -2,24 +2,25 @@
 
 namespace App\Providers;
 
+use App\Domains\Access\Models\Role;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
     public function register(): void
     {
         //
     }
 
-    /**
-     * Bootstrap any application services.
-     */
     public function boot(): void
     {
         Vite::prefetch(concurrency: 3);
+
+        Gate::before(fn ($user) => $user->hasRole(Role::SUPER_ADMIN) ? true : null);
+
+        Password::defaults(fn () => Password::min(8)->letters()->numbers());
     }
 }
