@@ -106,6 +106,23 @@ test('aksi nonaktifkan, aktifkan, dan kirim ulang pada pengguna sekolah lain men
         ->and($targetB->activations()->count())->toBe(0);
 });
 
+test('baris daftar memuat can_manage dan halaman berhasil memuat mode', function () {
+    $super = User::factory()->create()->assignRole('super-admin');
+    User::factory()->create()->assignRole('operator-sekolah');
+
+    $this->actingAs($this->admin)->get('/pengguna')->assertInertia(fn (Assert $p) => $p
+        ->where('users.data', fn ($rows) => collect($rows)->firstWhere('id', $super->id)['can_manage'] === false
+            && collect($rows)->firstWhere('role', 'operator-sekolah')['can_manage'] === true));
+
+    $target = User::factory()->pending()->create(['school_id' => $this->school->id])->assignRole('operator-sekolah');
+    $this->post("/pengguna/{$target->id}/kirim-ulang-aktivasi");
+    $this->get("/pengguna/{$target->id}/berhasil")->assertInertia(fn (Assert $p) => $p->where('mode', 'ulang'));
+
+    $this->post('/pengguna', ['name' => 'Baru', 'email' => 'baru@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]);
+    $baru = User::firstWhere('email', 'baru@x.test');
+    $this->get("/pengguna/{$baru->id}/berhasil")->assertInertia(fn (Assert $p) => $p->where('mode', 'dibuat'));
+});
+
 test('pelanggaran aturan bisnis menjadi flash error', function () {
     $this->actingAs($this->admin)->from('/pengguna')->post("/pengguna/{$this->admin->id}/nonaktifkan")
         ->assertRedirect('/pengguna')->assertSessionHas('error');

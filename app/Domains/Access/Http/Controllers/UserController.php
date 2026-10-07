@@ -27,7 +27,7 @@ class UserController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('Pengguna/Index', [
-            'users' => $this->users->list()->through(fn (User $u) => $this->row($u)),
+            'users' => $this->users->list()->through(fn (User $u) => $this->row($u, $request->user())),
             'filters' => $request->query('filter', []),
             'roles' => $this->roles->list()->map->only(['id', 'name'])->values(),
             'schools' => $this->schools->options(),
@@ -49,10 +49,9 @@ class UserController extends Controller
 
     public function show(Request $request, User $user): Response
     {
-        return Inertia::render('Pengguna/Show', ['user' => $this->row($user) + [
+        return Inertia::render('Pengguna/Show', ['user' => $this->row($user, $request->user()) + [
             'created_by' => $user->creator?->name,
             'created_at' => $user->created_at,
-            'can_manage' => $request->user()->can('manage-user', $user),
         ]]);
     }
 
@@ -97,7 +96,7 @@ class UserController extends Controller
     {
         Gate::authorize('manage-user', $user);
 
-        return $this->toSuccess($user, $this->users->resendActivation($user));
+        return $this->toSuccess($user, $this->users->resendActivation($user), 'ulang');
     }
 
     /** Link aktivasi hanya tampil sekali: dibaca dari flash session. */
@@ -115,21 +114,25 @@ class UserController extends Controller
                 'role' => $user->currentRole()?->name, 'school' => $user->school?->name,
             ],
             'link' => $link,
+            'mode' => session('activation_mode', 'dibuat'),
         ]);
     }
 
-    private function toSuccess(User $user, string $token): RedirectResponse
+    private function toSuccess(User $user, string $token, string $mode = 'dibuat'): RedirectResponse
     {
-        return redirect()->route('pengguna.done', $user)->with('activation_link', route('aktivasi.show', $token));
+        return redirect()->route('pengguna.done', $user)
+            ->with('activation_link', route('aktivasi.show', $token))
+            ->with('activation_mode', $mode);
     }
 
     /** @return array<string, mixed> */
-    private function row(User $u): array
+    private function row(User $u, User $actor): array
     {
         return [
             'id' => $u->id, 'name' => $u->name, 'email' => $u->email, 'phone' => $u->phone,
             'role' => $u->currentRole()?->name, 'school' => $u->school?->name,
             'status' => $u->status->value, 'last_login_at' => $u->last_login_at,
+            'can_manage' => $actor->can('manage-user', $u),
         ];
     }
 

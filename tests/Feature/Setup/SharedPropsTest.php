@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Access\Models\Role;
 use App\Models\User;
 use Inertia\Testing\AssertableInertia as Assert;
 use Spatie\Permission\Models\Permission as PermissionModel;
@@ -9,13 +10,15 @@ beforeEach(function () {
     app(PermissionRegistrar::class)->forgetCachedPermissions();
 });
 
-test('pengguna login menerima daftar permission miliknya', function () {
+test('pengguna login menerima daftar permission dan nama role miliknya', function () {
     PermissionModel::findOrCreate('user.lihat');
     $user = User::factory()->create();
     $user->givePermissionTo('user.lihat');
+    $user->assignRole(Role::create(['name' => 'penguji']));
 
     $this->actingAs($user)->get('/dashboard')->assertInertia(fn (Assert $page) => $page
         ->where('auth.user.id', $user->id)
+        ->where('auth.user.role', 'penguji')
         ->where('auth.permissions', ['user.lihat'])
     );
 });

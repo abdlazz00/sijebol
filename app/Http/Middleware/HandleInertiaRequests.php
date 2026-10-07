@@ -35,7 +35,7 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $user?->only(['id', 'name', 'email']),
+                'user' => $user ? $user->only(['id', 'name', 'email']) + ['role' => $user->currentRole()?->name] : null,
                 'permissions' => $user
                     ? $user->getAllPermissions()->pluck('name')->values()->all()
                     : [],
