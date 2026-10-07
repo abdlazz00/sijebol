@@ -16,11 +16,13 @@ test('super-admin memegang semua izin dan boleh memberi role apa pun', function 
 test('role hanya boleh diberi bila seluruh izinnya dimiliki pemberi', function () {
     $admin = makeUserWith([], roleName: 'tmp')->syncRoles('admin-kecamatan');
     $operator = makeUserWith([], roleName: 'tmp2')->syncRoles('operator-sekolah');
+    $terbatas = makeUserWith(['user.lihat'], roleName: 'terbatas');
 
     expect(AccessGuard::canGrantRole($admin, Role::findByName('admin-kecamatan')))->toBeTrue()
-        ->and(AccessGuard::canGrantRole($admin, Role::findByName('operator-sekolah')))->toBeFalse() // admin tak punya siswa.buat
+        ->and(AccessGuard::canGrantRole($admin, Role::findByName('operator-sekolah')))->toBeTrue() // admin memegang semua izin operator
         ->and(AccessGuard::canGrantRole($admin, Role::findByName('super-admin')))->toBeFalse()
-        ->and(AccessGuard::canGrantRole($operator, Role::findByName('admin-kecamatan')))->toBeFalse();
+        ->and(AccessGuard::canGrantRole($operator, Role::findByName('admin-kecamatan')))->toBeFalse()
+        ->and(AccessGuard::canGrantRole($terbatas, Role::findByName('operator-sekolah')))->toBeFalse();
 });
 
 test('akun berhak lebih tinggi tidak dapat dikelola non-super-admin', function () {

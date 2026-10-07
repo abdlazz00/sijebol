@@ -12,7 +12,11 @@ beforeEach(function () {
     $this->seed(AccessSeeder::class);
     $this->service = app(RoleService::class);
     $this->super = User::factory()->create()->assignRole('super-admin');
-    $this->admin = User::factory()->create()->assignRole('admin-kecamatan');
+    // Penyunting terbatas: tidak memegang siswa.buat dan izin lain di luar daftar ini.
+    $this->admin = makeUserWith([
+        'role.lihat', 'role.buat', 'role.ubah', 'user.lihat', 'user.buat',
+        'verifikasi.lihat', 'verifikasi.putuskan', 'jadwal.lihat', 'siswa.lihat',
+    ], roleName: 'penyunting');
 });
 
 test('membuat role dengan izin yang valid', function () {

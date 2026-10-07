@@ -20,10 +20,9 @@ class AccessSeeder extends Seeder
 
         $this->role(Role::SUPER_ADMIN, 'Akses penuh sistem', false, Permission::values());
 
-        $this->role('admin-kecamatan', 'Admin kecamatan', false, [
-            ...$this->modules(['user', 'role', 'sekolah', 'verifikasi', 'jadwal', 'rekaman']),
-            'laporan.lihat', 'log.lihat', 'siswa.lihat', 'pendaftaran.lihat', 'dokumen.lihat',
-        ]);
+        // Anti eskalasi mensyaratkan pemberi role memegang seluruh izin role itu; agar admin kecamatan
+        // dapat membuat operator sekolah, ia memegang semua izin (tetapi tidak dilindungi seperti super-admin).
+        $this->role('admin-kecamatan', 'Admin kecamatan', false, Permission::values());
 
         $this->role('operator-sekolah', 'Operator sekolah', true, [
             ...$this->modules(['siswa', 'dokumen', 'pendaftaran']),

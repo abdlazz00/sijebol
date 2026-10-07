@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domains\Access\Enums\UserStatus;
 use App\Domains\Access\Models\AccountActivation;
+use App\Domains\Access\Models\Role;
 use App\Domains\Schools\Models\School;
 use App\Models\Concerns\ScopedBySchool;
 use Database\Factories\UserFactory;
@@ -18,6 +19,9 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Permission\Traits\HasRoles;
 
+/**
+ * @property-read UserStatus $status
+ */
 #[Fillable(['name', 'email', 'password', 'phone', 'school_id', 'is_active', 'activated_at', 'created_by'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
@@ -44,6 +48,21 @@ class User extends Authenticatable
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
+    }
+
+    /** Satu user satu role; accessor ini mengembalikan model Role kita dengan tipe yang jelas. */
+    public function currentRole(): ?Role
+    {
+        /** @var Role|null $role */
+        $role = $this->roles->first();
+
+        return $role;
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by')->withoutGlobalScopes();
     }
 
     /** @return HasMany<AccountActivation, $this> */

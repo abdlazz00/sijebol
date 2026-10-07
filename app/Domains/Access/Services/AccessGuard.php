@@ -34,8 +34,7 @@ final class AccessGuard
 
     public static function canManageUser(User $actor, User $target): bool
     {
-        /** @var Role|null $role */
-        $role = $target->roles->first();
+        $role = $target->currentRole();
 
         return $role === null || self::canGrantRole($actor, $role);
     }

@@ -51,8 +51,7 @@ class UserService
     public function update(User $user, array $data, User $actor): User
     {
         $role = $this->roles->find($data['role_id']);
-        /** @var Role|null $current */
-        $current = $user->roles->first();
+        $current = $user->currentRole();
         $roleChanged = $current?->id !== $role->id;
 
         if ($roleChanged) {
