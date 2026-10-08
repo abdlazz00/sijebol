@@ -3,6 +3,7 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
 import FormField from '@/Components/shared/FormField.vue';
+import ImportStudentsDialog from '@/Components/shared/ImportStudentsDialog.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import Pagination from '@/Components/shared/Pagination.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
@@ -24,6 +25,7 @@ import {
     GraduationCap,
     Pencil,
     Plus,
+    Upload,
     Search,
     Trash2,
     X,
@@ -70,6 +72,7 @@ const columns = computed(() => [
 ]);
 
 const confirmOpen = ref(false);
+const importOpen = ref(false);
 const target = ref<StudentRow | null>(null);
 
 function askDelete(student: StudentRow) {
@@ -91,8 +94,22 @@ function destroy() {
             title="Siswa"
             description="Kelola data siswa dan kelengkapan dokumennya."
         >
-            <template v-if="can(PERMISSIONS.SiswaBuat)" #actions>
-                <Button as-child class="h-10 px-4">
+            <template #actions>
+                <Button
+                    v-if="can(PERMISSIONS.SiswaImpor)"
+                    type="button"
+                    variant="outline"
+                    class="h-10 px-4"
+                    @click="importOpen = true"
+                >
+                    <Upload class="size-4" aria-hidden="true" />
+                    Impor Excel
+                </Button>
+                <Button
+                    v-if="can(PERMISSIONS.SiswaBuat)"
+                    as-child
+                    class="h-10 px-4"
+                >
                     <Link :href="route('siswa.create')">
                         <Plus class="size-4" aria-hidden="true" />
                         Tambah siswa
@@ -299,6 +316,8 @@ function destroy() {
                 <Pagination :paginator="students" />
             </div>
         </div>
+
+        <ImportStudentsDialog v-model:open="importOpen" :schools="schools" />
 
         <ConfirmDialog
             v-model:open="confirmOpen"
