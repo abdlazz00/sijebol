@@ -36,21 +36,22 @@ class Schedule extends Model
         return ['date' => 'date'];
     }
 
+    /** Tanggal hari ini di zona Asia/Jakarta (Y-m-d): satu sumber untuk model, repository, dan validasi. */
+    public static function today(): string
+    {
+        return Carbon::now(self::ZONE)->toDateString();
+    }
+
     /** Tanggal jadwal sudah terlewat (kemarin atau sebelumnya). */
     public function isPast(): bool
     {
-        return $this->date->toDateString() < $this->today();
+        return $this->date->toDateString() < self::today();
     }
 
     /** Hari kegiatan sudah tiba (hari ini atau sebelumnya): penandaan boleh dilakukan. */
     public function isOpenForMarking(): bool
     {
-        return $this->date->toDateString() <= $this->today();
-    }
-
-    private function today(): string
-    {
-        return Carbon::now(self::ZONE)->toDateString();
+        return $this->date->toDateString() <= self::today();
     }
 
     /** @return BelongsTo<School, $this> */

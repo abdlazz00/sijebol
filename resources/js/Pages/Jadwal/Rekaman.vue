@@ -228,6 +228,12 @@ const crumbs = computed(() => [
                 <h2 class="text-base leading-6 font-semibold">
                     Sudah ditandai
                 </h2>
+                <p
+                    class="text-muted-foreground flex items-center gap-2 text-xs leading-4 md:hidden"
+                >
+                    <span aria-hidden="true">↔</span> Geser tabel untuk melihat
+                    kolom lainnya
+                </p>
                 <DataTable
                     :columns="markedColumns"
                     :rows="marked"

@@ -20,7 +20,7 @@ class ScheduleRequest extends FormRequest
             'school_id' => $this->user()->school_id === null && $this->isMethod('post')
                 ? ['required', 'integer', 'exists:schools,id']
                 : ['nullable'],
-            'date' => ['required', 'date_format:Y-m-d', ...($dateChanged ? ['after_or_equal:'.now('Asia/Jakarta')->toDateString()] : [])],
+            'date' => ['required', 'date_format:Y-m-d', ...($dateChanged ? ['after_or_equal:'.Schedule::today()] : [])],
             'location' => ['required', 'string', 'max:150'],
         ];
     }

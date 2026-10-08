@@ -6,7 +6,6 @@ use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Repositories\Contracts\ScheduleRepositoryInterface;
-use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -25,8 +24,8 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
                 AllowedFilter::exact('school_id'),
                 AllowedFilter::callback('period', function (Builder $q, $v) {
                     match ($v) {
-                        'akan-datang' => $q->where('date', '>=', $this->today()),
-                        'lewat' => $q->where('date', '<', $this->today()),
+                        'akan-datang' => $q->where('date', '>=', Schedule::today()),
+                        'lewat' => $q->where('date', '<', Schedule::today()),
                         default => null,
                     };
                 }),
@@ -38,7 +37,7 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
     public function upcoming(int $limit): Collection
     {
         return Schedule::query()->with('school')->withCount('entries')
-            ->where('date', '>=', $this->today())->orderBy('date')->orderBy('id')->limit($limit)->get();
+            ->where('date', '>=', Schedule::today())->orderBy('date')->orderBy('id')->limit($limit)->get();
     }
 
     public function create(array $attributes): Schedule
@@ -65,10 +64,5 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
     public function lockEntries(array $ids): Collection
     {
         return RegistrationStudent::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
-    }
-
-    private function today(): string
-    {
-        return Carbon::now('Asia/Jakarta')->toDateString();
     }
 }
