@@ -1,4 +1,4 @@
-export const ACCEPT = ['application/pdf', 'image/jpeg', 'image/png'];
+const ACCEPT = ['application/pdf', 'image/jpeg', 'image/png'];
 export const MAX_BYTES = 5 * 1024 * 1024;
 
 const decimal = new Intl.NumberFormat('id-ID', {

@@ -51,7 +51,7 @@ class StudentDocumentService
     {
         $document = $student->documents()->where('type', $type)->firstOrFail();
 
-        DB::transaction(fn () => $document->delete());
+        $document->delete();
         Storage::disk(self::DISK)->delete($document->path);
         activity('siswa')->performedOn($student)->causedBy($actor)->withProperties(['jenis' => $type])->log('dokumen.dihapus');
     }

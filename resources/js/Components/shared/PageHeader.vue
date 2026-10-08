@@ -16,7 +16,7 @@ defineProps<{ title: string; description?: string }>();
             </p>
         </div>
         <div
-            class="flex w-full items-center gap-2 sm:w-auto [&>*]:w-full sm:[&>*]:w-auto"
+            class="flex w-full items-center gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none"
         >
             <slot name="actions" />
         </div>

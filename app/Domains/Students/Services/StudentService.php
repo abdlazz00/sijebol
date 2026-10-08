@@ -6,7 +6,6 @@ use App\Domains\Students\Models\Student;
 use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class StudentService
@@ -39,9 +38,8 @@ class StudentService
 
     public function delete(Student $student): void
     {
-        DB::transaction(function () use ($student) {
-            Storage::disk('local')->deleteDirectory("students/{$student->id}");
-            $this->students->delete($student);
-        });
+        // Baris dihapus dulu: bila gagal, berkas tidak ikut hilang.
+        $this->students->delete($student);
+        Storage::disk('local')->deleteDirectory("students/{$student->id}");
     }
 }

@@ -120,6 +120,8 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 ## Fase 3 — Siswa dan dokumen
 
+**Status Fase 3 (2026-10-08): SELESAI** (spec: `specs/2026-10-08-fase-3-siswa-dokumen-design.md`, rencana: `plans/2026-10-08-fase-3-siswa-dokumen.md`). BE: model `Student`/`StudentDocument` (NIK unik 16 digit, scope sekolah), CRUD `/siswa` dengan filter (cari, kelengkapan dokumen, eligible lewat rentang tanggal lahir SQL, sekolah), `EligibilityService` (umur 16–17 pada hari ini + KK + akta), dokumen di disk privat (unggah/ganti/hapus/unduh bergerbang izin dan scope, log), impor Excel (template teks, 500 baris, laporan baris gagal). FE: daftar, form, detail, komponen `FileUpload`, dialog impor, panduan UI 5.18–5.20. Penyimpangan: NIK bertipe angka di Excel ditolak (Excel memotong angka ke 15 digit) dan NISN angka dipulihkan dengan nol; pencarian NIK hanya cocok persis (mencegah pembongkaran masker); util FE `calculateAge`/`maskNik` tidak dibuat karena server mengirim umur dan NIK termasking; sekolah siswa tidak dapat dipindah lewat ubah. Ditunda ke Fase 4: syarat eligibility "tidak punya entri aktif di pendaftaran lain" dan larangan hapus siswa yang punya pendaftaran.
+
 **Prasyarat desain:** panduan UI putaran 2 untuk halaman Siswa (daftar, form, impor Excel, dokumen).
 
 ### Track BE
