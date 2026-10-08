@@ -6,6 +6,8 @@ use App\Domains\Access\Repositories\Contracts\RoleRepositoryInterface;
 use App\Domains\Access\Repositories\Contracts\UserRepositoryInterface;
 use App\Domains\Access\Repositories\EloquentRoleRepository;
 use App\Domains\Access\Repositories\EloquentUserRepository;
+use App\Domains\Notifications\Repositories\Contracts\NotificationRepositoryInterface;
+use App\Domains\Notifications\Repositories\EloquentNotificationRepository;
 use App\Domains\Schools\Repositories\Contracts\SchoolRepositoryInterface;
 use App\Domains\Schools\Repositories\EloquentSchoolRepository;
 use Illuminate\Support\ServiceProvider;
@@ -17,5 +19,6 @@ class RepositoryServiceProvider extends ServiceProvider
         SchoolRepositoryInterface::class => EloquentSchoolRepository::class,
         RoleRepositoryInterface::class => EloquentRoleRepository::class,
         UserRepositoryInterface::class => EloquentUserRepository::class,
+        NotificationRepositoryInterface::class => EloquentNotificationRepository::class,
     ];
 }
