@@ -545,6 +545,8 @@ Perbarui `MenuTest`: operator → `['Utama', 'Data Siswa']`, admin → `['Utama'
 
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
+use App\Domains\Students\Models\StudentDocument;
+use App\Domains\Students\Services\StudentDocumentService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
@@ -589,17 +591,14 @@ test('tipe dan ukuran ditolak, type tak dikenal 404', function () {
 });
 
 test('kegagalan menyimpan baris tidak meninggalkan berkas yatim', function () {
-    $this->actingAs($this->op);
-    // Memaksa kegagalan: tabel dokumen dihapus tepat sebelum upsert lewat event kolom tak ada.
-    \Illuminate\Support\Facades\Schema::drop('student_documents');
+    StudentDocument::creating(fn () => throw new RuntimeException('gagal simpan'));
 
-    try {
-        $this->post("/siswa/{$this->student->id}/dokumen/kk", ['file' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf')]);
-    } catch (Throwable) {
-    }
+    expect(fn () => app(StudentDocumentService::class)->store(
+        $this->student, 'kk', UploadedFile::fake()->create('a.pdf', 10, 'application/pdf'), $this->op,
+    ))->toThrow(RuntimeException::class);
 
     expect(Storage::disk('local')->allFiles())->toBe([]);
-})->skip('diganti tes service di bawah bila Schema::drop tidak praktis');
+});
 
 test('unduh memeriksa izin dan scope, serta mencatat log', function () {
     $this->actingAs($this->op);
@@ -636,7 +635,6 @@ test('menghapus siswa menghapus berkas dokumennya', function () {
     expect(Storage::disk('local')->allFiles())->toBe([]);
 });
 ```
-(Hapus tes bertanda `->skip(...)`; kegagalan tengah-jalan diuji lewat service: tambahkan tes yang memanggil `StudentDocumentService::store` setelah `StudentDocument::creating(fn () => throw new RuntimeException)` didaftarkan di tes — dengan `expect(fn () => ...)->toThrow(RuntimeException::class)` lalu `Storage::disk('local')->allFiles()` kosong.)
 - [ ] **Step 2: Jalankan** → FAIL.
 - [ ] **Step 3: Implementasi** `StudentDocumentService`:
 
@@ -865,7 +863,7 @@ export function maskNik(nik?: string | null): string {
 - Consumes: props Task 3; `StudentRow`; `useDataTable('/siswa', {search, docs, eligible, school_id})`; `DataTable`, `SearchInput`, `SelectField`, `EmptyState`, `Pagination`, `RowActions`, `ConfirmDialog`, `FormField`, `InlineAlert`, `focusFirstInvalid`.
 - Produces: rute halaman `/siswa`, `/siswa/buat`, `/siswa/{id}/ubah`.
 
-- [ ] **Step 1: `Siswa/Index.vue`** (salin struktur `Pengguna/Index.vue`): `PageHeader title="Siswa" description="Kelola data siswa dan kelengkapan dokumennya."` dengan tombol "Tambah siswa" (`can(SiswaBuat)`) dan tombol outline "Impor Excel" (`can(SiswaImpor)`, membuka `ImportStudentsDialog` Task 9; sampai Task 9 selesai tombol memakai `ref` dialog yang belum ada — **tambahkan tombol dan dialog bersamaan di Task 9**, jadi di task ini hanya tombol Tambah). Filter: `SearchInput` "Cari nama, NIK, atau NISN"; `SelectField` Kelengkapan dokumen (`lengkap` "Lengkap", `kurang` "Belum lengkap", all-label "Semua dokumen"); `SelectField` Eligible (`1` "Eligible", all-label "Semua status"); `SelectField` Sekolah (hanya bila prop `schools` bukan null). `useDataTable('/siswa', {...})`: `watch` pada filter selain `search` → `apply`, `search` debounce 300 ms. Kolom: Siswa (nama tebal, "NISN {nisn}" kecil), NIK (`font-mono text-xs`, sudah dimasker server), Umur (`{age} th`), Sekolah (hanya bila `schools` ada), Dokumen (dua indikator berteks: ikon `Check`/`X` + "KK" dan "Akta" dengan `text-success`/`text-muted-foreground`, `sr-only` "terunggah"/"belum"), Status (`<span>` badge `bg-success-soft text-success` "Eligible" atau `bg-neutral-soft text-neutral-foreground` "Belum eligible" dengan `title` = alasan digabung), Aksi (`RowActions`: Lihat detail, Ubah bila `can(SiswaUbah)`, Hapus bila `can(SiswaHapus)` → `ConfirmDialog` destructive "Hapus {nama}?" "Data siswa dan dokumennya akan dihapus permanen." → `router.delete(route('siswa.destroy', id), { preserveScroll: true })`). State: loading, kosong ("Belum ada siswa" + tombol Tambah/Impor), hasil filter kosong + "Reset filter"; petunjuk "↔ Geser tabel" mobile; `table-class="min-w-[1000px]"`.
+- [ ] **Step 1: `Siswa/Index.vue`** (salin struktur `Pengguna/Index.vue`): `PageHeader title="Siswa" description="Kelola data siswa dan kelengkapan dokumennya."` dengan tombol "Tambah siswa" (`can(SiswaBuat)`) (tombol "Impor Excel" ditambahkan di Task 9). Filter: `SearchInput` "Cari nama, NIK, atau NISN"; `SelectField` Kelengkapan dokumen (`lengkap` "Lengkap", `kurang` "Belum lengkap", all-label "Semua dokumen"); `SelectField` Eligible (`1` "Eligible", all-label "Semua status"); `SelectField` Sekolah (hanya bila prop `schools` bukan null). `useDataTable('/siswa', {...})`: `watch` pada filter selain `search` → `apply`, `search` debounce 300 ms. Kolom: Siswa (nama tebal, "NISN {nisn}" kecil), NIK (`font-mono text-xs`, sudah dimasker server), Umur (`{age} th`), Sekolah (hanya bila `schools` ada), Dokumen (dua indikator berteks: ikon `Check`/`X` + "KK" dan "Akta" dengan `text-success`/`text-muted-foreground`, `sr-only` "terunggah"/"belum"), Status (`<span>` badge `bg-success-soft text-success` "Eligible" atau `bg-neutral-soft text-neutral-foreground` "Belum eligible" dengan `title` = alasan digabung), Aksi (`RowActions`: Lihat detail, Ubah bila `can(SiswaUbah)`, Hapus bila `can(SiswaHapus)` → `ConfirmDialog` destructive "Hapus {nama}?" "Data siswa dan dokumennya akan dihapus permanen." → `router.delete(route('siswa.destroy', id), { preserveScroll: true })`). State: loading, kosong ("Belum ada siswa" + tombol Tambah/Impor), hasil filter kosong + "Reset filter"; petunjuk "↔ Geser tabel" mobile; `table-class="min-w-[1000px]"`.
 - [ ] **Step 2: `Siswa/Form.vue`** (salin `Pengguna/Form.vue`): judul "Tambah siswa"/"Ubah siswa"; kartu "Data siswa": NIK (`inputmode="numeric"`, `maxlength=16`, hint "16 digit angka."), NISN (`maxlength=10`), Nama lengkap, Tanggal lahir (`Input type="date"`, `max` = hari ini), Jenis kelamin (`SelectField`: `L` "Laki-laki", `P` "Perempuan"), Sekolah (`SelectField`, hanya bila `schools` tidak null; wajib). Validasi klien (pesan sama dengan server dari `StudentRules::messages()`): NIK `/^\d{16}$/` → "NIK harus 16 digit angka.", NISN `/^\d{10}$/` → "NISN harus 10 digit angka.", nama wajib → "Nama lengkap wajib diisi.", tanggal wajib → "Tanggal lahir wajib diisi.", gender → "Pilih jenis kelamin.", sekolah → "Pilih sekolah."; `focusFirstInvalid`; `useForm` POST `route('siswa.store')` / PUT `route('siswa.update', id)`; Batal ke `siswa.index`; breadcrumb Siswa > Tambah/Ubah siswa. Prop `student` untuk ubah memuat NIK penuh.
 - [ ] **Step 3: Cek** `npm run format && npm run typecheck && npm run lint && npm run build`.
 - [ ] **Step 4: Verifikasi browser** (seed 3–4 siswa lewat tinker dengan `Student::factory()`; login `sari@example.com`/`password`): daftar tampil, NIK termasking, filter dokumen/eligible/cari mengubah `?filter[...]`, hapus lewat dialog, tambah siswa baru (validasi klien lalu simpan → redirect ke detail; detail dibuat di Task 8, jadi sementara redirect akan menampilkan galat komponen — verifikasi simpan lewat respons dan data di DB), ubah menampilkan NIK penuh, mobile 390 tanpa overflow.
