@@ -157,6 +157,8 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 ## Fase 5 — Jadwal dan penandaan rekaman
 
+**Status Fase 5 (2026-10-08): SELESAI** (spec: `specs/2026-10-08-fase-5-jadwal-rekaman-design.md`, rencana: `plans/2026-10-08-fase-5-jadwal-rekaman.md`). BE: domain `Schedules` (jadwal per sekolah; penempatan siswa Terverifikasi dengan kunci baris dan satu notifikasi ke operator sekolah; keluarkan dari jadwal; penandaan massal Sudah rekaman/Tidak hadir/Belum rekaman yang atomik dan hanya pada atau setelah tanggal jadwal di zona Asia/Jakarta), transisi baru di `RegistrationStatus` lewat `StatusTransitioner` (atribut `schedule_id` dalam transaksi yang sama), notifikasi jadwal, label log, jadwal terdekat di Beranda (`DashboardController`). FE: daftar/form/detail jadwal, dialog tambah siswa, layar penandaan, `EntryChecklist`, panduan UI 5.25–5.27. Siswa Tidak hadir/Belum rekaman dapat didaftarkan lagi (terkunci oleh tes). Penyimpangan dari spec: lihat Rulings R1–R6 di rencana.
+
 ### Track BE
 1. Migrasi `schedules`; penempatan siswa `Terverifikasi` sekolah ke jadwal (status `Terjadwal`); ubah jadwal dengan notifikasi.
 2. Penandaan massal: `Sudah rekaman`, `Tidak hadir`, `Belum rekaman`; siswa dengan status akhir dapat didaftarkan ulang.
