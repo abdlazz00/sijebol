@@ -4,6 +4,7 @@ namespace App\Domains\Students\Models;
 
 use App\Domains\Schools\Models\School;
 use App\Models\Concerns\ScopedBySchool;
+use Carbon\Carbon;
 use Database\Factories\StudentFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,6 +14,15 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
+/**
+ * @property int $id
+ * @property int $school_id
+ * @property string $nik
+ * @property string $nisn
+ * @property string $name
+ * @property Carbon $birth_date
+ * @property string $gender
+ */
 #[UseFactory(StudentFactory::class)]
 class Student extends Model
 {
