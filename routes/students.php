@@ -2,6 +2,7 @@
 
 use App\Domains\Students\Http\Controllers\StudentController;
 use App\Domains\Students\Http\Controllers\StudentDocumentController;
+use App\Domains\Students\Http\Controllers\StudentImportController;
 use App\Domains\Students\Support\StudentRules;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +10,10 @@ Route::middleware('auth')->group(function () {
     Route::get('siswa', [StudentController::class, 'index'])->middleware('can:siswa.lihat')->name('siswa.index');
     Route::get('siswa/buat', [StudentController::class, 'create'])->middleware('can:siswa.buat')->name('siswa.create');
     Route::post('siswa', [StudentController::class, 'store'])->middleware(['can:siswa.buat', 'throttle:60,1'])->name('siswa.store');
+
+    // Rute impor harus sebelum {student} agar tidak tertangkap parameter.
+    Route::get('siswa/impor/template', [StudentImportController::class, 'template'])->middleware('can:siswa.impor')->name('siswa.impor.template');
+    Route::post('siswa/impor', [StudentImportController::class, 'store'])->middleware(['can:siswa.impor', 'throttle:60,1'])->name('siswa.impor.store');
 
     Route::get('siswa/{student}', [StudentController::class, 'show'])->middleware('can:siswa.lihat')->name('siswa.show');
     Route::get('siswa/{student}/ubah', [StudentController::class, 'edit'])->middleware('can:siswa.ubah')->name('siswa.edit');
