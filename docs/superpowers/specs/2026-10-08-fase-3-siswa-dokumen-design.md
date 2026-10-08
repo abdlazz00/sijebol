@@ -95,7 +95,7 @@ Pola `Pengguna/Index`: judul "Siswa", tombol "Tambah siswa" (`siswa.buat`) dan "
 Pola `Pengguna/Form`: NIK (numerik, 16 digit), NISN (10 digit), Nama lengkap, Tanggal lahir (`<input type="date">`), Jenis kelamin (`SelectField` Laki-laki/Perempuan), Sekolah (`SelectField`, hanya staf; operator tidak melihat kolom). Validasi klien dengan pesan sama dengan server, fokus ke kolom pertama yang salah. Setelah simpan → detail siswa (di sana unggah dokumen).
 
 ### 4.3 Detail siswa (`/siswa/{id}`)
-Kartu profil (inisial, nama, NISN, badge eligible dan alasan bila belum), tombol Ubah dan menu "…" (Hapus), `InfoList` (NIK dimasker, tanggal lahir + umur, jenis kelamin, sekolah), kartu **Dokumen** dengan dua `FileUpload` (Kartu Keluarga, Akta Kelahiran), dan kartu "Aktivitas terbaru" memakai pola yang ada bila `log.lihat` (bukan wajib di fase ini; ditunda bila prop tak tersedia).
+Kartu profil (inisial, nama, NISN, badge eligible dan alasan bila belum), tombol Ubah dan menu "…" (Hapus), `InfoList` (NIK dimasker, tanggal lahir + umur, jenis kelamin, sekolah), kartu **Dokumen** dengan dua `FileUpload` (Kartu Keluarga, Akta Kelahiran). Kartu aktivitas per siswa tidak dibuat di fase ini (log siswa tersedia lewat halaman Log Aktivitas).
 
 ### 4.4 `FileUpload` (komponen bersama)
 Props: `label`, `accept`, `maxBytes`, `existing` (`{name, size, downloadUrl}` atau null), `canUpload`, `canDelete`. Status: kosong (area "Pilih berkas atau seret ke sini", teks tipe dan batas), memilih (nama, ukuran, tombol Unggah/Batal), mengunggah (progress), terunggah (nama, ukuran, Unduh, Ganti, Hapus dengan konfirmasi), galat (pesan di bawah). Validasi klien: tipe dan ukuran sebelum kirim, pesan sama dengan server. Dapat dioperasikan keyboard; progress diumumkan lewat `role="status"`.
