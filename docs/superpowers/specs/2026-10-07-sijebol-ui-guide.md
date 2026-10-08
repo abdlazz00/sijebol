@@ -182,6 +182,20 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - State: loading (skeleton baris), kosong ("Belum ada aktivitas"), hasil filter kosong ("Tidak ada hasil" + Reset filter). Mobile: tabel geser horizontal dengan petunjuk "↔ Geser tabel untuk melihat kolom lainnya".
 - Log hanya baca: tidak ada tombol ubah atau hapus.
 
+### 5.18 Siswa: daftar, form, detail `/siswa` (`siswa.lihat`)
+- **Daftar:** judul "Siswa", deskripsi "Kelola data siswa dan kelengkapan dokumennya." Tombol **+ Tambah siswa** (`siswa.buat`) dan **Impor Excel** (`siswa.impor`). Filter (pola 5.7): cari nama atau NISN (NIK hanya cocok persis bila diketik lengkap), Dokumen (Semua / Lengkap / Belum lengkap), Status (Semua / Eligible), dan Sekolah (hanya staf kecamatan).
+- Tabel: **Siswa** (nama, NISN kecil), **NIK** (dimasker, `3201********1234`), **Umur**, **Sekolah** (hanya staf), **Dokumen** (dua indikator berteks "KK" dan "Akta" dengan ikon centang atau silang; tidak mengandalkan warna), **Status** (badge hijau "Eligible" atau abu-abu "Belum eligible" dengan alasan sebagai teks pembaca layar), **Aksi** (menu: Lihat detail, Ubah, Hapus dengan konfirmasi "Data siswa dan dokumennya akan dihapus permanen."). State: loading, kosong ("Belum ada siswa" + tombol tambah dan impor), hasil filter kosong, dan petunjuk geser di mobile.
+- **Form tambah/ubah** (halaman terpisah, pola 5.8): NIK (16 digit), NISN (10 digit), Nama lengkap, Tanggal lahir, Jenis kelamin (Laki-laki / Perempuan), dan Sekolah (hanya staf saat tambah). Pada ubah, NIK tampil penuh dan sekolah tidak dapat diubah. Setelah simpan menuju detail agar dokumen dapat diunggah.
+- **Detail:** kartu profil (inisial, nama, NISN, badge eligible; bila belum eligible tampil daftar alasannya), Ubah dan menu "…" (Hapus), kartu **Informasi siswa** (NIK dimasker, tanggal lahir dan umur, jenis kelamin, sekolah), dan kartu **Dokumen** (5.19).
+
+### 5.19 Dokumen siswa (komponen unggah)
+- Dua kolom dokumen: **Kartu Keluarga** dan **Akta Kelahiran**. Tiap kolom berstatus: *kosong* (area "Pilih berkas atau seret ke sini", catatan "PDF, JPG, atau PNG, maks 5 MB"), *dipilih* (nama, ukuran, tombol Unggah dan Batal), *mengunggah* (progress dengan `role="status"`), *terunggah* (nama berkas, ukuran, tautan Unduh, tombol Ganti dan Hapus dengan konfirmasi), dan *galat* (pesan di bawah area).
+- Validasi klien sebelum kirim memakai pesan yang sama dengan server: "Berkas harus PDF, JPG, atau PNG." dan "Ukuran berkas maksimal 5 MB." Tanpa izin unggah tampil "Belum diunggah." atau hanya tautan unduh.
+
+### 5.20 Impor Excel
+- Tombol "Impor Excel" membuka dialog: langkah 1 **Unduh template (.xlsx)** dengan catatan "Kolom NIK, NISN, dan Tanggal lahir berformat teks; tanggal diisi YYYY-MM-DD atau DD/MM/YYYY."; langkah 2 pilih berkas .xlsx (maks 2 MB; staf memilih sekolah lebih dulu) lalu **Impor**.
+- Hasil di dalam dialog: "N siswa berhasil ditambahkan, M baris gagal." dan bila ada yang gagal tabel **Baris / Alasan** (maks tinggi, scroll), tombol Tutup dan "Impor lagi". Galat berkas (kolom wajib hilang, lebih dari 500 baris, bukan .xlsx) tampil sebagai banner di dialog.
+
 ## 6. Pola lintas halaman
 
 - **Umpan balik:** sukses = toast hijau; gagal form = banner dan pesan per field; aksi merusak = dialog konfirmasi menyebut nama objek.
