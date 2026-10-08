@@ -6,6 +6,8 @@ use App\Domains\Access\Repositories\Contracts\RoleRepositoryInterface;
 use App\Domains\Access\Repositories\Contracts\UserRepositoryInterface;
 use App\Domains\Access\Repositories\EloquentRoleRepository;
 use App\Domains\Access\Repositories\EloquentUserRepository;
+use App\Domains\Audit\Repositories\Contracts\ActivityLogRepositoryInterface;
+use App\Domains\Audit\Repositories\EloquentActivityLogRepository;
 use App\Domains\Notifications\Repositories\Contracts\NotificationRepositoryInterface;
 use App\Domains\Notifications\Repositories\EloquentNotificationRepository;
 use App\Domains\Schools\Repositories\Contracts\SchoolRepositoryInterface;
@@ -20,5 +22,6 @@ class RepositoryServiceProvider extends ServiceProvider
         RoleRepositoryInterface::class => EloquentRoleRepository::class,
         UserRepositoryInterface::class => EloquentUserRepository::class,
         NotificationRepositoryInterface::class => EloquentNotificationRepository::class,
+        ActivityLogRepositoryInterface::class => EloquentActivityLogRepository::class,
     ];
 }

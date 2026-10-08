@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 require __DIR__.'/access.php';
 require __DIR__.'/notifications.php';
+require __DIR__.'/audit.php';
 
 // Agar 404 lewat grup web (sesi dan props bersama termuat) dan tampil sebagai halaman Error.
 Route::any('{path}', fn () => abort(404))->where('path', '.*')->fallback();

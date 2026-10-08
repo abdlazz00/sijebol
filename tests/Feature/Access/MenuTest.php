@@ -14,7 +14,7 @@ test('menu disaring menurut izin dan grup kosong dibuang', function () {
     $menuAdmin = app(MenuService::class)->forUser($admin);
 
     expect(collect($menuOperator)->pluck('group')->all())->toBe(['Utama'])
-        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data'])
+        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Sistem'])
         ->and(collect($menuAdmin)->firstWhere('group', 'Manajemen Akses')['items'][0])
         ->toBe(['label' => 'Pengguna', 'href' => '/pengguna', 'icon' => 'users']);
 });

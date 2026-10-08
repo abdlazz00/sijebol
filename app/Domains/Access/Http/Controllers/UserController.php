@@ -8,6 +8,7 @@ use App\Domains\Access\Models\Role;
 use App\Domains\Access\Services\AccessGuard;
 use App\Domains\Access\Services\RoleService;
 use App\Domains\Access\Services\UserService;
+use App\Domains\Audit\Services\ActivityLogService;
 use App\Domains\Schools\Services\SchoolService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -23,6 +24,7 @@ class UserController extends Controller
         private readonly UserService $users,
         private readonly RoleService $roles,
         private readonly SchoolService $schools,
+        private readonly ActivityLogService $activityLog,
     ) {}
 
     public function index(Request $request): Response
@@ -50,10 +52,13 @@ class UserController extends Controller
 
     public function show(Request $request, User $user): Response
     {
-        return Inertia::render('Pengguna/Show', ['user' => $this->row($user, $request->user()) + [
-            'created_by' => $user->creator?->name,
-            'created_at' => $user->created_at,
-        ]]);
+        return Inertia::render('Pengguna/Show', [
+            'user' => $this->row($user, $request->user()) + [
+                'created_by' => $user->creator?->name,
+                'created_at' => $user->created_at,
+            ],
+            'activities' => $request->user()->can('log.lihat') ? $this->activityLog->recentFor($user) : null,
+        ]);
     }
 
     public function edit(User $user): Response

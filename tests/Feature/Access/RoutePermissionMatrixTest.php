@@ -27,6 +27,7 @@ dataset('rute', [
     ['GET', '/role/{role}/ubah', 'role.ubah'],
     ['PUT', '/role/{role}', 'role.ubah'],
     ['DELETE', '/role/{role}', 'role.hapus'],
+    ['GET', '/log', 'log.lihat'],
 ]);
 
 function resolveUri(string $uri): string
