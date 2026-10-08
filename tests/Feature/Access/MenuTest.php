@@ -13,8 +13,8 @@ test('menu disaring menurut izin dan grup kosong dibuang', function () {
     $menuOperator = app(MenuService::class)->forUser($operator);
     $menuAdmin = app(MenuService::class)->forUser($admin);
 
-    expect(collect($menuOperator)->pluck('group')->all())->toBe(['Utama'])
-        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Sistem'])
+    expect(collect($menuOperator)->pluck('group')->all())->toBe(['Utama', 'Data Siswa'])
+        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Data Siswa', 'Sistem'])
         ->and(collect($menuAdmin)->firstWhere('group', 'Manajemen Akses')['items'][0])
         ->toBe(['label' => 'Pengguna', 'href' => '/pengguna', 'icon' => 'users']);
 });

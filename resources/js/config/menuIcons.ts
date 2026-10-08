@@ -1,5 +1,6 @@
 import {
     Circle,
+    GraduationCap,
     Home,
     School,
     ScrollText,
@@ -14,6 +15,7 @@ const icons: Record<string, Component> = {
     'shield-check': ShieldCheck,
     school: School,
     'scroll-text': ScrollText,
+    'graduation-cap': GraduationCap,
 };
 
 /** Kunci ikon datang dari server (`MenuService`); kunci tak dikenal tidak boleh merusak sidebar. */

@@ -3,6 +3,7 @@
 use App\Domains\Access\Enums\Permission;
 use App\Domains\Access\Models\Role;
 use App\Domains\Schools\Models\School;
+use App\Domains\Students\Models\Student;
 use App\Models\User;
 
 dataset('rute', [
@@ -28,6 +29,13 @@ dataset('rute', [
     ['PUT', '/role/{role}', 'role.ubah'],
     ['DELETE', '/role/{role}', 'role.hapus'],
     ['GET', '/log', 'log.lihat'],
+    ['GET', '/siswa', 'siswa.lihat'],
+    ['GET', '/siswa/buat', 'siswa.buat'],
+    ['POST', '/siswa', 'siswa.buat'],
+    ['GET', '/siswa/{student}', 'siswa.lihat'],
+    ['GET', '/siswa/{student}/ubah', 'siswa.ubah'],
+    ['PUT', '/siswa/{student}', 'siswa.ubah'],
+    ['DELETE', '/siswa/{student}', 'siswa.hapus'],
 ]);
 
 function resolveUri(string $uri): string
@@ -36,7 +44,9 @@ function resolveUri(string $uri): string
     $school = School::factory()->create();
     $role = Role::create(['name' => 'sasaran-'.uniqid()]);
 
-    return str_replace(['{user}', '{school}', '{role}'], [$target->id, $school->id, $role->id], $uri);
+    $student = Student::factory()->create();
+
+    return str_replace(['{user}', '{school}', '{role}', '{student}'], [$target->id, $school->id, $role->id, $student->id], $uri);
 }
 
 it('menolak tanpa izin dan tidak menolak dengan izin', function (string $method, string $uri, string $permission) {

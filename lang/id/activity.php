@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'types' => ['akses' => 'Akses', 'default' => 'Data'],
-    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah'],
+    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'default' => 'Data'],
+    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa'],
     'actions' => [
         'login' => 'Login',
         'logout' => 'Logout',
@@ -16,5 +16,9 @@ return [
         'user.diaktifkan' => 'Pengguna diaktifkan',
         'role.dihapus' => 'Role dihapus',
         'role.izin_diubah' => 'Izin role diubah',
+        'dokumen.diunggah' => 'Dokumen diunggah',
+        'dokumen.dihapus' => 'Dokumen dihapus',
+        'dokumen.diunduh' => 'Dokumen diunduh',
+        'siswa.diimpor' => 'Siswa diimpor',
     ],
 ];

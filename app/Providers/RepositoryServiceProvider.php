@@ -12,6 +12,8 @@ use App\Domains\Notifications\Repositories\Contracts\NotificationRepositoryInter
 use App\Domains\Notifications\Repositories\EloquentNotificationRepository;
 use App\Domains\Schools\Repositories\Contracts\SchoolRepositoryInterface;
 use App\Domains\Schools\Repositories\EloquentSchoolRepository;
+use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
+use App\Domains\Students\Repositories\EloquentStudentRepository;
 use Illuminate\Support\ServiceProvider;
 
 class RepositoryServiceProvider extends ServiceProvider
@@ -23,5 +25,6 @@ class RepositoryServiceProvider extends ServiceProvider
         UserRepositoryInterface::class => EloquentUserRepository::class,
         NotificationRepositoryInterface::class => EloquentNotificationRepository::class,
         ActivityLogRepositoryInterface::class => EloquentActivityLogRepository::class,
+        StudentRepositoryInterface::class => EloquentStudentRepository::class,
     ];
 }
