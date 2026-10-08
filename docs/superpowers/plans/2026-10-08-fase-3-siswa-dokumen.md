@@ -45,7 +45,7 @@
 | `app/Domains/Students/Services/EligibilityService.php` | `check`, `birthDateBounds` |
 | `app/Domains/Students/Repositories/*` | Query daftar + CRUD |
 | `app/Domains/Students/Services/StudentService.php`, `StudentDocumentService.php`, `StudentImportService.php` | Logika bisnis |
-| `app/Domains/Students/Exports/StudentTemplateExport.php`, `Imports/StudentSheetImport.php` | Template dan pembaca xlsx |
+| `app/Domains/Students/Exports/StudentTemplateExport.php` | Template xlsx |
 | `app/Domains/Students/Http/Controllers/StudentController.php`, `StudentDocumentController.php`, `StudentImportController.php`, `Http/Requests/StudentRequest.php` | HTTP |
 | `routes/students.php` | Rute `/siswa*` |
 | `resources/js/Pages/Siswa/Index.vue`, `Form.vue`, `Show.vue` | Halaman |
@@ -423,7 +423,7 @@ class EligibilityService
 **Interfaces:**
 - Consumes: `Student`, `StudentRules`, `Nik`, `EligibilityService` (Task 1–2).
 - Produces: rute `siswa.index|create|store|show|edit|update|destroy` (`/siswa`, `/siswa/buat`, `/siswa/{student}`, `/siswa/{student}/ubah`); Inertia `Siswa/Index` props `{ students: Paginator<StudentRow>, filters, schools: Option[] | null }`, `Siswa/Form` props `{ student: {id,nik,nisn,name,birth_date,gender,school_id}|null, schools: Option[] | null }`, `Siswa/Show` props `{ student: StudentDetail, documents: StudentDocumentRow[], eligibility: {eligible, reasons} }` (documents diisi Task 4); `StudentService::create(array $data, User $actor): Student`, `update(Student, array)`, `delete(Student)`; `StudentRepositoryInterface::paginate(int $perPage = 20)`.
-- `StudentRow` = `{ id, name, nisn, nik (dimasker), age, school: ?string, docs: {kk: bool, akta_lahir: bool}, eligible: bool, reasons: list<string> }`; `StudentDetail` = `StudentRow` + `birth_date`, `gender`, `can: {update: bool, delete: bool}`.
+- `StudentRow` = `{ id, name, nisn, nik (dimasker), age, school: ?string, docs: {kk: bool, akta_lahir: bool}, eligible: bool, reasons: list<string> }`; `StudentDetail` = `StudentRow` + `birth_date`, `gender`.
 
 - [ ] **Step 1: Tes yang gagal** (`StudentHttpTest.php`; helper `operator($school)` = `makeUserWith(['siswa.lihat','siswa.buat','siswa.ubah','siswa.hapus'], $school, true, 'operator-uji')`)
 
@@ -515,9 +515,9 @@ test('hapus siswa memerlukan izin dan menghapus data', function () {
 Perbarui `MenuTest`: operator → `['Utama', 'Data Siswa']`, admin → `['Utama', 'Manajemen Akses', 'Master Data', 'Data Siswa', 'Sistem']`. `RoutePermissionMatrixTest`: tambah baris `GET /siswa siswa.lihat`, `GET /siswa/buat siswa.buat`, `POST /siswa siswa.buat`, `GET /siswa/{student} siswa.lihat`, `GET /siswa/{student}/ubah siswa.ubah`, `PUT /siswa/{student} siswa.ubah`, `DELETE /siswa/{student} siswa.hapus`; perluas `resolveUri` agar mengganti `{student}` dengan `Student::factory()->create()->id` (tambahkan impor `Student`).
 - [ ] **Step 2: Jalankan** → FAIL.
 - [ ] **Step 3: Implementasi.**
-  - `StudentRequest` (`rules()`: `StudentRules::fields($this->route('student')?->id)` + `school_id` => `['nullable','integer','exists:schools,id', Rule::requiredIf(fn () => $this->user()->school_id === null && $this->isMethod('post'))]`; `messages()`: `StudentRules::messages()` + `'school_id.required' => 'Pilih sekolah.'`). Saat PUT, `school_id` boleh dikirim staf untuk memindahkan sekolah; operator: diabaikan.
+  - `StudentRequest` (`rules()`: `StudentRules::fields($this->route('student')?->id)` + `school_id` => `['nullable','integer','exists:schools,id', Rule::requiredIf(fn () => $this->user()->school_id === null && $this->isMethod('post'))]`; `messages()`: `StudentRules::messages()` + `'school_id.required' => 'Pilih sekolah.'`). `school_id` hanya dipakai saat tambah; pada PUT diabaikan.
   - `StudentRepositoryInterface`: `paginate(int $perPage = 20): LengthAwarePaginator`, `create(array): Student`, `update(Student, array): Student`, `delete(Student): void`. `EloquentStudentRepository::paginate` — `QueryBuilder::for(Student::query()->with(['school','documents'])->orderBy('name'))` dengan filter: `search` (callback LIKE `name`/`nik`/`nisn`), `school_id` (exact), `docs` (callback: `lengkap` → dua `whereHas('documents', fn ($d) => $d->where('type', 'kk'))` dan `akta_lahir`; `kurang` → `where(fn ($q) => $q->whereDoesntHave(... kk)->orWhereDoesntHave(... akta_lahir))`), `eligible` (callback bernilai `1`: `whereBetween('birth_date', app(EligibilityService::class)->birthDateBounds())` + dua `whereHas` dokumen).
-  - `StudentService`: `create($data, $actor)` → `school_id = $actor->school_id ?? $data['school_id']`; `update` → operator tidak mengubah `school_id` (hapus kunci bila `$actor->school_id !== null`); `delete` → `Storage::disk('local')->deleteDirectory("students/{$student->id}")` lalu `repo->delete`; semuanya dalam `DB::transaction`.
+  - `StudentService`: `create($data, $actor)` → `school_id = $actor->school_id ?? $data['school_id']`; `update` → `school_id` tidak pernah diubah (kunci dibuang; sekolah hanya ditentukan saat tambah); `delete` → `Storage::disk('local')->deleteDirectory("students/{$student->id}")` lalu `repo->delete`; semuanya dalam `DB::transaction`.
   - `StudentController` (konstruktor `StudentService`, `EligibilityService`, `SchoolService`): `index` (props `students` dari repository dengan `through` → `StudentRow`, `filters` = `$request->query('filter', [])`, `schools` = `$actor->school_id === null ? $this->schools->options()->map(fn ($s) => ['id' => $s->id, 'name' => $s->name]) : null`), `create`, `store` (redirect `route('siswa.show', $student)` + flash success "Siswa ditambahkan."), `show` (`documents` => `[]` sementara; Task 4 mengisinya; `eligibility` dari service), `edit` (NIK penuh), `update` (redirect show, "Siswa diperbarui."), `destroy` (redirect index, "Siswa dihapus."). Izin lewat middleware `can:` di `routes/students.php` (urutan: `siswa/buat` sebelum `siswa/{student}`; rute impor Task 5 didefinisikan sebelum `{student}`).
   - `RepositoryServiceProvider`: binding `StudentRepositoryInterface`.
   - `MenuService::ITEMS`: tambah `['group' => 'Data Siswa', 'label' => 'Siswa', 'href' => '/siswa', 'icon' => 'graduation-cap', 'permission' => 'siswa.lihat']` setelah item Sekolah dan sebelum item Log; `menuIcons.ts`: `'graduation-cap': GraduationCap` (+ asersi di `menuIcons.test.ts`).
@@ -679,7 +679,7 @@ Controller: `store` memvalidasi `['file' => ['required', 'file', 'mimes:pdf,jpg,
 ### Task 5: Impor Excel
 
 **Files:**
-- Create: `app/Domains/Students/Exports/StudentTemplateExport.php`, `app/Domains/Students/Imports/StudentSheetImport.php`, `app/Domains/Students/Services/StudentImportService.php`, `app/Domains/Students/Http/Controllers/StudentImportController.php`
+- Create: `app/Domains/Students/Exports/StudentTemplateExport.php`, `app/Domains/Students/Services/StudentImportService.php`, `app/Domains/Students/Http/Controllers/StudentImportController.php`
 - Modify: `routes/students.php` (sebelum `{student}`), `tests/Feature/Access/RoutePermissionMatrixTest.php`
 - Test: `tests/Feature/Students/StudentImportTest.php`
 
@@ -688,7 +688,7 @@ Controller: `store` memvalidasi `['file' => ['required', 'file', 'mimes:pdf,jpg,
 - Produces: `StudentImportService::MAX_ROWS = 500`; `import(UploadedFile $file, User $actor, ?int $schoolId): array{imported: int, failed: list<array{row: int, reason: string}>}`; rute `siswa.impor.template` (GET `/siswa/impor/template`), `siswa.impor.store` (POST `/siswa/impor`, field `file`, `school_id` untuk staf; hasil dikirim sebagai flash `import_result` + redirect back; **bukan** prop bernama `flash`).
 - Heading dikenali (tak peka huruf besar, urutan bebas): `NIK`, `NISN`, `Nama`, `Tanggal lahir`, `Jenis kelamin`.
 
-- [ ] **Step 1: Verifikasi API xlsx** — buat berkas contoh dengan `Excel::raw(new StudentTemplateExport, \Maatwebsite\Excel\Excel::XLSX)` di tinker; baca kembali memakai `Excel::toArray(new StudentSheetImport, $path)` dan catat bentuk kunci hasil (diharapkan `nik, nisn, nama, tanggal_lahir, jenis_kelamin` dengan `WithHeadingRow`) serta apakah sel tanggal datang sebagai angka serial. Sesuaikan peta kunci di Step 3 bila berbeda; catat sebagai Ruling di ledger.
+- [ ] **Step 1: Verifikasi API xlsx** — buat berkas contoh dengan `Excel::raw(new StudentTemplateExport, \Maatwebsite\Excel\Excel::XLSX)` di tinker; baca kembali memakai `Excel::toArray($reader, $path)` (pembaca = kelas anonim, lihat Step 4) dan catat bentuk kunci hasil (diharapkan `nik, nisn, nama, tanggal_lahir, jenis_kelamin` dengan `WithHeadingRow`) serta apakah sel tanggal datang sebagai angka serial. Sesuaikan peta kunci di Step 3 bila berbeda; catat sebagai Ruling di ledger.
 - [ ] **Step 2: Tes yang gagal** (`StudentImportTest.php`; helper membuat xlsx lewat PhpSpreadsheet)
 
 ```php
@@ -793,8 +793,8 @@ test('satu log ringkas per impor dan template dapat diunduh dengan judul yang be
 - [ ] **Step 3: Jalankan** → FAIL.
 - [ ] **Step 4: Implementasi.**
   - `StudentTemplateExport implements FromArray, WithHeadings, WithColumnFormatting` (`array()` → satu baris contoh `['3201123412341234', '0012345678', 'Contoh Nama', '2009-05-01', 'L']`, `headings()` → judul di atas, `columnFormats()` → `['A' => NumberFormat::FORMAT_TEXT, 'B' => NumberFormat::FORMAT_TEXT, 'D' => NumberFormat::FORMAT_TEXT]`); controller `Excel::download(new StudentTemplateExport, 'template-siswa.xlsx')`.
-  - `StudentSheetImport implements ToArray, WithHeadingRow` — `array(array $array): void {}` kosong (hasil dibaca lewat `Excel::toArray`).
-  - `StudentImportService::import()`: `$sheet = Excel::toArray(new StudentSheetImport, $file)[0] ?? []`; pastikan kolom wajib `nik, nisn, nama, tanggal_lahir, jenis_kelamin` ada di kunci baris pertama → bila tidak, `throw ValidationException::withMessages(['file' => 'Kolom wajib tidak lengkap: '.implode(', ', $missing).'.'])`; `count($sheet) > self::MAX_ROWS` → `ValidationException` "Maksimal 500 baris per impor."; lewati baris yang seluruh selnya kosong; untuk tiap baris (`$rowNo = $i + 2`): normalisasi `nik`/`nisn` → `trim((string) $v)`, `birth_date` → `parseDate()` (angka → `Date::excelToDateTimeObject`; string `Y-m-d` atau `d/m/Y` via `Carbon::createFromFormat` dengan `!` dan pemeriksaan galat; selain itu `null`), `gender` → `L`/`P` dari `L|P|laki-laki|perempuan` (tak peka huruf besar); validasi `Validator::make($data, StudentRules::fields(), StudentRules::messages())`; NIK yang sudah terlihat dalam berkas → gagal "NIK ganda di berkas."; error pertama sebagai `reason`; baris valid disimpan lewat `$student = new Student([...+'school_id']); $student->disableLogging(); $student->save();`. NIK numerik presisi-hilang gagal otomatis karena `trim((string) 3.2011234123412E+15)` bukan 16 digit (pesan "NIK harus 16 digit angka."; catatan di UI/template: kolom NIK format teks). Akhiri dengan `activity('siswa')->causedBy($actor)->withProperties(['berhasil' => $imported, 'gagal' => count($failed)])->log('siswa.diimpor')`. `school_id` = `$actor->school_id ?? $schoolId`; bila keduanya null → `ValidationException` pada `school_id` "Pilih sekolah."
+  - Pembaca: kelas anonim di dalam `StudentImportService` — `new class implements ToArray, WithHeadingRow { public function array(array $array): void {} }` — lalu `Excel::toArray($reader, $file)` (hasil dibaca dari nilai kembalian, bukan dari `array()`).
+  - `StudentImportService::import()`: `$sheet = Excel::toArray($reader, $file)[0] ?? []`; pastikan kolom wajib `nik, nisn, nama, tanggal_lahir, jenis_kelamin` ada di kunci baris pertama → bila tidak, `throw ValidationException::withMessages(['file' => 'Kolom wajib tidak lengkap: '.implode(', ', $missing).'.'])`; `count($sheet) > self::MAX_ROWS` → `ValidationException` "Maksimal 500 baris per impor."; lewati baris yang seluruh selnya kosong; untuk tiap baris (`$rowNo = $i + 2`): normalisasi `nik`/`nisn` → `trim((string) $v)`, `birth_date` → `parseDate()` (angka → `Date::excelToDateTimeObject`; string `Y-m-d` atau `d/m/Y` via `Carbon::createFromFormat` dengan `!` dan pemeriksaan galat; selain itu `null`), `gender` → `L`/`P` dari `L|P|laki-laki|perempuan` (tak peka huruf besar); validasi `Validator::make($data, StudentRules::fields(), StudentRules::messages())`; NIK yang sudah terlihat dalam berkas → gagal "NIK ganda di berkas."; error pertama sebagai `reason`; baris valid disimpan lewat `$student = new Student([...+'school_id']); $student->disableLogging(); $student->save();`. NIK numerik presisi-hilang gagal otomatis karena `trim((string) 3.2011234123412E+15)` bukan 16 digit (pesan "NIK harus 16 digit angka."; catatan di UI/template: kolom NIK format teks). Akhiri dengan `activity('siswa')->causedBy($actor)->withProperties(['berhasil' => $imported, 'gagal' => count($failed)])->log('siswa.diimpor')`. `school_id` = `$actor->school_id ?? $schoolId`; bila keduanya null → `ValidationException` pada `school_id` "Pilih sekolah."
   - `StudentImportController::store`: validasi `file` `required|file|mimes:xlsx|max:2048` (pesan: "Pilih berkas Excel (.xlsx).", "Berkas harus berformat .xlsx.", "Ukuran berkas maksimal 2 MB."), `school_id` `nullable|integer|exists:schools,id`; hasil `back()->with('import_result', $result)`; `HandleInertiaRequests` membagikan `flash.import_result` ke FE: tambahkan `'import_result' => fn () => $request->session()->get('import_result')` ke array `flash` (ubah tipe `PageProps.flash` di Task 6).
   - Rute impor didefinisikan **sebelum** `siswa/{student}`; izin `can:siswa.impor`; tambahkan baris `GET /siswa/impor/template` dan `POST /siswa/impor` ke dataset matriks izin.
 - [ ] **Step 5: Jalankan** seluruh suite → hijau; Pint + Larastan. Bila `Excel::toArray` mengembalikan kunci berbeda dari asumsi, ubah peta kunci dan catat Ruling.
@@ -802,55 +802,19 @@ test('satu log ringkas per impor dan template dapat diunduh dengan judul yang be
 
 ---
 
-### Task 6: Utilitas FE, tipe, dan panduan UI 5.18–5.20
+### Task 6: Tipe FE dan panduan UI 5.18–5.20
 
 **Files:**
-- Modify: `resources/js/lib/date.ts` + `date.test.ts` (`calculateAge`), `resources/js/lib/format.ts` + `format.test.ts` (`maskNik`), `resources/js/types/index.d.ts` (`flash.import_result`), `docs/superpowers/specs/2026-10-07-sijebol-ui-guide.md`
+- Modify: `resources/js/types/index.d.ts` (`flash.import_result`), `docs/superpowers/specs/2026-10-07-sijebol-ui-guide.md`, `resources/js/lib/permissions.ts` (tambahkan `DokumenLihat`, `DokumenUnggah`, `DokumenHapus`, `SiswaLihat/Buat/Ubah/Hapus/Impor` bila belum ada)
 - Create: `resources/js/types/student.ts`
 
 **Interfaces:**
-- Produces: `calculateAge(birthDate: string, on?: string | Date): number | null`, `maskNik(nik?: string | null): string`; tipe `StudentRow`, `StudentDetail`, `StudentDocumentRow`, `ImportResult = { imported: number; failed: { row: number; reason: string }[] }`.
+- Produces: tipe `StudentRow`, `StudentDetail`, `StudentDocumentRow`, `ImportResult`. (Umur dan NIK termasking datang dari server, jadi util FE `calculateAge`/`maskNik` tidak dibuat.)
 
-- [ ] **Step 1: Tes yang gagal** — `date.test.ts`: `calculateAge('2009-10-07', '2026-10-06')` → 16; `('2009-10-07','2026-10-07')` → 17; `('2009-10-07','2027-10-06')` → 17; `('', '2026-10-07')` → null; `('abc','2026-10-07')` → null. `format.test.ts`: `maskNik('3201123412341234')` → `'3201********1234'`; `maskNik('12345')` → `'*****'`; `maskNik(null)` → `'—'`.
-- [ ] **Step 2: Jalankan** `npm test` → FAIL.
-- [ ] **Step 3: Implementasi.**
-
-```ts
-// lib/date.ts (tambahan)
-function ymd(value: string | Date): [number, number, number] | null {
-    if (typeof value === 'string') {
-        const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
-        return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-    }
-    const parts = Object.fromEntries(
-        new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone: TZ })
-            .formatToParts(value).map((p) => [p.type, p.value]),
-    );
-    return [Number(parts.year), Number(parts.month), Number(parts.day)];
-}
-
-/** Hanya untuk tampilan; kelayakan umur ditentukan server. */
-export function calculateAge(birthDate: string, on: string | Date = new Date()): number | null {
-    const b = ymd(birthDate);
-    const o = ymd(on);
-    if (!b || !o) return null;
-    let age = o[0] - b[0];
-    if (o[1] < b[1] || (o[1] === b[1] && o[2] < b[2])) age--;
-    return age;
-}
-```
-```ts
-// lib/format.ts (tambahan)
-export function maskNik(nik?: string | null): string {
-    if (!nik) return '—';
-    if (nik.length <= 8) return '*'.repeat(nik.length);
-    return nik.slice(0, 4) + '*'.repeat(nik.length - 8) + nik.slice(-4);
-}
-```
-`types/student.ts`: `StudentRow = { id: number; name: string; nisn: string; nik: string; age: number; school: string | null; docs: { kk: boolean; akta_lahir: boolean }; eligible: boolean; reasons: string[] }`; `StudentDetail = StudentRow & { birth_date: string; gender: 'L' | 'P'; can: { update: boolean; delete: boolean } }`; `StudentDocumentRow = { type: 'kk' | 'akta_lahir'; name: string; size: number; url: string }`; `ImportResult`. `PageProps.flash`: tambahkan `import_result?: ImportResult | null`.
-- [ ] **Step 4: Panduan UI** — tambahkan **5.18 Siswa (daftar, form, detail)**, **5.19 Dokumen siswa**, **5.20 Impor Excel** sebelum "## 6. Pola lintas halaman" dengan isi spec §4.1–4.5; tambahkan menu "Data Siswa > Siswa" ke daftar menu bila ada.
-- [ ] **Step 5: Jalankan** `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` → hijau.
-- [ ] **Step 6: Commit** — "feat: tambah utilitas umur dan masker NIK serta panduan UI siswa".
+- [ ] **Step 1: Tipe** — `types/student.ts`: `StudentRow = { id: number; name: string; nisn: string; nik: string; age: number; school: string | null; docs: { kk: boolean; akta_lahir: boolean }; eligible: boolean; reasons: string[] }`; `StudentDetail = StudentRow & { birth_date: string; gender: 'L' | 'P' }`; `StudentDocumentRow = { type: 'kk' | 'akta_lahir'; name: string; size: number; url: string }`; `ImportResult = { imported: number; failed: { row: number; reason: string }[] }`. `PageProps.flash`: tambahkan `import_result?: ImportResult | null`.
+- [ ] **Step 2: Panduan UI** — tambahkan **5.18 Siswa (daftar, form, detail)**, **5.19 Dokumen siswa**, **5.20 Impor Excel** sebelum "## 6. Pola lintas halaman" dengan isi spec §4.1–4.5; tambahkan menu "Data Siswa > Siswa" ke daftar menu bila ada.
+- [ ] **Step 3: Jalankan** `npm run format && npm run typecheck && npm run lint && npm run build` → hijau.
+- [ ] **Step 4: Commit** — "feat: tambah tipe siswa dan panduan UI siswa".
 
 ---
 
@@ -864,7 +828,7 @@ export function maskNik(nik?: string | null): string {
 - Produces: rute halaman `/siswa`, `/siswa/buat`, `/siswa/{id}/ubah`.
 
 - [ ] **Step 1: `Siswa/Index.vue`** (salin struktur `Pengguna/Index.vue`): `PageHeader title="Siswa" description="Kelola data siswa dan kelengkapan dokumennya."` dengan tombol "Tambah siswa" (`can(SiswaBuat)`) (tombol "Impor Excel" ditambahkan di Task 9). Filter: `SearchInput` "Cari nama, NIK, atau NISN"; `SelectField` Kelengkapan dokumen (`lengkap` "Lengkap", `kurang` "Belum lengkap", all-label "Semua dokumen"); `SelectField` Eligible (`1` "Eligible", all-label "Semua status"); `SelectField` Sekolah (hanya bila prop `schools` bukan null). `useDataTable('/siswa', {...})`: `watch` pada filter selain `search` → `apply`, `search` debounce 300 ms. Kolom: Siswa (nama tebal, "NISN {nisn}" kecil), NIK (`font-mono text-xs`, sudah dimasker server), Umur (`{age} th`), Sekolah (hanya bila `schools` ada), Dokumen (dua indikator berteks: ikon `Check`/`X` + "KK" dan "Akta" dengan `text-success`/`text-muted-foreground`, `sr-only` "terunggah"/"belum"), Status (`<span>` badge `bg-success-soft text-success` "Eligible" atau `bg-neutral-soft text-neutral-foreground` "Belum eligible" dengan `title` = alasan digabung), Aksi (`RowActions`: Lihat detail, Ubah bila `can(SiswaUbah)`, Hapus bila `can(SiswaHapus)` → `ConfirmDialog` destructive "Hapus {nama}?" "Data siswa dan dokumennya akan dihapus permanen." → `router.delete(route('siswa.destroy', id), { preserveScroll: true })`). State: loading, kosong ("Belum ada siswa" + tombol Tambah/Impor), hasil filter kosong + "Reset filter"; petunjuk "↔ Geser tabel" mobile; `table-class="min-w-[1000px]"`.
-- [ ] **Step 2: `Siswa/Form.vue`** (salin `Pengguna/Form.vue`): judul "Tambah siswa"/"Ubah siswa"; kartu "Data siswa": NIK (`inputmode="numeric"`, `maxlength=16`, hint "16 digit angka."), NISN (`maxlength=10`), Nama lengkap, Tanggal lahir (`Input type="date"`, `max` = hari ini), Jenis kelamin (`SelectField`: `L` "Laki-laki", `P` "Perempuan"), Sekolah (`SelectField`, hanya bila `schools` tidak null; wajib). Validasi klien (pesan sama dengan server dari `StudentRules::messages()`): NIK `/^\d{16}$/` → "NIK harus 16 digit angka.", NISN `/^\d{10}$/` → "NISN harus 10 digit angka.", nama wajib → "Nama lengkap wajib diisi.", tanggal wajib → "Tanggal lahir wajib diisi.", gender → "Pilih jenis kelamin.", sekolah → "Pilih sekolah."; `focusFirstInvalid`; `useForm` POST `route('siswa.store')` / PUT `route('siswa.update', id)`; Batal ke `siswa.index`; breadcrumb Siswa > Tambah/Ubah siswa. Prop `student` untuk ubah memuat NIK penuh.
+- [ ] **Step 2: `Siswa/Form.vue`** (salin `Pengguna/Form.vue`): judul "Tambah siswa"/"Ubah siswa"; kartu "Data siswa": NIK (`inputmode="numeric"`, `maxlength=16`, hint "16 digit angka."), NISN (`maxlength=10`), Nama lengkap, Tanggal lahir (`Input type="date"`, `max` = hari ini), Jenis kelamin (`SelectField`: `L` "Laki-laki", `P` "Perempuan"), Sekolah (`SelectField`, hanya pada tambah dan hanya bila `schools` tidak null; wajib; tidak ada pada ubah). Validasi klien (pesan sama dengan server dari `StudentRules::messages()`): NIK `/^\d{16}$/` → "NIK harus 16 digit angka.", NISN `/^\d{10}$/` → "NISN harus 10 digit angka.", nama wajib → "Nama lengkap wajib diisi.", tanggal wajib → "Tanggal lahir wajib diisi.", gender → "Pilih jenis kelamin.", sekolah → "Pilih sekolah."; `focusFirstInvalid`; `useForm` POST `route('siswa.store')` / PUT `route('siswa.update', id)`; Batal ke `siswa.index`; breadcrumb Siswa > Tambah/Ubah siswa. Prop `student` untuk ubah memuat NIK penuh.
 - [ ] **Step 3: Cek** `npm run format && npm run typecheck && npm run lint && npm run build`.
 - [ ] **Step 4: Verifikasi browser** (seed 3–4 siswa lewat tinker dengan `Student::factory()`; login `sari@example.com`/`password`): daftar tampil, NIK termasking, filter dokumen/eligible/cari mengubah `?filter[...]`, hapus lewat dialog, tambah siswa baru (validasi klien lalu simpan → redirect ke detail; detail dibuat di Task 8, jadi sementara redirect akan menampilkan galat komponen — verifikasi simpan lewat respons dan data di DB), ubah menampilkan NIK penuh, mobile 390 tanpa overflow.
 - [ ] **Step 5: Commit** — "feat: tambah daftar dan form siswa".
@@ -882,7 +846,7 @@ export function maskNik(nik?: string | null): string {
 - [ ] **Step 1: Tes yang gagal** (`files.test.ts`): `validateFile` menerima `application/pdf`, `image/jpeg`, `image/png`; menolak `text/plain` dengan pesan tipe; menolak 6 MB dengan pesan ukuran; `formatBytes(1536)` → `'1,5 KB'`, `formatBytes(5 * 1024 * 1024)` → `'5,0 MB'` (format `id-ID`).
 - [ ] **Step 2: Implementasi util** (`files.ts`): konstanta `ACCEPT = ['application/pdf', 'image/jpeg', 'image/png']`, `MAX_BYTES = 5 * 1024 * 1024`; `formatBytes` memakai `Intl.NumberFormat('id-ID', { minimumFractionDigits: 1, maximumFractionDigits: 1 })`.
 - [ ] **Step 3: `FileUpload.vue`** — props `label: string`, `type: 'kk'|'akta_lahir'`, `existing: StudentDocumentRow | null`, `canUpload`, `canDelete`, `uploadUrl: string`, `deleteUrl: string`. Memakai `useForm({ file: null as File | null })` dan `form.post(uploadUrl, { forceFormData: true, preserveScroll: true, onSuccess: reset })` (progress dari `form.progress?.percentage`). Tampilan: judul `label`; bila `existing`: baris nama berkas, ukuran, tautan "Unduh" (`<a :href="existing.url">` karena respons berkas), tombol "Ganti" (membuka dialog pilih berkas) dan "Hapus" (`ConfirmDialog` destructive → `router.delete(deleteUrl, { preserveScroll: true })`); bila kosong dan `canUpload`: area `<label>` berborder putus-putus dengan `<input type="file" class="sr-only" accept=".pdf,.jpg,.jpeg,.png">` ("Pilih berkas atau seret ke sini", "PDF, JPG, atau PNG, maks 5 MB"), mendukung `dragover/drop`; setelah memilih: validasi `validateFile` → galat di bawah area; bila valid tampil nama + ukuran + tombol "Unggah" dan "Batal"; saat mengunggah tampil progress (`<progress>` + `role="status"` "Mengunggah {n}%"); galat server `form.errors.file`. Tanpa izin dan tanpa berkas: teks "Belum diunggah." Semua kontrol dapat difokuskan dan memiliki label.
-- [ ] **Step 4: `Siswa/Show.vue`** (pola `Pengguna/Show.vue`): breadcrumb Siswa > Detail siswa; kartu profil (avatar inisial 64px, nama `text-2xl`, "NISN {nisn}", badge eligible dan—bila belum—daftar alasan `ul text-sm text-muted-foreground` di bawah badge; tombol "Ubah" (`student.can.update`) dan menu "…" berisi "Hapus" (`student.can.delete`, `ConfirmDialog`); `InfoList` Informasi siswa (NIK dimasker, Tanggal lahir `formatDate` + "({age} th)", Jenis kelamin "Laki-laki"/"Perempuan", Sekolah); kartu "Dokumen" berisi dua `FileUpload` (Kartu Keluarga, Akta Kelahiran) dengan `existing = documents.find(d => d.type === ...)`, `canUpload = can(DokumenUnggah)`, `canDelete = can(DokumenHapus)`, `uploadUrl = route('siswa.dokumen.store', [student.id, type])`, `deleteUrl = route('siswa.dokumen.destroy', [student.id, type])`. Tambahkan `DokumenLihat/DokumenUnggah/DokumenHapus` ke `lib/permissions.ts` bila belum ada.
+- [ ] **Step 4: `Siswa/Show.vue`** (pola `Pengguna/Show.vue`): breadcrumb Siswa > Detail siswa; kartu profil (avatar inisial 64px, nama `text-2xl`, "NISN {nisn}", badge eligible dan—bila belum—daftar alasan `ul text-sm text-muted-foreground` di bawah badge; tombol "Ubah" (`can(PERMISSIONS.SiswaUbah)`) dan menu aksi berisi "Hapus" (`can(PERMISSIONS.SiswaHapus)`, `ConfirmDialog`); `InfoList` Informasi siswa (NIK dimasker, Tanggal lahir `formatDate` + "({age} th)", Jenis kelamin "Laki-laki"/"Perempuan", Sekolah); kartu "Dokumen" berisi dua `FileUpload` (Kartu Keluarga, Akta Kelahiran) dengan `existing = documents.find(d => d.type === ...)`, `canUpload = can(DokumenUnggah)`, `canDelete = can(DokumenHapus)`, `uploadUrl = route('siswa.dokumen.store', [student.id, type])`, `deleteUrl = route('siswa.dokumen.destroy', [student.id, type])`. Tambahkan `DokumenLihat/DokumenUnggah/DokumenHapus` ke `lib/permissions.ts` bila belum ada.
 - [ ] **Step 5: Cek** format/typecheck/lint/build + `npm test`.
 - [ ] **Step 6: Verifikasi browser** — unggah PDF (siapkan berkas kecil via tinker/`fsutil` atau `page.setInputFiles`), badge berubah menjadi Eligible setelah dua dokumen dan umur sesuai, ganti berkas, unduh (respons berkas), hapus, tipe/ukuran salah menampilkan pesan klien, mobile 390 tanpa overflow.
 - [ ] **Step 7: Commit** — "feat: tambah detail siswa dan komponen unggah dokumen".
@@ -911,4 +875,4 @@ export function maskNik(nik?: string | null): string {
 - [ ] **Step 1:** `php artisan test --compact`, `vendor/bin/pint --test`, `vendor/bin/phpstan analyse --memory-limit=1G`, `npm test`, `npm run typecheck`, `npm run lint`, `npm run build` → semua hijau.
 - [ ] **Step 2:** End-to-end browser (desktop 1440 + mobile 390): login operator sekolah (buat via tinker dengan role `operator-sekolah` dan `school_id`), tambah siswa, unggah KK dan akta, badge eligible, unduh dokumen, impor Excel campuran, lihat `/log` sebagai admin (NIK termasking, aksi dokumen tercatat); operator sekolah lain tidak melihat/mengunduh siswa tersebut (404).
 - [ ] **Step 3:** Jalankan skill `impeccable` (critique + audit, laporan saja) pada halaman baru dan `ponytail:ponytail-review` atas seluruh perubahan Fase 3; perbaiki temuan valid dalam satu batch dengan TDD untuk perilaku backend; konfirmasi sekali.
-- [ ] **Step 4:** Perbarui `docs/superpowers/plans/2026-10-07-sijebol-sprint-plan.md` (Fase 3 selesai + penyimpangan), memory `deferred-items` (hapus item Fase 3 yang selesai; tambahkan item baru yang tertunda), dan ledger; commit akhir tanpa `Co-Authored-By`; ringkasan ke user beserta daftar Ruling dan minor tertunda.
+- [ ] **Step 4:** Perbarui `docs/superpowers/plans/2026-10-07-sijebol-sprint-plan.md` (Fase 3 selesai + penyimpangan), memory `deferred-items` (hapus item Fase 3 yang selesai — catatan: util FE `calculateAge`/`maskNik` ternyata tidak diperlukan karena server mengirim `age` dan NIK termasking; tambahkan item baru yang tertunda), dan ledger; commit akhir tanpa `Co-Authored-By`; ringkasan ke user beserta daftar Ruling dan minor tertunda.
