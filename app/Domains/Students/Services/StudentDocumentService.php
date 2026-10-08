@@ -2,6 +2,7 @@
 
 namespace App\Domains\Students\Services;
 
+use App\Domains\Access\Exceptions\AccessRuleException;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Models\StudentDocument;
 use App\Models\User;
@@ -20,6 +21,10 @@ class StudentDocumentService
 
     public function store(Student $student, string $type, UploadedFile $file, User $actor): StudentDocument
     {
+        if ($student->isLocked()) {
+            throw new AccessRuleException(Student::LOCKED_MESSAGE);
+        }
+
         $path = $file->storeAs("students/{$student->id}", Str::uuid().'.'.$file->extension(), self::DISK);
 
         try {
@@ -49,6 +54,10 @@ class StudentDocumentService
 
     public function delete(Student $student, string $type, User $actor): void
     {
+        if ($student->isLocked()) {
+            throw new AccessRuleException(Student::LOCKED_MESSAGE);
+        }
+
         $document = $student->documents()->where('type', $type)->firstOrFail();
 
         $document->delete();

@@ -15,7 +15,7 @@ class EligibilityService
     private const ZONE = 'Asia/Jakarta';
 
     /** @return array{eligible: bool, reasons: list<string>} */
-    public function check(Student $student, ?CarbonInterface $on = null): array
+    public function check(Student $student, ?CarbonInterface $on = null, ?int $exceptRegistrationId = null): array
     {
         $reasons = [];
         $age = $this->age($student, $on);
@@ -30,6 +30,13 @@ class EligibilityService
         }
         if (! in_array('akta_lahir', $types, true)) {
             $reasons[] = 'Akta kelahiran belum diunggah.';
+        }
+
+        $busy = $student->registrationEntries->contains(
+            fn ($entry) => $entry->status->isActive() && $entry->registration_id !== $exceptRegistrationId
+        );
+        if ($busy) {
+            $reasons[] = 'Siswa sudah terdaftar di pendaftaran lain.';
         }
 
         return ['eligible' => $reasons === [], 'reasons' => $reasons];

@@ -135,3 +135,15 @@ test('operator tidak mendapat petunjuk keberadaan sekolah lewat school_id', func
         ->post('/siswa', [...dataBaru(), 'school_id' => 999999])
         ->assertSessionHasNoErrors();
 });
+
+test('filter eligible tidak menampilkan siswa dengan entri aktif', function () {
+    $sekolah = School::factory()->create();
+    $bebas = eligibleStudent($sekolah);
+    $sibuk = eligibleStudent($sekolah);
+    makeEntry(\App\Domains\Registrations\Enums\RegistrationStatus::Diajukan, student: $sibuk);
+    $user = makeUserWith(['siswa.lihat'], $sekolah, true, 'op-filter');
+
+    $this->actingAs($user)->get('/siswa?filter[eligible]=1')->assertInertia(fn (Assert $p) => $p
+        ->has('students.data', 1)
+        ->where('students.data.0.id', $bebas->id));
+});

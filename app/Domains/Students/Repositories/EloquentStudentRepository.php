@@ -2,11 +2,13 @@
 
 namespace App\Domains\Students\Repositories;
 
+use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
 use App\Domains\Students\Services\EligibilityService;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -17,7 +19,7 @@ class EloquentStudentRepository implements StudentRepositoryInterface
 
     public function paginate(int $perPage = 20): LengthAwarePaginator
     {
-        $base = Student::query()->with(['school', 'documents'])->orderBy('name')->orderBy('id');
+        $base = Student::query()->with(['school', 'documents', 'registrationEntries'])->orderBy('name')->orderBy('id');
 
         return QueryBuilder::for($base)
             ->allowedFilters(
@@ -43,11 +45,18 @@ class EloquentStudentRepository implements StudentRepositoryInterface
                     }
                     $q->whereBetween('birth_date', $this->eligibility->birthDateBounds())
                         ->whereHas('documents', $this->ofType('kk'))
-                        ->whereHas('documents', $this->ofType('akta_lahir'));
+                        ->whereHas('documents', $this->ofType('akta_lahir'))
+                        ->whereDoesntHave('registrationEntries', fn ($entries) => $entries->whereIn('status', RegistrationStatus::values(RegistrationStatus::active())));
                 }),
             )
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    public function forSchool(int $schoolId): Collection
+    {
+        return Student::query()->where('school_id', $schoolId)
+            ->with(['documents', 'registrationEntries'])->orderBy('name')->orderBy('id')->get();
     }
 
     public function create(array $attributes): Student
