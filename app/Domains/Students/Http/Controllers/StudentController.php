@@ -6,6 +6,7 @@ use App\Domains\Schools\Services\SchoolService;
 use App\Domains\Students\Http\Requests\StudentRequest;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
+use App\Domains\Students\Services\StudentDocumentService;
 use App\Domains\Students\Services\StudentService;
 use App\Http\Controllers\Controller;
 use App\Models\User;
@@ -21,6 +22,7 @@ class StudentController extends Controller
         private readonly StudentService $students,
         private readonly EligibilityService $eligibility,
         private readonly SchoolService $schools,
+        private readonly StudentDocumentService $documents,
     ) {}
 
     public function index(Request $request): Response
@@ -44,7 +46,7 @@ class StudentController extends Controller
         return redirect()->route('siswa.show', $student)->with('success', 'Siswa ditambahkan.');
     }
 
-    public function show(Student $student): Response
+    public function show(Request $request, Student $student): Response
     {
         $student->load(['school', 'documents']);
 
@@ -53,7 +55,14 @@ class StudentController extends Controller
                 'birth_date' => $student->birth_date->toDateString(),
                 'gender' => $student->gender,
             ],
-            'documents' => [],
+            'documents' => $request->user()->can('dokumen.lihat')
+                ? $student->documents->map(fn ($d) => [
+                    'type' => $d->type,
+                    'name' => $this->documents->fileName($student, $d),
+                    'size' => $d->size,
+                    'url' => route('siswa.dokumen.download', [$student, $d->type]),
+                ])->values()
+                : [],
             'eligibility' => $this->eligibility->check($student),
         ]);
     }

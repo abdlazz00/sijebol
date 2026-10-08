@@ -36,6 +36,9 @@ dataset('rute', [
     ['GET', '/siswa/{student}/ubah', 'siswa.ubah'],
     ['PUT', '/siswa/{student}', 'siswa.ubah'],
     ['DELETE', '/siswa/{student}', 'siswa.hapus'],
+    ['POST', '/siswa/{student}/dokumen/kk', 'dokumen.unggah'],
+    ['GET', '/siswa/{student}/dokumen/kk', 'dokumen.lihat'],
+    ['DELETE', '/siswa/{student}/dokumen/kk', 'dokumen.hapus'],
 ]);
 
 function resolveUri(string $uri): string
