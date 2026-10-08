@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Domains\Access\Services\MenuService;
+use App\Domains\Notifications\Services\NotificationService;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -45,6 +46,7 @@ class HandleInertiaRequests extends Middleware
                 'error' => fn () => $request->session()->get('error'),
             ],
             'menu' => fn () => app(MenuService::class)->forUser($user),
+            'notifications' => fn () => $user ? app(NotificationService::class)->summary($user) : null,
         ];
     }
 }
