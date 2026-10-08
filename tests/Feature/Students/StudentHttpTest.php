@@ -116,3 +116,22 @@ test('staf melihat semua sekolah dan daftar sekolah untuk filter', function () {
     $this->actingAs(makeUserWith(['siswa.lihat'], roleName: 'staf-lihat'))->get('/siswa')
         ->assertInertia(fn (Assert $p) => $p->has('students.data', 2)->has('schools', 2));
 });
+
+test('pencarian NIK hanya cocok persis sehingga masker tidak bisa dibongkar', function () {
+    $a = School::factory()->create();
+    Student::factory()->for($a)->create(['name' => 'Rahasia', 'nik' => '3201123412341234']);
+    $pembaca = makeUserWith(['siswa.lihat'], $a, true, 'pembaca-saja');
+
+    $this->actingAs($pembaca);
+    $this->get('/siswa?filter[search]=3201')->assertInertia(fn (Assert $p) => $p->has('students.data', 0));
+    $this->get('/siswa?filter[search]=32011234123412')->assertInertia(fn (Assert $p) => $p->has('students.data', 0));
+    $this->get('/siswa?filter[search]=3201123412341234')->assertInertia(fn (Assert $p) => $p->has('students.data', 1));
+});
+
+test('operator tidak mendapat petunjuk keberadaan sekolah lewat school_id', function () {
+    $a = School::factory()->create();
+
+    $this->actingAs(operatorSekolah($a))
+        ->post('/siswa', [...dataBaru(), 'school_id' => 999999])
+        ->assertSessionHasNoErrors();
+});

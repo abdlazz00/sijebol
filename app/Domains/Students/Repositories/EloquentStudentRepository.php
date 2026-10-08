@@ -21,10 +21,11 @@ class EloquentStudentRepository implements StudentRepositoryInterface
 
         return QueryBuilder::for($base)
             ->allowedFilters(
+                // NIK hanya cocok persis: pencarian sebagian akan membongkar masker NIK di tampilan.
                 AllowedFilter::callback('search', fn (Builder $q, $v) => $q->where(
                     fn (Builder $w) => $w->where('name', 'like', "%{$v}%")
-                        ->orWhere('nik', 'like', "%{$v}%")
                         ->orWhere('nisn', 'like', "%{$v}%")
+                        ->orWhere('nik', (string) $v)
                 )),
                 AllowedFilter::exact('school_id'),
                 AllowedFilter::callback('docs', function (Builder $q, $v) {

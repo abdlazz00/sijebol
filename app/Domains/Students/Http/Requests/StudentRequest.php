@@ -14,10 +14,10 @@ class StudentRequest extends FormRequest
     {
         return [
             ...StudentRules::fields($this->route('student')?->id),
-            'school_id' => [
-                'nullable', 'integer', 'exists:schools,id',
-                Rule::requiredIf(fn () => $this->isMethod('post') && $this->user()->school_id === null),
-            ],
+            // Operator sekolah dikunci ke sekolahnya: nilai apa pun diabaikan tanpa diperiksa keberadaannya.
+            'school_id' => $this->user()->school_id === null
+                ? ['nullable', 'integer', 'exists:schools,id', Rule::requiredIf(fn () => $this->isMethod('post'))]
+                : ['nullable'],
         ];
     }
 
