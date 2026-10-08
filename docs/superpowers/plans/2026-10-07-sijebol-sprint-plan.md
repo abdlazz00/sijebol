@@ -140,6 +140,8 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 ## Fase 4 — Pendaftaran dan verifikasi
 
+**Status Fase 4 (2026-10-08): SELESAI** (spec: `specs/2026-10-08-fase-4-pendaftaran-verifikasi-design.md`, rencana: `plans/2026-10-08-fase-4-pendaftaran-verifikasi.md`). BE: domain `Registrations` (pendaftaran draf, entri per siswa, riwayat status), mesin status enum dengan `StatusTransitioner`, indeks unik `active_student_id` (satu entri aktif per siswa), pengajuan atomik dengan validasi eligibility ulang, ajukan ulang, keputusan per siswa, eligibility entri aktif, kunci data siswa saat diproses, larangan hapus siswa berpendaftaran, notifikasi (`toSchool`), label log. FE: daftar/form/detail pendaftaran, `StudentMultiSelect`, `StatusTimeline`, antrean dan keputusan verifikasi, kartu pendaftaran di detail siswa, panduan UI 5.21–5.24. Penyimpangan dari spec: lihat bagian Rulings di rencana (R1–R6) dan ledger akhir.
+
 ### Track BE
 1. Migrasi `registrations`, `registration_students`, `registration_status_histories`; unique index parsial untuk satu entri aktif per siswa.
 2. `RegistrationService`: buat draf, pilih siswa eligible (multi-select), submit dengan validasi ulang di server dan transaksi.
