@@ -2,6 +2,8 @@
 
 namespace App\Domains\Students\Models;
 
+use App\Domains\Registrations\Enums\RegistrationStatus;
+use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schools\Models\School;
 use App\Models\Concerns\ScopedBySchool;
 use Carbon\Carbon;
@@ -29,6 +31,8 @@ class Student extends Model
     /** @use HasFactory<StudentFactory> */
     use HasFactory, LogsActivity, ScopedBySchool;
 
+    public const LOCKED_MESSAGE = 'Data siswa terkunci karena pendaftarannya sedang diproses.';
+
     protected $fillable = ['school_id', 'nik', 'nisn', 'name', 'birth_date', 'gender'];
 
     protected function casts(): array
@@ -46,6 +50,20 @@ class Student extends Model
     public function documents(): HasMany
     {
         return $this->hasMany(StudentDocument::class);
+    }
+
+    /** @return HasMany<RegistrationStudent, $this> */
+    public function registrationEntries(): HasMany
+    {
+        return $this->hasMany(RegistrationStudent::class);
+    }
+
+    /** Terkunci selama ada entri yang sedang diproses petugas (lihat RegistrationStatus::locking). */
+    public function isLocked(): bool
+    {
+        return $this->registrationEntries()
+            ->whereIn('status', RegistrationStatus::values(RegistrationStatus::locking()))
+            ->exists();
     }
 
     public function getActivitylogOptions(): LogOptions
