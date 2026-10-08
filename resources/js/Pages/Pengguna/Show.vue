@@ -3,22 +3,31 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
 import StatusBadge from '@/Components/shared/StatusBadge.vue';
+import EmptyState from '@/Components/shared/EmptyState.vue';
 import UserStatusItems from '@/Components/shared/UserStatusItems.vue';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import { Button } from '@/Components/ui/button';
 import { useDeactivateDialog } from '@/composables/useDeactivateDialog';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate, relativeTime } from '@/lib/date';
+import { summarizeChanges } from '@/lib/activity';
+import {
+    formatDate,
+    formatDateTime,
+    formatWhen,
+    relativeTime,
+} from '@/lib/date';
 import { humanize, initials } from '@/lib/format';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { UserRow } from '@/types/access';
+import type { ActivityRow } from '@/types/notification';
 import { Link } from '@inertiajs/vue3';
-import { Pencil } from '@lucide/vue';
+import { Pencil, ScrollText } from '@lucide/vue';
 import { computed } from 'vue';
 
 const props = defineProps<{
     user: UserRow & { created_by: string | null; created_at: string };
+    activities: ActivityRow[] | null;
 }>();
 
 const { can } = usePermission();
@@ -44,6 +53,15 @@ const info = computed(() => [
             : 'Belum pernah',
     },
 ]);
+
+// Ringkasan: perubahan data bila ada; selain itu "pelaku → subjek" (hanya nama bila sama).
+const note = (a: ActivityRow) => {
+    if (a.changes.length > 0) return summarizeChanges(a.changes, 1);
+
+    const who = a.causer?.name ?? 'Sistem';
+
+    return who === a.subject.label ? who : `${who} → ${a.subject.label}`;
+};
 
 const crumbs = [
     { label: 'Pengguna', href: route('pengguna.index') },
@@ -115,6 +133,51 @@ const crumbs = [
                     Informasi akun
                 </h2>
                 <InfoList :items="info" />
+            </section>
+
+            <section
+                v-if="activities !== null"
+                class="bg-card overflow-hidden rounded-lg border"
+            >
+                <div class="flex min-h-14 items-center gap-3 px-6 py-3">
+                    <h2 class="flex-1 text-base leading-6 font-semibold">
+                        Aktivitas terbaru
+                    </h2>
+                    <Link
+                        v-if="can(PERMISSIONS.LogLihat)"
+                        :href="
+                            route('log.index', { filter: { user: user.id } })
+                        "
+                        class="text-primary text-sm font-medium hover:underline"
+                    >
+                        Lihat semua
+                    </Link>
+                </div>
+                <EmptyState
+                    v-if="activities.length === 0"
+                    class="border-t"
+                    :icon="ScrollText"
+                    title="Belum ada aktivitas"
+                />
+                <ul v-else>
+                    <li
+                        v-for="a in activities"
+                        :key="a.id"
+                        class="flex flex-col gap-1 border-t px-6 py-3 text-sm leading-5 md:flex-row md:gap-6"
+                    >
+                        <span
+                            class="text-muted-foreground md:w-[200px] md:shrink-0"
+                            :title="formatDateTime(a.created_at)"
+                            >{{ formatWhen(a.created_at) }}</span
+                        >
+                        <span class="font-medium md:w-[160px] md:shrink-0">{{
+                            a.action
+                        }}</span>
+                        <span class="min-w-0 flex-1 break-words">{{
+                            note(a)
+                        }}</span>
+                    </li>
+                </ul>
             </section>
         </div>
 

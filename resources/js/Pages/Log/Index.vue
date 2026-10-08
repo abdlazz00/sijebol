@@ -17,9 +17,10 @@ import {
 import { Input } from '@/Components/ui/input';
 import { useDataTable } from '@/composables/useDataTable';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { formatValue, summarizeChanges } from '@/lib/activity';
 import { formatDateTime, formatWhen } from '@/lib/date';
 import type { Paginator } from '@/types/access';
-import type { ActivityChange, ActivityRow } from '@/types/notification';
+import type { ActivityRow } from '@/types/notification';
 import { ScrollText, Search } from '@lucide/vue';
 import { computed, ref, watch } from 'vue';
 
@@ -54,19 +55,6 @@ const columns = [
     { key: 'summary', label: 'Ringkasan' },
     { key: 'detail', label: 'Detail', class: 'w-[88px] text-right' },
 ];
-
-const show = (v: unknown) =>
-    v === null || v === undefined || v === ''
-        ? '—'
-        : typeof v === 'object'
-          ? JSON.stringify(v)
-          : String(v);
-
-const summary = (changes: ActivityChange[]) =>
-    changes
-        .slice(0, 2)
-        .map((c) => `${c.field}: ${show(c.old)} → ${show(c.new)}`)
-        .join('; ') || '—';
 
 const detailOpen = ref(false);
 const detail = ref<ActivityRow | null>(null);
@@ -188,7 +176,7 @@ function openDetail(row: ActivityRow) {
                     </template>
                     <template #cell-summary="{ row }">
                         <span class="block max-w-[320px] truncate text-sm">{{
-                            summary(row.changes)
+                            summarizeChanges(row.changes)
                         }}</span>
                     </template>
                     <template #cell-detail="{ row }">
@@ -290,10 +278,10 @@ function openDetail(row: ActivityRow) {
                                     <td
                                         class="text-muted-foreground px-3 py-2 break-all"
                                     >
-                                        {{ show(c.old) }}
+                                        {{ formatValue(c.old) }}
                                     </td>
                                     <td class="px-3 py-2 break-all">
-                                        {{ show(c.new) }}
+                                        {{ formatValue(c.new) }}
                                     </td>
                                 </tr>
                             </tbody>
