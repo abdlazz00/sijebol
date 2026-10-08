@@ -13,7 +13,7 @@ Route::middleware('auth')->group(function () {
 
     // Rute impor harus sebelum {student} agar tidak tertangkap parameter.
     Route::get('siswa/impor/template', [StudentImportController::class, 'template'])->middleware('can:siswa.impor')->name('siswa.impor.template');
-    Route::post('siswa/impor', [StudentImportController::class, 'store'])->middleware(['can:siswa.impor', 'throttle:60,1'])->name('siswa.impor.store');
+    Route::post('siswa/impor', [StudentImportController::class, 'store'])->middleware(['can:siswa.impor', 'throttle:6,1'])->name('siswa.impor.store');
 
     Route::get('siswa/{student}', [StudentController::class, 'show'])->middleware('can:siswa.lihat')->name('siswa.show');
     Route::get('siswa/{student}/ubah', [StudentController::class, 'edit'])->middleware('can:siswa.ubah')->name('siswa.edit');

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
+use Maatwebsite\Excel\Concerns\WithLimit;
 use Maatwebsite\Excel\Facades\Excel;
 use PhpOffice\PhpSpreadsheet\Shared\Date;
 
@@ -103,15 +104,22 @@ class StudentImportService
      */
     private function read(UploadedFile $file): array
     {
-        $reader = new class implements ToArray, WithHeadingRow
+        // WithLimit menghentikan pembacaan di baris ke-501, jadi berkas yang mengembang tidak dimuat seluruhnya.
+        $reader = new class implements ToArray, WithHeadingRow, WithLimit
         {
             public function array(array $array): void {}
+
+            public function limit(): int
+            {
+                return StudentImportService::MAX_ROWS + 1;
+            }
         };
 
         /** @var list<array<string, mixed>> $rows */
         $rows = Excel::toArray($reader, $file)[0] ?? [];
 
-        if (count($rows) > self::MAX_ROWS) {
+        // Pembaca bisa menambah satu baris kosong di ujung; hanya baris terisi yang dihitung.
+        if (count(array_filter($rows, fn (array $row) => ! $this->isBlank($row))) > self::MAX_ROWS) {
             throw ValidationException::withMessages(['file' => 'Maksimal '.self::MAX_ROWS.' baris per impor.']);
         }
         if ($rows !== [] && ($missing = array_diff(self::REQUIRED, array_keys($rows[0]))) !== []) {

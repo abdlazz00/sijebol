@@ -86,7 +86,7 @@ test('kolom wajib hilang, lebih dari 500 baris, dan berkas bukan xlsx ditolak', 
         ->assertSessionHasErrors('file');
 
     $baris = array_map(
-        fn ($i) => [str_pad((string) $i, 16, '3', STR_PAD_LEFT), str_pad((string) $i, 10, '0', STR_PAD_LEFT), "S$i", '2009-05-01', 'L'],
+        fn ($i) => ['32'.str_pad((string) $i, 14, '0', STR_PAD_LEFT), str_pad((string) $i, 10, '0', STR_PAD_LEFT), "S$i", '2009-05-01', 'L'],
         range(1, 501),
     );
     $this->post('/siswa/impor', ['file' => xlsx($baris)])->assertSessionHasErrors('file');
@@ -118,4 +118,25 @@ test('satu log ringkas per impor dan template dapat diunduh dengan judul yang be
     $res = $this->get('/siswa/impor/template')->assertOk();
     $sheet = IOFactory::load($res->baseResponse->getFile()->getPathname());
     expect($sheet->getActiveSheet()->rangeToArray('A1:E1')[0])->toBe(['NIK', 'NISN', 'Nama', 'Tanggal lahir', 'Jenis kelamin']);
+});
+
+test('berkas sangat besar dibaca terbatas dan tetap ditolak sebagai lebih dari 500 baris', function () {
+    $baris = array_map(
+        fn ($i) => ['32'.str_pad((string) $i, 14, '0', STR_PAD_LEFT), str_pad((string) $i, 10, '0', STR_PAD_LEFT), "S$i", '2009-05-01', 'L'],
+        range(1, 1200),
+    );
+
+    $this->actingAs($this->op)->post('/siswa/impor', ['file' => xlsx($baris)])->assertSessionHasErrors('file');
+
+    expect(Student::count())->toBe(0);
+});
+
+test('tepat 500 baris diterima', function () {
+    $baris = array_map(
+        fn ($i) => ['32'.str_pad((string) $i, 14, '0', STR_PAD_LEFT), str_pad((string) $i, 10, '0', STR_PAD_LEFT), "S$i", '2009-05-01', 'L'],
+        range(1, 500),
+    );
+
+    $this->actingAs($this->op)->post('/siswa/impor', ['file' => xlsx($baris)])
+        ->assertSessionHas('import_result', fn ($r) => $r['imported'] === 500 && $r['failed'] === []);
 });
