@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'pendaftaran' => 'Pendaftaran', 'default' => 'Data'],
-    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa', 'Registration' => 'Pendaftaran'],
+    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'pendaftaran' => 'Pendaftaran', 'jadwal' => 'Jadwal', 'default' => 'Data'],
+    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa', 'Registration' => 'Pendaftaran', 'Schedule' => 'Jadwal'],
     'actions' => [
         'login' => 'Login',
         'logout' => 'Logout',
@@ -23,5 +23,9 @@ return [
         'pendaftaran.diajukan' => 'Pendaftaran diajukan',
         'pendaftaran.diajukan-ulang' => 'Siswa diajukan ulang',
         'pendaftaran.diputuskan' => 'Siswa diputuskan',
+        'jadwal.dibuat' => 'Jadwal dibuat',
+        'jadwal.diubah' => 'Jadwal diubah',
+        'jadwal.penempatan' => 'Penempatan siswa di jadwal',
+        'rekaman.ditandai' => 'Rekaman ditandai',
     ],
 ];

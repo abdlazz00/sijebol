@@ -15,6 +15,7 @@ class MenuService
         ['group' => 'Data Siswa', 'label' => 'Siswa', 'href' => '/siswa', 'icon' => 'graduation-cap', 'permission' => 'siswa.lihat'],
         ['group' => 'Data Siswa', 'label' => 'Pendaftaran', 'href' => '/pendaftaran', 'icon' => 'clipboard-list', 'permission' => 'pendaftaran.lihat'],
         ['group' => 'Verifikasi', 'label' => 'Antrean verifikasi', 'href' => '/verifikasi', 'icon' => 'badge-check', 'permission' => 'verifikasi.lihat'],
+        ['group' => 'Jadwal', 'label' => 'Jadwal', 'href' => '/jadwal', 'icon' => 'calendar-days', 'permission' => 'jadwal.lihat'],
         ['group' => 'Sistem', 'label' => 'Log Aktivitas', 'href' => '/log', 'icon' => 'scroll-text', 'permission' => 'log.lihat'],
     ];
 

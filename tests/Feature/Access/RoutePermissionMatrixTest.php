@@ -53,6 +53,16 @@ dataset('rute', [
     ['GET', '/verifikasi', 'verifikasi.lihat'],
     ['GET', '/verifikasi/{entry}', 'verifikasi.lihat'],
     ['POST', '/verifikasi/{entry}/putuskan', 'verifikasi.putuskan'],
+    ['GET', '/jadwal', 'jadwal.lihat'],
+    ['GET', '/jadwal/buat', 'jadwal.buat'],
+    ['POST', '/jadwal', 'jadwal.buat'],
+    ['GET', '/jadwal/{schedule}', 'jadwal.lihat'],
+    ['GET', '/jadwal/{schedule}/ubah', 'jadwal.ubah'],
+    ['PUT', '/jadwal/{schedule}', 'jadwal.ubah'],
+    ['POST', '/jadwal/{schedule}/siswa', 'jadwal.ubah'],
+    ['DELETE', '/jadwal/{schedule}/siswa/{slot}', 'jadwal.ubah'],
+    ['GET', '/jadwal/{schedule}/rekaman', 'rekaman.lihat'],
+    ['POST', '/jadwal/{schedule}/rekaman', 'rekaman.tandai'],
 ]);
 
 function resolveUri(string $uri): string
@@ -63,10 +73,11 @@ function resolveUri(string $uri): string
 
     $student = Student::factory()->create();
     $entry = makeEntry();
+    $slot = makeScheduledEntry();
 
     return str_replace(
-        ['{user}', '{school}', '{role}', '{student}', '{registration}', '{entry}'],
-        [$target->id, $school->id, $role->id, $student->id, $entry->registration_id, $entry->id],
+        ['{user}', '{school}', '{role}', '{student}', '{registration}', '{entry}', '{schedule}', '{slot}'],
+        [$target->id, $school->id, $role->id, $student->id, $entry->registration_id, $entry->id, $slot->schedule_id, $slot->id],
         $uri,
     );
 }
