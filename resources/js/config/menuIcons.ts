@@ -1,5 +1,7 @@
 import {
+    BadgeCheck,
     Circle,
+    ClipboardList,
     GraduationCap,
     Home,
     School,
@@ -16,6 +18,8 @@ const icons: Record<string, Component> = {
     school: School,
     'scroll-text': ScrollText,
     'graduation-cap': GraduationCap,
+    'clipboard-list': ClipboardList,
+    'badge-check': BadgeCheck,
 };
 
 /** Kunci ikon datang dari server (`MenuService`); kunci tak dikenal tidak boleh merusak sidebar. */

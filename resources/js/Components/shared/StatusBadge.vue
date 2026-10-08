@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { userStatus, type BadgeVariant } from '@/lib/status';
+import {
+    registrationStatus,
+    userStatus,
+    type BadgeVariant,
+} from '@/lib/status';
 import { computed } from 'vue';
 
-const props = defineProps<{ status: string }>();
+const props = defineProps<{ status: string; kind?: 'user' | 'registration' }>();
 
 const classes: Record<BadgeVariant, string> = {
     success: 'bg-success-soft text-success',
@@ -12,7 +16,11 @@ const classes: Record<BadgeVariant, string> = {
     info: 'bg-primary-soft text-primary',
 };
 
-const meta = computed(() => userStatus(props.status));
+const meta = computed(() =>
+    (props.kind === 'registration' ? registrationStatus : userStatus)(
+        props.status,
+    ),
+);
 </script>
 
 <template>

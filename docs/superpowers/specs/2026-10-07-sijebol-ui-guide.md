@@ -196,6 +196,21 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - Tombol "Impor Excel" membuka dialog: langkah 1 **Unduh template (.xlsx)** dengan catatan "Kolom NIK, NISN, dan Tanggal lahir berformat teks; tanggal diisi YYYY-MM-DD atau DD/MM/YYYY."; langkah 2 pilih berkas .xlsx (maks 2 MB; staf memilih sekolah lebih dulu) lalu **Impor**.
 - Hasil di dalam dialog: "N siswa berhasil ditambahkan, M baris gagal." dan bila ada yang gagal tabel **Baris / Alasan** (maks tinggi, scroll), tombol Tutup dan "Impor lagi". Galat berkas (kolom wajib hilang, lebih dari 500 baris, bukan .xlsx) tampil sebagai banner di dialog.
 
+### 5.21 Pendaftaran: daftar dan form `/pendaftaran` (`pendaftaran.lihat`)
+- **Daftar:** judul "Pendaftaran", deskripsi "Kelompokkan siswa eligible untuk diajukan ke verifikasi." Tombol **+ Buat pendaftaran** (`pendaftaran.buat`). Filter (pola 5.7): cari judul, Status (Semua / Draf / Diajukan / Perlu perbaikan / Terverifikasi / Ditolak), Sekolah (hanya staf). Tabel: **Pendaftaran** (judul, tanggal dibuat), **Sekolah** (hanya staf), **Peserta** (jumlah), **Ringkasan status** (daftar berteks mis. "Diajukan 12 · Terverifikasi 3"), **Aksi** (Lihat; Ubah dan Hapus hanya untuk draf). Hapus draf memakai konfirmasi "Draf dan daftar siswanya akan dihapus." State: loading, kosong ("Belum ada pendaftaran" + tombol buat), hasil filter kosong.
+- **Form** (`/pendaftaran/buat`, `/pendaftaran/{id}/ubah`, pola 5.8): kartu **Detail pendaftaran** (Judul wajib, Perkiraan jumlah peserta opsional, Sekolah hanya staf saat buat; mengganti sekolah memuat ulang daftar siswa) dan kartu **Pilih siswa** (5.22). Bar aksi bawah: Batal dan **Simpan draf** (menuju detail, tempat **Ajukan** berada).
+
+### 5.22 Pemilih siswa (`StudentMultiSelect`)
+- Kolom cari (nama atau NISN), tombol **Pilih semua yang eligible**, dan penghitung "N dipilih" (`role="status"`, diumumkan). Tiap baris: kotak centang, nama, NISN dan umur. Baris belum eligible dinonaktifkan dan menampilkan alasannya sebagai teks (bukan hanya warna), disertai tautan "Lengkapi dokumen" ke detail siswa bila dokumen kurang. Siswa yang sudah terpilih tetapi menjadi tidak eligible tetap dapat dibatalkan pilihannya. Galat per siswa (dari server) tampil di bawah barisnya. Dapat dioperasikan dengan keyboard; mobile: baris menumpuk.
+
+### 5.23 Pendaftaran: detail `/pendaftaran/{id}`
+- Header: judul, badge ringkasan, tombol sesuai keadaan. **Draf:** Ubah, **Ajukan** (dialog "Ajukan N siswa untuk diverifikasi? Setelah diajukan pendaftaran tidak dapat diubah.") dan menu Hapus. Kartu **Informasi** (sekolah, dibuat oleh, perkiraan peserta, waktu diajukan). Tabel entri: **Siswa**, **Status** (badge berteks), **Catatan petugas** (untuk perlu perbaikan/ditolak), **Aksi** (Riwayat membuka dialog dengan timeline; untuk perlu perbaikan: Perbaiki data ke detail siswa dan **Ajukan ulang**). Galat pengajuan tampil sebagai banner dan alasan per siswa di baris terkait.
+- **Timeline riwayat:** daftar vertikal berpenanda titik: "Status lama → baru", lalu waktu · pelaku, lalu catatan bila ada.
+
+### 5.24 Verifikasi: antrean dan keputusan `/verifikasi` (`verifikasi.lihat`)
+- **Antrean:** filter cari nama/NISN dan Sekolah (staf). Tabel **Siswa** (nama, NISN), **Sekolah**, **Pendaftaran**, **Diajukan** (waktu relatif), **Aksi** (tombol "Periksa"). State: loading, kosong ("Tidak ada antrean verifikasi"), hasil filter kosong.
+- **Keputusan** (`/verifikasi/{id}`): kartu **Data siswa** (NIK dimasker, tanggal lahir dan umur, jenis kelamin, sekolah, pendaftaran), kartu **Dokumen** (tautan unduh KK dan akta), banner eligibility bila belum memenuhi syarat, kartu **Riwayat**, dan kartu **Keputusan** (hanya `verifikasi.putuskan` dan status Diajukan): pilihan radio berteks **Setujui / Minta perbaikan / Tolak** dengan keterangan singkat, kolom Catatan (wajib untuk dua yang terakhir), tombol **Simpan keputusan** (Tolak meminta konfirmasi). Setelah simpan kembali ke antrean dengan toast. Entri yang sudah diputuskan menampilkan keputusan terakhir tanpa formulir.
+
 ## 6. Pola lintas halaman
 
 - **Umpan balik:** sukses = toast hijau; gagal form = banner dan pesan per field; aksi merusak = dialog konfirmasi menyebut nama objek.
