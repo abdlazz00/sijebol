@@ -127,3 +127,25 @@ test('katalog menandai izin yang tidak dapat diedit oleh penyunting', function (
     expect(collect($siswa)->firstWhere('value', 'siswa.lihat')['editable'])->toBeTrue()
         ->and(collect($siswa)->firstWhere('value', 'siswa.buat')['editable'])->toBeFalse();
 });
+
+test('role terikat sekolah tidak boleh memegang log.lihat (log mencakup seluruh kecamatan)', function () {
+    expect(fn () => $this->service->create([
+        'name' => 'operator-log', 'is_school_scoped' => true, 'permissions' => ['log.lihat'],
+    ], $this->super))->toThrow(AccessRuleException::class);
+
+    $role = $this->service->create([
+        'name' => 'operator-biasa', 'is_school_scoped' => true, 'permissions' => ['siswa.lihat'],
+    ], $this->super);
+
+    expect(fn () => $this->service->update($role, [
+        'name' => 'operator-biasa', 'is_school_scoped' => true, 'permissions' => ['siswa.lihat', 'log.lihat'],
+    ], $this->super))->toThrow(AccessRuleException::class);
+});
+
+test('role global boleh memegang log.lihat', function () {
+    $role = $this->service->create([
+        'name' => 'auditor', 'is_school_scoped' => false, 'permissions' => ['log.lihat'],
+    ], $this->super);
+
+    expect($role->permissions->pluck('name')->all())->toBe(['log.lihat']);
+});

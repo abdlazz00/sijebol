@@ -26,6 +26,7 @@ class RoleService
     {
         $permissions = $this->assertKnown($data['permissions']);
         $this->assertOwned($permissions, $actor);
+        $this->assertScopeAllows((bool) $data['is_school_scoped'], $permissions);
 
         return DB::transaction(function () use ($data, $permissions, $actor) {
             $role = $this->roles->create([
@@ -59,6 +60,7 @@ class RoleService
             ...array_diff($current, $owned),
             ...array_intersect($requested, $owned),
         ]));
+        $this->assertScopeAllows((bool) $data['is_school_scoped'], $final);
 
         return DB::transaction(function () use ($role, $data, $final, $current, $actor) {
             $this->roles->update($role, [
@@ -100,6 +102,18 @@ class RoleService
         }
 
         return array_values(array_unique($names));
+    }
+
+    /**
+     * Izin yang datanya mencakup seluruh kecamatan tidak boleh dipegang role terikat sekolah.
+     *
+     * @param  list<string>  $permissions
+     */
+    private function assertScopeAllows(bool $schoolScoped, array $permissions): void
+    {
+        if ($schoolScoped && in_array(Permission::LogLihat->value, $permissions, true)) {
+            throw new AccessRuleException('Role terikat sekolah tidak boleh memiliki izin Log Aktivitas karena log mencakup seluruh kecamatan.');
+        }
     }
 
     /** @param array<int, string> $added */

@@ -6,7 +6,7 @@ Tanggal: 2026-10-08. Turunan dari `2026-10-07-sijebol-v1-design.md` bagian 6, 7,
 
 Menyediakan infrastruktur yang dipakai fase 3–5: (a) notifikasi in-app dan email (queued) dengan penerima ditentukan permission, dan (b) penampil audit log baca-saja di balik `log.lihat`. Sukses: satu notifikasi nyata mengalir ujung ke ujung; log terbaca dengan filter; fase berikutnya cukup menambah satu kelas notifikasi.
 
-**Di luar cakupan:** notifikasi pendaftaran/verifikasi/jadwal (Fase 4–5), channel WhatsApp, preferensi notifikasi per pengguna, ekspor log, pembatasan log per sekolah (hanya pemilik `log.lihat`, yaitu admin kecamatan).
+**Di luar cakupan:** notifikasi pendaftaran/verifikasi/jadwal (Fase 4–5), channel WhatsApp, preferensi notifikasi per pengguna, ekspor log, pembatasan log per sekolah. Log mencakup seluruh kecamatan, sehingga `RoleService` menolak izin `log.lihat` pada role terikat sekolah (dijamin di sumbernya karena RBAC dinamis); hanya role global yang dapat memegangnya.
 
 **Asumsi:** SMTP belum ditentukan (`MAIL_MAILER=log` lokal); login/logout tampil di log dan dapat disaring lewat filter jenis; antrean memakai driver `database` (sudah dikonfigurasi, tabel `jobs` dan `failed_jobs` ada).
 
