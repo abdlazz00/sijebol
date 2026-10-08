@@ -12,6 +12,8 @@ use App\Domains\Notifications\Repositories\Contracts\NotificationRepositoryInter
 use App\Domains\Notifications\Repositories\EloquentNotificationRepository;
 use App\Domains\Registrations\Repositories\Contracts\RegistrationRepositoryInterface;
 use App\Domains\Registrations\Repositories\EloquentRegistrationRepository;
+use App\Domains\Schedules\Repositories\Contracts\ScheduleRepositoryInterface;
+use App\Domains\Schedules\Repositories\EloquentScheduleRepository;
 use App\Domains\Schools\Repositories\Contracts\SchoolRepositoryInterface;
 use App\Domains\Schools\Repositories\EloquentSchoolRepository;
 use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
@@ -29,5 +31,6 @@ class RepositoryServiceProvider extends ServiceProvider
         ActivityLogRepositoryInterface::class => EloquentActivityLogRepository::class,
         StudentRepositoryInterface::class => EloquentStudentRepository::class,
         RegistrationRepositoryInterface::class => EloquentRegistrationRepository::class,
+        ScheduleRepositoryInterface::class => EloquentScheduleRepository::class,
     ];
 }
