@@ -28,3 +28,9 @@ export type ImportResult = {
     imported: number;
     failed: { row: number; reason: string }[];
 };
+
+export type StudentRegistrationRef = {
+    id: number;
+    title: string;
+    status: string;
+};

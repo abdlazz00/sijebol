@@ -2,7 +2,9 @@
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import FileUpload from '@/Components/shared/FileUpload.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
+import InlineAlert from '@/Components/shared/InlineAlert.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
+import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import { Button } from '@/Components/ui/button';
 import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
@@ -15,6 +17,7 @@ import type {
     DocumentType,
     StudentDetail,
     StudentDocumentRow,
+    StudentRegistrationRef,
 } from '@/types/student';
 import { Link, router } from '@inertiajs/vue3';
 import { Pencil, Trash2 } from '@lucide/vue';
@@ -24,6 +27,8 @@ const props = defineProps<{
     student: StudentDetail;
     documents: StudentDocumentRow[];
     eligibility: { eligible: boolean; reasons: string[] };
+    locked: boolean;
+    registrations: StudentRegistrationRef[];
 }>();
 
 const { can } = usePermission();
@@ -69,6 +74,11 @@ const crumbs = [
         </div>
 
         <div class="flex flex-col gap-6">
+            <InlineAlert v-if="locked" variant="warning">
+                Data siswa dikunci karena pendaftarannya sedang diproses.
+                Perubahan dibuka kembali bila petugas meminta perbaikan.
+            </InlineAlert>
+
             <section
                 class="bg-card flex flex-col gap-4 rounded-lg border p-6 sm:flex-row sm:items-center sm:gap-6"
             >
@@ -118,7 +128,7 @@ const crumbs = [
                 </div>
                 <div class="flex items-start gap-2">
                     <Button
-                        v-if="can(PERMISSIONS.SiswaUbah)"
+                        v-if="can(PERMISSIONS.SiswaUbah) && !locked"
                         as-child
                         variant="outline"
                         class="h-10 px-4"
@@ -129,7 +139,10 @@ const crumbs = [
                         </Link>
                     </Button>
                     <RowActions
-                        v-if="can(PERMISSIONS.SiswaHapus)"
+                        v-if="
+                            can(PERMISSIONS.SiswaHapus) &&
+                            registrations.length === 0
+                        "
                         :label="`Aksi lainnya untuk ${student.name}`"
                         outlined
                     >
@@ -165,8 +178,8 @@ const crumbs = [
                         :key="doc.type"
                         :label="doc.label"
                         :existing="existing(doc.type)"
-                        :can-upload="can(PERMISSIONS.DokumenUnggah)"
-                        :can-delete="can(PERMISSIONS.DokumenHapus)"
+                        :can-upload="can(PERMISSIONS.DokumenUnggah) && !locked"
+                        :can-delete="can(PERMISSIONS.DokumenHapus) && !locked"
                         :upload-url="
                             route('siswa.dokumen.store', [student.id, doc.type])
                         "
@@ -178,6 +191,30 @@ const crumbs = [
                         "
                     />
                 </div>
+            </section>
+
+            <section class="bg-card flex flex-col gap-4 rounded-lg border p-6">
+                <h2 class="text-base leading-6 font-semibold">Pendaftaran</h2>
+                <ul v-if="registrations.length" class="flex flex-col gap-3">
+                    <li
+                        v-for="r in registrations"
+                        :key="r.id"
+                        class="flex flex-wrap items-center justify-between gap-2 text-sm"
+                    >
+                        <Link
+                            v-if="can(PERMISSIONS.PendaftaranLihat)"
+                            :href="route('pendaftaran.show', r.id)"
+                            class="font-medium hover:underline"
+                        >
+                            {{ r.title }}
+                        </Link>
+                        <span v-else class="font-medium">{{ r.title }}</span>
+                        <StatusBadge :status="r.status" kind="registration" />
+                    </li>
+                </ul>
+                <p v-else class="text-muted-foreground text-sm">
+                    Belum pernah didaftarkan.
+                </p>
             </section>
         </div>
 
