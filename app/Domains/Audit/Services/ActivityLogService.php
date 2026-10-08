@@ -8,7 +8,7 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Spatie\Activitylog\Models\Activity;
 
 /**
- * @phpstan-type ActivityRow array{id: int, created_at: string, causer: ?array{id: int, name: string}, type: string, type_label: string, action: string, subject: array{type: string, label: string}, changes: list<array{field: string, old: mixed, new: mixed}>}
+ * @phpstan-type ActivityRow array{id: int, created_at: string, causer: ?array{id: int, name: string}, action: string, subject: array{type: string, label: string}, changes: list<array{field: string, old: mixed, new: mixed}>}
  */
 class ActivityLogService
 {
@@ -56,8 +56,6 @@ class ActivityLogService
             'id' => $a->id,
             'created_at' => $a->created_at->toIso8601String(),
             'causer' => $a->causer instanceof User ? ['id' => $a->causer->id, 'name' => $a->causer->name] : null,
-            'type' => (string) $a->log_name,
-            'type_label' => $this->label('types', (string) $a->log_name),
             'action' => $this->label('actions', (string) $a->description),
             'subject' => [
                 'type' => $a->subject_type === null ? '—' : $this->label('subjects', class_basename($a->subject_type)),

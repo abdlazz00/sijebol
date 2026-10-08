@@ -94,6 +94,8 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 ## Fase 2 — Notifikasi dan audit log
 
+**Status Fase 2 (2026-10-08): SELESAI** (spec: `specs/2026-10-08-fase-2-notifikasi-log-design.md`, rencana: `plans/2026-10-08-fase-2-notifikasi-log.md`). BE: notifikasi bawaan Laravel (`BaseNotification` queued database+mail, `NotificationService`, endpoint `/notifikasi`, shared prop `notifications` dengan polling `usePoll`), notifikasi bukti pola akun diaktifkan, penampil `/log` di balik `log.lihat` dengan masker properti, `logs:prune` harian, dokumentasi queue di `docs/operasional-queue.md`. FE: `NotificationBell` (popover), halaman Notifikasi, halaman Log Aktivitas, kartu Aktivitas terbaru di detail pengguna, bagian 5.17 panduan UI. Penyimpangan: prop halaman Notifikasi bernama `items` (bentrok dengan shared prop); activitylog v5 menyimpan perubahan di `attribute_changes`; jenis log `default` baru terisi saat modul Fase 3+ ada. Belum dikerjakan: SMTP produksi (keputusan terbuka v1 §11) dan notifikasi pendaftaran/verifikasi/jadwal (Fase 4–5, tinggal subclass `BaseNotification`).
+
 **Tujuan:** infrastruktur notifikasi (in-app dan email) dan penampil log siap dipakai fase berikutnya.
 
 *Prasyarat desain:* tambahkan ke panduan UI bagian halaman Log Aktivitas (sebelum Track FE).

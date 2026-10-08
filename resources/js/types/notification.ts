@@ -18,8 +18,6 @@ export type ActivityRow = {
     id: number;
     created_at: string;
     causer: { id: number; name: string } | null;
-    type: string;
-    type_label: string;
     action: string;
     subject: { type: string; label: string };
     changes: ActivityChange[];

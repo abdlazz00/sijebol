@@ -2,10 +2,10 @@
 import NotificationItem from '@/Components/shared/NotificationItem.vue';
 import { Button } from '@/Components/ui/button';
 import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuTrigger,
-} from '@/Components/ui/dropdown-menu';
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from '@/Components/ui/popover';
 import { useNotificationActions } from '@/composables/useNotificationActions';
 import type { PageProps } from '@/types';
 import { Link, usePage, usePoll } from '@inertiajs/vue3';
@@ -22,8 +22,8 @@ if (summary.value !== null) usePoll(60_000, { only: ['notifications'] });
 </script>
 
 <template>
-    <DropdownMenu>
-        <DropdownMenuTrigger as-child>
+    <Popover>
+        <PopoverTrigger as-child>
             <Button
                 variant="ghost"
                 size="icon"
@@ -42,10 +42,11 @@ if (summary.value !== null) usePoll(60_000, { only: ['notifications'] });
                     >{{ unread > 9 ? '9+' : unread }}</span
                 >
             </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
+        </PopoverTrigger>
+        <PopoverContent
             align="end"
-            class="w-[min(380px,calc(100vw-2rem))] p-0"
+            aria-label="Notifikasi"
+            class="w-[min(380px,calc(100vw-2rem))] gap-0 p-0"
         >
             <div class="flex h-16 items-center justify-between border-b px-4">
                 <p class="text-sm font-semibold">Notifikasi</p>
@@ -98,6 +99,6 @@ if (summary.value !== null) usePoll(60_000, { only: ['notifications'] });
                     Lihat semua
                 </Link>
             </div>
-        </DropdownMenuContent>
-    </DropdownMenu>
+        </PopoverContent>
+    </Popover>
 </template>
