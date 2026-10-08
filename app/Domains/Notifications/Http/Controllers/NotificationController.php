@@ -18,7 +18,7 @@ class NotificationController extends Controller
         $status = $request->query('filter')['status'] ?? null;
 
         return Inertia::render('Notifikasi/Index', [
-            'notifications' => $this->notifications->list($request->user(), $status === 'unread'),
+            'items' => $this->notifications->list($request->user(), $status === 'unread'),
             'filters' => ['status' => $status],
         ]);
     }

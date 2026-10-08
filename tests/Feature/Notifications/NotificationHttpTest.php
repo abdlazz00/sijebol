@@ -33,10 +33,10 @@ test('daftar menampilkan notifikasi sendiri dan filter belum dibaca', function (
     $user->notifications()->first()->markAsRead();
 
     $this->actingAs($user)->get('/notifikasi')
-        ->assertInertia(fn ($p) => $p->component('Notifikasi/Index')->has('notifications.data', 2));
+        ->assertInertia(fn ($p) => $p->component('Notifikasi/Index')->has('items.data', 2));
 
     $this->actingAs($user)->get('/notifikasi?filter[status]=unread')
-        ->assertInertia(fn ($p) => $p->has('notifications.data', 1));
+        ->assertInertia(fn ($p) => $p->has('items.data', 1));
 });
 
 test('tandai satu dan semua dibaca', function () {
@@ -58,6 +58,14 @@ test('notifikasi milik orang lain tidak bisa ditandai (404)', function () {
     $pemilik->notify(new NotifikasiHttpUji);
 
     $this->actingAs($lain)->post('/notifikasi/'.$pemilik->notifications()->first()->id.'/baca')->assertNotFound();
+});
+
+test('prop halaman tidak menimpa shared prop notifications di halaman notifikasi', function () {
+    $user = User::factory()->create();
+    $user->notify(new NotifikasiHttpUji);
+
+    $this->actingAs($user)->get('/notifikasi')
+        ->assertInertia(fn ($p) => $p->where('notifications.unread_count', 1)->has('notifications.latest', 1)->has('items.data', 1));
 });
 
 test('shared prop notifications berisi ringkasan untuk user dan null untuk tamu', function () {

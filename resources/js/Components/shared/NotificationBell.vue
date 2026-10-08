@@ -37,7 +37,7 @@ if (summary.value !== null) usePoll(60_000, { only: ['notifications'] });
                 <Bell class="size-4" aria-hidden="true" />
                 <span
                     v-if="unread > 0"
-                    class="bg-danger absolute top-1.5 right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-semibold text-white"
+                    class="bg-danger absolute top-0.5 right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] leading-none font-semibold text-white"
                     aria-hidden="true"
                     >{{ unread > 9 ? '9+' : unread }}</span
                 >
