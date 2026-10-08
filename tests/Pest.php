@@ -4,6 +4,7 @@ use App\Domains\Access\Models\Role;
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStudent;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use App\Models\User;
@@ -70,4 +71,20 @@ function eligibleStudent(?School $school = null): Student
     }
 
     return $student->load('documents');
+}
+
+/** Jadwal untuk sekolah (default: sekolah baru) pada tanggal tertentu (default: 7 hari lagi). */
+function makeSchedule(?School $school = null, ?string $date = null): Schedule
+{
+    return Schedule::factory()->for($school ?? School::factory()->create())->create(array_filter(['date' => $date]));
+}
+
+/** Entri bersekolah sama dengan jadwal dan sudah terkait ke jadwal itu. */
+function makeScheduledEntry(RegistrationStatus $status = RegistrationStatus::Terjadwal, ?Schedule $schedule = null): RegistrationStudent
+{
+    $schedule ??= makeSchedule();
+    $entry = makeEntry($status, $schedule->school);
+    $entry->update(['schedule_id' => $schedule->id]);
+
+    return $entry;
 }

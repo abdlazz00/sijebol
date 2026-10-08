@@ -30,7 +30,7 @@ enum RegistrationStatus: string
     }
 
     /**
-     * Transisi yang sah dari status ini. Transisi penjadwalan dan rekaman ditambahkan di Fase 5.
+     * Transisi yang sah dari status ini (state machine spec v1 §3.7, ditambah keluarkan dari jadwal).
      *
      * @return list<self>
      */
@@ -40,6 +40,8 @@ enum RegistrationStatus: string
             self::Draf => [self::Diajukan],
             self::Diajukan => [self::Terverifikasi, self::PerluPerbaikan, self::Ditolak],
             self::PerluPerbaikan => [self::Diajukan],
+            self::Terverifikasi => [self::Terjadwal],
+            self::Terjadwal => [self::Terverifikasi, self::SudahRekaman, self::TidakHadir, self::BelumRekaman],
             default => [],
         };
     }

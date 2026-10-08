@@ -3,6 +3,7 @@
 namespace App\Domains\Registrations\Models;
 
 use App\Domains\Registrations\Enums\RegistrationStatus;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Students\Models\Student;
 use App\Models\Concerns\ScopedBySchool;
 use Carbon\Carbon;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property RegistrationStatus $status
  * @property string|null $note
  * @property int|null $decided_by
+ * @property int|null $schedule_id
  * @property Carbon|null $decided_at
  * @property Carbon $updated_at
  */
@@ -30,7 +32,7 @@ class RegistrationStudent extends Model
     /** @use HasFactory<RegistrationStudentFactory> */
     use HasFactory, ScopedBySchool;
 
-    protected $fillable = ['registration_id', 'school_id', 'student_id', 'status', 'note', 'decided_by', 'decided_at'];
+    protected $fillable = ['registration_id', 'school_id', 'student_id', 'status', 'note', 'decided_by', 'decided_at', 'schedule_id'];
 
     protected function casts(): array
     {
@@ -47,6 +49,12 @@ class RegistrationStudent extends Model
     public function student(): BelongsTo
     {
         return $this->belongsTo(Student::class);
+    }
+
+    /** @return BelongsTo<Schedule, $this> */
+    public function schedule(): BelongsTo
+    {
+        return $this->belongsTo(Schedule::class);
     }
 
     /** @return HasMany<RegistrationStatusHistory, $this> */

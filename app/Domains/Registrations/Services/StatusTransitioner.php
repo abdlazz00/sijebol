@@ -13,10 +13,13 @@ class StatusTransitioner
     /**
      * Satu-satunya pintu perubahan status entri: memeriksa peta transisi di bawah kunci baris
      * (dua petugas tidak bisa sama-sama memutuskan status lama) dan menulis riwayat.
+     * `$attributes` ikut diperbarui dalam transaksi yang sama (mis. `schedule_id`).
+     *
+     * @param  array<string, mixed>  $attributes
      */
-    public function move(RegistrationStudent $entry, RegistrationStatus $to, User $actor, ?string $note = null): RegistrationStudent
+    public function move(RegistrationStudent $entry, RegistrationStatus $to, User $actor, ?string $note = null, array $attributes = []): RegistrationStudent
     {
-        return DB::transaction(function () use ($entry, $to, $actor, $note) {
+        return DB::transaction(function () use ($entry, $to, $actor, $note, $attributes) {
             $fresh = RegistrationStudent::query()->lockForUpdate()->findOrFail($entry->id);
             $from = $fresh->status;
 
@@ -28,6 +31,7 @@ class StatusTransitioner
                 'status' => $to,
                 'note' => $note,
                 ...($from === RegistrationStatus::Diajukan ? ['decided_by' => $actor->id, 'decided_at' => now()] : []),
+                ...$attributes,
             ]);
             $fresh->histories()->create([
                 'from_status' => $from,
