@@ -1,0 +1,49 @@
+<?php
+
+namespace App\Domains\Students\Models;
+
+use App\Domains\Schools\Models\School;
+use App\Models\Concerns\ScopedBySchool;
+use Database\Factories\StudentFactory;
+use Illuminate\Database\Eloquent\Attributes\UseFactory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
+
+#[UseFactory(StudentFactory::class)]
+class Student extends Model
+{
+    /** @use HasFactory<StudentFactory> */
+    use HasFactory, LogsActivity, ScopedBySchool;
+
+    protected $fillable = ['school_id', 'nik', 'nisn', 'name', 'birth_date', 'gender'];
+
+    protected function casts(): array
+    {
+        return ['birth_date' => 'date'];
+    }
+
+    /** @return BelongsTo<School, $this> */
+    public function school(): BelongsTo
+    {
+        return $this->belongsTo(School::class);
+    }
+
+    /** @return HasMany<StudentDocument, $this> */
+    public function documents(): HasMany
+    {
+        return $this->hasMany(StudentDocument::class);
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('siswa')
+            ->logOnly(['nik', 'nisn', 'name', 'birth_date', 'gender', 'school_id'])
+            ->logOnlyDirty()
+            ->dontLogEmptyChanges();
+    }
+}
