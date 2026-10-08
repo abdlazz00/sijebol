@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import Breadcrumbs, { type Crumb } from '@/Components/shared/Breadcrumbs.vue';
+import NotificationBell from '@/Components/shared/NotificationBell.vue';
 import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 import { Button } from '@/Components/ui/button';
 import {
@@ -12,7 +13,6 @@ import { humanize, initials } from '@/lib/format';
 import type { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import {
-    Bell,
     ChevronDown,
     LogOut,
     Menu,
@@ -55,42 +55,7 @@ const user = computed(() => page.props.auth.user);
         </div>
 
         <div class="flex items-center gap-2 md:gap-4">
-            <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                    <Button
-                        variant="ghost"
-                        size="icon"
-                        class="text-muted-foreground size-10"
-                        aria-label="Notifikasi"
-                    >
-                        <Bell class="size-4" />
-                    </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent
-                    align="end"
-                    class="w-[min(380px,calc(100vw-2rem))] p-0"
-                >
-                    <div class="flex h-16 items-center border-b px-4">
-                        <p class="text-sm font-semibold">Notifikasi</p>
-                    </div>
-                    <div
-                        class="flex flex-col items-center gap-2 px-6 py-8 text-center"
-                    >
-                        <span
-                            class="bg-secondary flex size-10 items-center justify-center rounded-full"
-                        >
-                            <Bell
-                                class="text-muted-foreground size-5"
-                                aria-hidden="true"
-                            />
-                        </span>
-                        <p class="text-sm font-medium">Belum ada notifikasi</p>
-                        <p class="text-muted-foreground text-xs">
-                            Pemberitahuan sistem akan muncul di sini.
-                        </p>
-                    </div>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <NotificationBell />
 
             <DropdownMenu v-if="user">
                 <DropdownMenuTrigger as-child>

@@ -1,4 +1,11 @@
-import { Circle, Home, School, ShieldCheck, Users } from '@lucide/vue';
+import {
+    Circle,
+    Home,
+    School,
+    ScrollText,
+    ShieldCheck,
+    Users,
+} from '@lucide/vue';
 import type { Component } from 'vue';
 
 const icons: Record<string, Component> = {
@@ -6,6 +13,7 @@ const icons: Record<string, Component> = {
     users: Users,
     'shield-check': ShieldCheck,
     school: School,
+    'scroll-text': ScrollText,
 };
 
 /** Kunci ikon datang dari server (`MenuService`); kunci tak dikenal tidak boleh merusak sidebar. */

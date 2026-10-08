@@ -174,6 +174,14 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 ### 5.16 Halaman error
 - 403 ("Anda tidak memiliki akses ke halaman ini"), 404 ("Halaman tidak ditemukan"), 500 ("Terjadi kesalahan"). Dalam layout shell (jika sudah login) atau pola auth (jika belum): ikon besar sederhana, judul, satu kalimat, tombol "Kembali ke beranda".
 
+### 5.17 Log Aktivitas `/log` (`log.lihat`)
+- Judul "Log Aktivitas", deskripsi "Rekam jejak aktivitas di SIJEBOL." Menu berada di grup **Sistem**, hanya untuk pemilik `log.lihat`.
+- Filter (pola 5.7): **Pengguna** (semua pengguna yang pernah melakukan aktivitas), **Jenis** (Akses / Data), **Dari tanggal** dan **Sampai tanggal** (input tanggal bawaan). Setiap perubahan langsung menerapkan filter; tombol "Reset filter" muncul bila ada filter aktif.
+- Tabel: **Waktu** (kurang dari 24 jam memakai waktu relatif, selebihnya tanggal dan jam "6 Okt 2026 · 08.00"; waktu lengkap sebagai tooltip), **Pengguna** ("Sistem" bila tanpa pelaku), **Aksi** (label bahasa Indonesia), **Subjek** (jenis dan nama; "#id" bila sudah dihapus), **Ringkasan** (hingga dua perubahan "kolom: lama → baru", dipotong), tombol teks **Detail**.
+- **Dialog Detail:** judul = aksi; deskripsi = pelaku dan waktu lengkap; subjek; tabel Kolom / Sebelum / Sesudah (nilai kosong "—"; password dan token tidak pernah tampil, NIK dimasker); tombol Tutup. Tanpa perubahan data: "Tidak ada perubahan data."
+- State: loading (skeleton baris), kosong ("Belum ada aktivitas"), hasil filter kosong ("Tidak ada hasil" + Reset filter). Mobile: tabel geser horizontal dengan petunjuk "↔ Geser tabel untuk melihat kolom lainnya".
+- Log hanya baca: tidak ada tombol ubah atau hapus.
+
 ## 6. Pola lintas halaman
 
 - **Umpan balik:** sukses = toast hijau; gagal form = banner dan pesan per field; aksi merusak = dialog konfirmasi menyebut nama objek.

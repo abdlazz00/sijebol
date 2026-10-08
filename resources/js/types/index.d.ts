@@ -1,4 +1,5 @@
 import type { MenuGroup } from './access';
+import type { NotificationSummary } from './notification';
 
 export interface User {
     id: number;
@@ -20,4 +21,5 @@ export type PageProps<
         error?: string | null;
     };
     menu: MenuGroup[];
+    notifications: NotificationSummary | null;
 };

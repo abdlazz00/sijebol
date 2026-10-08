@@ -20,10 +20,3 @@ export interface ScheduleItem {
     location: string;
     participants: number;
 }
-
-export interface NotificationItem {
-    title: string;
-    description: string;
-    at: string;
-    read?: boolean;
-}

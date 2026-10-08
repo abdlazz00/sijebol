@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { formatDate, formatDateWithDay, relativeTime } from './date';
+import {
+    formatDate,
+    formatDateTime,
+    formatDateWithDay,
+    formatTime,
+    relativeTime,
+} from './date';
 
 describe('date', () => {
     it('memformat tanggal Indonesia', () => {
@@ -9,6 +15,15 @@ describe('date', () => {
     it('memformat tanggal dengan nama hari', () => {
         expect(formatDateWithDay('2026-10-07')).toBe('Rabu, 7 Okt 2026');
         expect(formatDateWithDay(null)).toBe('—');
+    });
+
+    it('memformat waktu dengan titik (zona Asia/Jakarta)', () => {
+        expect(formatTime('2026-10-07T07:30:00Z')).toBe('14.30');
+        expect(formatDateTime('2026-10-07T07:30:00Z')).toBe(
+            '7 Okt 2026 · 14.30',
+        );
+        expect(formatTime(null)).toBe('—');
+        expect(formatDateTime('bukan-tanggal')).toBe('—');
     });
 
     it('nilai kosong atau tidak valid menjadi tanda strip', () => {

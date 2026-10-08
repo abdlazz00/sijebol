@@ -16,6 +16,12 @@ const dayFmt = new Intl.DateTimeFormat('id-ID', {
     year: 'numeric',
     timeZone: TZ,
 });
+const timeFmt = new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+    timeZone: TZ,
+});
 const rtf = new Intl.RelativeTimeFormat('id-ID', { numeric: 'always' });
 
 function toDate(value: DateInput): Date | null {
@@ -27,6 +33,17 @@ function toDate(value: DateInput): Date | null {
 export function formatDate(value: DateInput): string {
     const d = toDate(value);
     return d ? dateFmt.format(d) : EMPTY;
+}
+
+export function formatTime(value: DateInput): string {
+    const d = toDate(value);
+    return d ? timeFmt.format(d) : EMPTY;
+}
+
+/** "7 Okt 2026 · 14.30". */
+export function formatDateTime(value: DateInput): string {
+    const d = toDate(value);
+    return d ? `${dateFmt.format(d)} · ${timeFmt.format(d)}` : EMPTY;
 }
 
 /** "Rabu, 7 Okt 2026". */

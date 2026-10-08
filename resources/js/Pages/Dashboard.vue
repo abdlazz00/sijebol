@@ -5,12 +5,7 @@ import StatCard from '@/Components/shared/StatCard.vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { formatDate, formatDateWithDay } from '@/lib/date';
 import { humanize } from '@/lib/format';
-import type {
-    ActionItem,
-    NotificationItem,
-    ScheduleItem,
-    SummaryCard,
-} from '@/types/dashboard';
+import type { ActionItem, ScheduleItem, SummaryCard } from '@/types/dashboard';
 import type { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
 import {
@@ -27,17 +22,20 @@ withDefaults(
         summary?: SummaryCard[];
         actions?: ActionItem[];
         schedules?: ScheduleItem[];
-        notifications?: NotificationItem[];
     }>(),
     {
         summary: () => [],
         actions: () => [],
         schedules: () => [],
-        notifications: () => [],
     },
 );
 
-const user = computed(() => usePage<PageProps>().props.auth.user);
+const page = usePage<PageProps>();
+const user = computed(() => page.props.auth.user);
+// Notifikasi nyata dari shared prop (lonceng memakai sumber yang sama).
+const notifications = computed(
+    () => page.props.notifications?.latest.slice(0, 5) ?? [],
+);
 const firstName = computed(() => user.value?.name.split(' ')[0] ?? '');
 const today = formatDateWithDay(new Date());
 
@@ -174,14 +172,14 @@ function dateParts(value: string): [string, string] {
                 />
                 <template v-else>
                     <p
-                        v-if="notifications.every((n) => n.read !== false)"
+                        v-if="notifications.every((n) => n.read_at !== null)"
                         class="text-muted-foreground px-4 pb-3 text-xs leading-4"
                     >
                         Semua telah dibaca
                     </p>
                     <div
-                        v-for="(note, index) in notifications"
-                        :key="index"
+                        v-for="note in notifications"
+                        :key="note.id"
                         class="flex items-start gap-3 border-t px-4 py-3"
                     >
                         <span
@@ -195,13 +193,13 @@ function dateParts(value: string): [string, string] {
                             >
                                 <p class="font-medium">{{ note.title }}</p>
                                 <p class="text-muted-foreground">
-                                    {{ note.description }}
+                                    {{ note.body }}
                                 </p>
                             </div>
                             <p
                                 class="text-muted-foreground text-xs leading-4 whitespace-nowrap"
                             >
-                                {{ formatDate(note.at) }}
+                                {{ formatDate(note.created_at) }}
                             </p>
                         </div>
                     </div>
