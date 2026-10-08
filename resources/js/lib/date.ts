@@ -73,3 +73,15 @@ export function relativeTime(value: DateInput, now: Date = new Date()): string {
     }
     return 'baru saja';
 }
+
+const DAY_MS = 86_400_000;
+
+/** Kurang dari 24 jam: "2 jam lalu"; lebih lama: "6 Okt 2026 · 08.00". */
+export function formatWhen(value: DateInput, now: Date = new Date()): string {
+    const d = toDate(value);
+    if (!d) return EMPTY;
+
+    return Math.abs(now.getTime() - d.getTime()) < DAY_MS
+        ? relativeTime(d, now)
+        : formatDateTime(d);
+}

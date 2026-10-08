@@ -59,7 +59,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
                     class="hover:bg-secondary absolute top-4 right-4 rounded-md p-0.5 transition-colors"
                 >
                     <XIcon class="h-4 w-4" />
-                    <span class="sr-only">Close</span>
+                    <span class="sr-only">Tutup</span>
                 </DialogClose>
             </DialogContent>
         </DialogOverlay>

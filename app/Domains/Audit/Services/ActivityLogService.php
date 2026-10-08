@@ -44,8 +44,9 @@ class ActivityLogService
     /** @return ActivityRow */
     private function row(Activity $a): array
     {
-        $new = ActivityPropertyMasker::apply((array) ($a->properties['attributes'] ?? []));
-        $old = ActivityPropertyMasker::apply((array) ($a->properties['old'] ?? []));
+        // activitylog v5 menyimpan perubahan model di kolom attribute_changes, bukan properties.
+        $new = ActivityPropertyMasker::apply((array) ($a->attribute_changes['attributes'] ?? []));
+        $old = ActivityPropertyMasker::apply((array) ($a->attribute_changes['old'] ?? []));
         $changes = [];
         foreach ($new as $field => $value) {
             $changes[] = ['field' => (string) $field, 'old' => $old[$field] ?? null, 'new' => $value];

@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Schools\Models\School;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -38,9 +39,22 @@ test('baris dengan pelaku sistem dan subjek terhapus tetap tampil, dengan label 
         ->where('activities.data.0.subject.type', 'Pengguna'));
 });
 
-test('perubahan memuat sebelum/sesudah dan properti sensitif tidak bocor', function () {
+test('perubahan model nyata tampil dengan sebelum dan sesudah', function () {
     $viewer = makeUserWith(['log.lihat'], roleName: 'pengamat');
-    activity('default')->causedBy($viewer)->withProperties([
+    $this->actingAs($viewer);
+    $school = School::factory()->create(['name' => 'Awal']);
+    $school->update(['name' => 'Akhir']);
+
+    $this->get('/log')->assertInertia(fn ($p) => $p
+        ->where('activities.data.0.action', 'Diubah')
+        ->where('activities.data.0.subject.label', 'Akhir')
+        ->where('activities.data.0.changes', fn ($changes) => collect($changes)
+            ->contains(['field' => 'name', 'old' => 'Awal', 'new' => 'Akhir'])));
+});
+
+test('properti sensitif tidak bocor dan NIK dimasker di respons', function () {
+    $viewer = makeUserWith(['log.lihat'], roleName: 'pengamat');
+    activity('default')->causedBy($viewer)->withChanges([
         'attributes' => ['name' => 'Baru', 'password' => 'rahasia', 'nik' => '3201123412341234'],
         'old' => ['name' => 'Lama', 'password' => 'lama'],
     ])->log('updated');
@@ -50,9 +64,6 @@ test('perubahan memuat sebelum/sesudah dan properti sensitif tidak bocor', funct
     expect($json)->not->toContain('rahasia')
         ->and($json)->not->toContain('3201123412341234')
         ->and($json)->toContain('3201********1234');
-    // Urutan kunci JSON di MySQL tidak terjamin, jadi cukup pastikan perubahan ada.
-    $this->get('/log')->assertInertia(fn ($p) => $p->where('activities.data.0.changes', fn ($changes) => collect($changes)
-        ->contains(['field' => 'name', 'old' => 'Lama', 'new' => 'Baru'])));
 });
 
 test('tidak ada route tulis untuk log', function () {

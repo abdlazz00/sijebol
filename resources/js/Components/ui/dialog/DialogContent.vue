@@ -62,7 +62,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits);
                     size="icon-sm"
                 >
                     <XIcon />
-                    <span class="sr-only">Close</span>
+                    <span class="sr-only">Tutup</span>
                 </Button>
             </DialogClose>
         </DialogContent>

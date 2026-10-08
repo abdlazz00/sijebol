@@ -4,6 +4,7 @@ import {
     formatDateTime,
     formatDateWithDay,
     formatTime,
+    formatWhen,
     relativeTime,
 } from './date';
 
@@ -43,5 +44,14 @@ describe('date', () => {
         expect(relativeTime('2026-10-07T07:28:00Z', now)).toMatch(/2 menit/);
         expect(relativeTime('2026-10-07T07:29:58Z', now)).toBe('baru saja');
         expect(relativeTime(null, now)).toBe('—');
+    });
+
+    it('formatWhen: relatif bila kurang dari 24 jam, selebihnya tanggal dan jam', () => {
+        const now = new Date('2026-10-07T07:30:00Z');
+        expect(formatWhen('2026-10-07T05:30:00Z', now)).toBe('2 jam lalu');
+        expect(formatWhen('2026-10-05T01:00:00Z', now)).toBe(
+            '5 Okt 2026 · 08.00',
+        );
+        expect(formatWhen(null, now)).toBe('—');
     });
 });
