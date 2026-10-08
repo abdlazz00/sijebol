@@ -14,7 +14,7 @@ test('menu disaring menurut izin dan grup kosong dibuang', function () {
     $menuAdmin = app(MenuService::class)->forUser($admin);
 
     expect(collect($menuOperator)->pluck('group')->all())->toBe(['Utama', 'Data Siswa'])
-        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Data Siswa', 'Sistem'])
+        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Data Siswa', 'Verifikasi', 'Sistem'])
         ->and(collect($menuAdmin)->firstWhere('group', 'Manajemen Akses')['items'][0])
         ->toBe(['label' => 'Pengguna', 'href' => '/pengguna', 'icon' => 'users']);
 });
@@ -26,4 +26,14 @@ test('tamu tidak menerima menu dan menu dibagikan sebagai shared prop', function
     $this->actingAs($user)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
         ->where('menu.1.group', 'Master Data')
         ->where('menu.1.items.0.href', '/sekolah'));
+});
+
+test('menu Pendaftaran dan Antrean verifikasi mengikuti izin', function () {
+    $this->seed(AccessSeeder::class);
+    $operator = app(MenuService::class)->forUser(User::factory()->create()->assignRole('operator-sekolah'));
+    $admin = app(MenuService::class)->forUser(User::factory()->create()->assignRole('admin-kecamatan'));
+
+    expect(collect($operator)->firstWhere('group', 'Data Siswa')['items'])->toContain(['label' => 'Pendaftaran', 'href' => '/pendaftaran', 'icon' => 'clipboard-list'])
+        ->and(collect($operator)->pluck('group')->all())->not->toContain('Verifikasi')
+        ->and(collect($admin)->firstWhere('group', 'Verifikasi')['items'][0])->toBe(['label' => 'Antrean verifikasi', 'href' => '/verifikasi', 'icon' => 'badge-check']);
 });

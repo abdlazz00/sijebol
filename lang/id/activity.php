@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'default' => 'Data'],
-    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa'],
+    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'pendaftaran' => 'Pendaftaran', 'default' => 'Data'],
+    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa', 'Registration' => 'Pendaftaran'],
     'actions' => [
         'login' => 'Login',
         'logout' => 'Logout',
@@ -20,5 +20,8 @@ return [
         'dokumen.dihapus' => 'Dokumen dihapus',
         'dokumen.diunduh' => 'Dokumen diunduh',
         'siswa.diimpor' => 'Siswa diimpor',
+        'pendaftaran.diajukan' => 'Pendaftaran diajukan',
+        'pendaftaran.diajukan-ulang' => 'Siswa diajukan ulang',
+        'pendaftaran.diputuskan' => 'Siswa diputuskan',
     ],
 ];

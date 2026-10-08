@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -140,7 +141,7 @@ test('filter eligible tidak menampilkan siswa dengan entri aktif', function () {
     $sekolah = School::factory()->create();
     $bebas = eligibleStudent($sekolah);
     $sibuk = eligibleStudent($sekolah);
-    makeEntry(\App\Domains\Registrations\Enums\RegistrationStatus::Diajukan, student: $sibuk);
+    makeEntry(RegistrationStatus::Diajukan, student: $sibuk);
     $user = makeUserWith(['siswa.lihat'], $sekolah, true, 'op-filter');
 
     $this->actingAs($user)->get('/siswa?filter[eligible]=1')->assertInertia(fn (Assert $p) => $p

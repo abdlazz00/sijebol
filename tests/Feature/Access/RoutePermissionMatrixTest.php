@@ -41,6 +41,18 @@ dataset('rute', [
     ['POST', '/siswa/{student}/dokumen/kk', 'dokumen.unggah'],
     ['GET', '/siswa/{student}/dokumen/kk', 'dokumen.lihat'],
     ['DELETE', '/siswa/{student}/dokumen/kk', 'dokumen.hapus'],
+    ['GET', '/pendaftaran', 'pendaftaran.lihat'],
+    ['GET', '/pendaftaran/buat', 'pendaftaran.buat'],
+    ['POST', '/pendaftaran', 'pendaftaran.buat'],
+    ['GET', '/pendaftaran/{registration}', 'pendaftaran.lihat'],
+    ['GET', '/pendaftaran/{registration}/ubah', 'pendaftaran.buat'],
+    ['PUT', '/pendaftaran/{registration}', 'pendaftaran.buat'],
+    ['DELETE', '/pendaftaran/{registration}', 'pendaftaran.buat'],
+    ['POST', '/pendaftaran/{registration}/ajukan', 'pendaftaran.ajukan'],
+    ['POST', '/pendaftaran/{registration}/entri/{entry}/ajukan-ulang', 'pendaftaran.ajukan'],
+    ['GET', '/verifikasi', 'verifikasi.lihat'],
+    ['GET', '/verifikasi/{entry}', 'verifikasi.lihat'],
+    ['POST', '/verifikasi/{entry}/putuskan', 'verifikasi.putuskan'],
 ]);
 
 function resolveUri(string $uri): string
@@ -50,8 +62,13 @@ function resolveUri(string $uri): string
     $role = Role::create(['name' => 'sasaran-'.uniqid()]);
 
     $student = Student::factory()->create();
+    $entry = makeEntry();
 
-    return str_replace(['{user}', '{school}', '{role}', '{student}'], [$target->id, $school->id, $role->id, $student->id], $uri);
+    return str_replace(
+        ['{user}', '{school}', '{role}', '{student}', '{registration}', '{entry}'],
+        [$target->id, $school->id, $role->id, $student->id, $entry->registration_id, $entry->id],
+        $uri,
+    );
 }
 
 it('menolak tanpa izin dan tidak menolak dengan izin', function (string $method, string $uri, string $permission) {

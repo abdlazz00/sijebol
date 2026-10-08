@@ -75,6 +75,17 @@ class StudentDocumentService
         return Storage::disk(self::DISK)->download($document->path, $this->fileName($student, $document));
     }
 
+    /** @return list<array{type: string, name: string, size: int, url: string}> */
+    public function rows(Student $student): array
+    {
+        return $student->documents->map(fn (StudentDocument $d) => [
+            'type' => $d->type,
+            'name' => $this->fileName($student, $d),
+            'size' => $d->size,
+            'url' => route('siswa.dokumen.download', [$student, $d->type]),
+        ])->values()->all();
+    }
+
     public function fileName(Student $student, StudentDocument $document): string
     {
         return "{$document->type}-{$student->nisn}.".pathinfo($document->path, PATHINFO_EXTENSION);
