@@ -4,6 +4,7 @@ namespace App\Domains\Access\Services;
 
 use App\Domains\Access\Exceptions\InvalidActivationException;
 use App\Domains\Access\Models\AccountActivation;
+use App\Domains\Notifications\Notifications\AccountActivatedNotification;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -44,7 +45,7 @@ class ActivationService
     /** @throws InvalidActivationException */
     public function complete(string $token, string $password): User
     {
-        return DB::transaction(function () use ($token, $password) {
+        $user = DB::transaction(function () use ($token, $password) {
             $activation = AccountActivation::query()
                 ->where('token_hash', hash('sha256', $token))
                 ->pending()
@@ -64,5 +65,13 @@ class ActivationService
 
             return $user;
         });
+
+        // Dikirim setelah transaksi selesai (tidak ikut rollback); notifikasi antre sehingga respons tidak melambat.
+        $creator = $user->creator;
+        if ($creator !== null && $creator->is_active) {
+            $creator->notify(new AccountActivatedNotification($user));
+        }
+
+        return $user;
     }
 }
