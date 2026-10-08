@@ -103,8 +103,8 @@ Props: `label`, `accept`, `maxBytes`, `existing` (`{name, size, downloadUrl}` at
 ### 4.5 Dialog impor Excel
 Tombol "Impor Excel" membuka dialog: langkah 1 "Unduh template" (tautan), langkah 2 pilih berkas .xlsx (maks 2 MB), tombol "Impor". Hasil: ringkasan "N siswa berhasil ditambahkan, M baris gagal" dan bila ada yang gagal tabel Baris / Alasan (maks tinggi dengan scroll) serta tombol "Tutup". Staf kecamatan memilih sekolah di dialog sebelum mengimpor.
 
-### 4.6 Utilitas
-`calculateAge(birthDate, on?)` dan `maskNik(nik)` dikembalikan di `lib/date.ts` dan `lib/format.ts` dengan tes (umur tepat di hari ulang tahun; NIK 16 digit → `3201********1234`; NIK pendek termasking penuh).
+### 4.6 Umur dan NIK
+Umur (`age`) dan NIK termasking dikirim dari server pada daftar dan detail, sehingga util FE `calculateAge`/`maskNik` tidak dibuat (hasil review ponytail atas rencana). Form ubah menampilkan NIK penuh. Sekolah siswa hanya ditentukan saat tambah (tidak ada pemindahan sekolah lewat ubah).
 
 **Exit criteria FE:** panduan UI 5.18–5.20 terimplementasi; alur tambah → unggah dokumen → eligible berjalan; impor sebagian gagal tampil benar; desktop dan mobile tanpa overflow; review `impeccable` dan `ponytail` selesai.
 
