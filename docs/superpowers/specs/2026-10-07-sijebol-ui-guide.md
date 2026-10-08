@@ -116,7 +116,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - Blok tampil sesuai permission, urutan tetap; blok tanpa izin tidak menyisakan ruang kosong:
   1. **Kartu ringkasan** (3–4 kartu angka dalam satu baris; 2 kolom di mobile).
   2. **Perlu tindakan**: kartu daftar pendek, tiap baris berupa tautan (contoh: "12 siswa menunggu verifikasi").
-  3. **Jadwal terdekat**: kartu dengan tanggal besar di kiri, lalu sekolah dan lokasi.
+  3. **Jadwal terdekat**: kartu dengan tanggal besar di kiri, lalu sekolah dan lokasi; berisi maksimal 3 jadwal hari ini atau setelahnya, dibatasi sekolah pengguna (data nyata sejak Fase 5; hanya untuk pemegang `jadwal.lihat`).
   4. **Notifikasi terbaru**: 5 item dengan tautan "Lihat semua".
 - Empty state per blok (satu kalimat). Modul pemicu blok belum dirancang; gambar dengan data contoh dan beri catatan permission pemicu di anotasi.
 
@@ -210,6 +210,17 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 ### 5.24 Verifikasi: antrean dan keputusan `/verifikasi` (`verifikasi.lihat`)
 - **Antrean:** filter cari nama/NISN dan Sekolah (staf). Tabel **Siswa** (nama, NISN), **Sekolah**, **Pendaftaran**, **Diajukan** (waktu relatif), **Aksi** (tombol "Periksa"). State: loading, kosong ("Tidak ada antrean verifikasi"), hasil filter kosong.
 - **Keputusan** (`/verifikasi/{id}`): kartu **Data siswa** (NIK dimasker, tanggal lahir dan umur, jenis kelamin, sekolah, pendaftaran), kartu **Dokumen** (tautan unduh KK dan akta), banner eligibility bila belum memenuhi syarat, kartu **Riwayat**, dan kartu **Keputusan** (hanya `verifikasi.putuskan` dan status Diajukan): pilihan radio berteks **Setujui / Minta perbaikan / Tolak** dengan keterangan singkat, kolom Catatan (wajib untuk dua yang terakhir), tombol **Simpan keputusan** (Tolak meminta konfirmasi). Setelah simpan kembali ke antrean dengan toast. Entri yang sudah diputuskan menampilkan keputusan terakhir tanpa formulir.
+
+### 5.25 Jadwal: daftar dan form `/jadwal` (`jadwal.lihat`)
+- **Daftar:** judul "Jadwal", deskripsi "Jadwal perekaman per sekolah." Tombol **+ Buat jadwal** (`jadwal.buat`). Filter (pola 5.7): cari lokasi, Periode (Semua / Akan datang / Sudah lewat), Sekolah (hanya staf). Tabel: **Jadwal** (tanggal dengan hari, lokasi), **Sekolah** (hanya staf), **Peserta** (jumlah), **Ringkasan status** (teks, mis. "Terjadwal 12 · Sudah rekaman 3"), **Aksi** (Lihat; Ubah bila `jadwal.ubah`; Penandaan rekaman bila `rekaman.lihat`). Jadwal lewat diberi teks "Sudah lewat". State: loading, kosong ("Belum ada jadwal"), hasil filter kosong, petunjuk geser di mobile.
+- **Form** (`/jadwal/buat`, `/jadwal/{id}/ubah`, pola 5.8): Sekolah (hanya staf saat buat), Tanggal (input tanggal), Lokasi. Pada ubah dengan peserta tampil catatan "Operator sekolah akan diberi tahu bila tanggal atau lokasi berubah." Bar aksi bawah: Batal dan Simpan.
+
+### 5.26 Jadwal: detail dan penempatan siswa `/jadwal/{id}`
+- Header: lokasi, tanggal dengan hari, sekolah, dibuat oleh; tombol **Ubah** (`jadwal.ubah`) dan **Penandaan rekaman** (`rekaman.lihat`). Tabel **Peserta**: Siswa (nama, NISN), Status (badge berteks), Aksi **Keluarkan** untuk status Terjadwal bila `jadwal.ubah` (konfirmasi "Siswa kembali menjadi Terverifikasi dan dapat dijadwalkan ulang."), dengan petunjuk geser di mobile.
+- Tombol **Tambah siswa** (`jadwal.ubah`, jadwal belum lewat) membuka dialog: daftar siswa Terverifikasi sekolah itu yang belum dijadwalkan (cari, kotak centang, "Pilih semua", penghitung `role="status"`), tombol Batal dan **Jadwalkan N siswa** (dialog ini sekaligus konfirmasi; operator sekolah diberi tahu). Galat penempatan tampil di dalam dialog. Operator sekolah melihat detail tanpa tombol ubah, tambah, atau keluarkan.
+
+### 5.27 Penandaan rekaman `/jadwal/{id}/rekaman` (`rekaman.lihat`)
+- Header jadwal. Sebelum hari kegiatan tampil banner "Penandaan dibuka pada {tanggal}." dan kontrol dinonaktifkan. Daftar peserta Terjadwal memakai ceklis massal (5.26), lalu pilihan status radio berteks **Sudah rekaman / Tidak hadir / Belum rekaman** dengan keterangan singkat, kolom Catatan opsional, dan tombol **Simpan penandaan** (konfirmasi menyebut jumlah dan status; hanya `rekaman.tandai`). Bagian **Sudah ditandai** menampilkan status akhir (hanya baca). Status akhir tidak dapat diubah.
 
 ## 6. Pola lintas halaman
 

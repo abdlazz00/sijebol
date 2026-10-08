@@ -1,5 +1,6 @@
 import {
     BadgeCheck,
+    CalendarDays,
     Circle,
     ClipboardList,
     GraduationCap,
@@ -20,6 +21,7 @@ const icons: Record<string, Component> = {
     'graduation-cap': GraduationCap,
     'clipboard-list': ClipboardList,
     'badge-check': BadgeCheck,
+    'calendar-days': CalendarDays,
 };
 
 /** Kunci ikon datang dari server (`MenuService`); kunci tak dikenal tidak boleh merusak sidebar. */

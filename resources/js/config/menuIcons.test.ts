@@ -1,5 +1,6 @@
 import {
     BadgeCheck,
+    CalendarDays,
     Circle,
     ClipboardList,
     GraduationCap,
@@ -18,6 +19,7 @@ describe('menuIcon', () => {
         expect(menuIcon('graduation-cap')).toBe(GraduationCap);
         expect(menuIcon('clipboard-list')).toBe(ClipboardList);
         expect(menuIcon('badge-check')).toBe(BadgeCheck);
+        expect(menuIcon('calendar-days')).toBe(CalendarDays);
     });
 
     it('kunci tak dikenal jatuh ke ikon default', () => {
