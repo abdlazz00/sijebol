@@ -26,5 +26,5 @@ interface NotificationRepositoryInterface
     public function markAllRead(User $user): void;
 
     /** @return Collection<int, User> */
-    public function recipientsWithPermission(string $permission, ?int $schoolId): Collection;
+    public function recipientsWithPermission(string $permission, ?int $schoolId, bool $schoolOnly = false): Collection;
 }

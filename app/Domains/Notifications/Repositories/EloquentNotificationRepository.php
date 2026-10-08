@@ -44,16 +44,17 @@ class EloquentNotificationRepository implements NotificationRepositoryInterface
         $user->unreadNotifications()->update(['read_at' => now()]);
     }
 
-    public function recipientsWithPermission(string $permission, ?int $schoolId): Collection
+    public function recipientsWithPermission(string $permission, ?int $schoolId, bool $schoolOnly = false): Collection
     {
         // Tanpa global scope: pengirim operator sekolah tidak boleh membatasi daftar penerima.
         return User::query()->withoutGlobalScopes()
             ->where('is_active', true)
             ->where(fn (Builder $q) => $q->permission($permission)
                 ->orWhereHas('roles', fn (Builder $r) => $r->where('name', Role::SUPER_ADMIN)))
-            ->when($schoolId !== null, fn (Builder $q) => $q->where(
-                fn (Builder $w) => $w->whereNull('school_id')->orWhere('school_id', $schoolId)
-            ))
+            ->when($schoolId !== null, fn (Builder $q) => $schoolOnly
+                // Hanya pengguna yang terikat ke sekolah itu (staf kecamatan dan super-admin tidak ikut).
+                ? $q->where('school_id', $schoolId)
+                : $q->where(fn (Builder $w) => $w->whereNull('school_id')->orWhere('school_id', $schoolId)))
             ->get();
     }
 }

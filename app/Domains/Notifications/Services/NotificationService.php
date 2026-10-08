@@ -22,6 +22,15 @@ class NotificationService
         return $recipients->count();
     }
 
+    /** Mengirim hanya ke pengguna terikat sekolah tersebut yang memegang permission; mengembalikan jumlah penerima. */
+    public function toSchool(string $permission, BaseNotification $notification, int $schoolId): int
+    {
+        $recipients = $this->notifications->recipientsWithPermission($permission, $schoolId, schoolOnly: true);
+        Notification::send($recipients, $notification);
+
+        return $recipients->count();
+    }
+
     /** @return LengthAwarePaginator<int, array{id: string, title: string, body: string, url: string, read_at: ?string, created_at: string}> */
     public function list(User $user, bool $unreadOnly): LengthAwarePaginator
     {
