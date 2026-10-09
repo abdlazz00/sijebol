@@ -7,6 +7,7 @@ import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
+import type { Paginator } from '@/types/access';
 import type { CandidateRow } from '@/types/registration';
 import { Link, router, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from '@lucide/vue';
@@ -18,7 +19,8 @@ const props = defineProps<{
         title: string;
         expected_count: number | null;
     } | null;
-    candidates: CandidateRow[];
+    candidates: Paginator<CandidateRow>;
+    selected: CandidateRow[];
     schools: { id: number; name: string }[] | null;
     school_id: number | null;
 }>();
@@ -32,11 +34,20 @@ const form = useForm({
     title: props.registration?.title ?? '',
     expected_count: (props.registration?.expected_count ?? '') as number | '',
     school_id: (props.school_id ?? '') as number | '',
-    student_ids: props.candidates.filter((c) => c.selected).map((c) => c.id),
+    student_ids: props.selected.map((c) => c.id),
 });
 
 const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
+);
+
+const reloadUrl = computed(() =>
+    props.registration
+        ? route('pendaftaran.edit', props.registration.id)
+        : route('pendaftaran.create'),
+);
+const reloadQuery = computed(() =>
+    props.schools && form.school_id !== '' ? { school_id: form.school_id } : {},
 );
 
 // Staf memilih sekolah: muat ulang hanya daftar kandidat, pilihan lama dikosongkan.
@@ -205,6 +216,9 @@ const crumbs = computed(() => [
                     v-else
                     v-model="form.student_ids"
                     :candidates="candidates"
+                    :selected-rows="selected"
+                    :reload-url="reloadUrl"
+                    :reload-query="reloadQuery"
                     :errors="rowErrors"
                 />
             </div>
