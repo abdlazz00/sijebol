@@ -140,3 +140,15 @@ test('tepat 500 baris diterima', function () {
     $this->actingAs($this->op)->post('/siswa/impor', ['file' => xlsx($baris)])
         ->assertSessionHas('import_result', fn ($r) => $r['imported'] === 500 && $r['failed'] === []);
 });
+
+test('berkas bernama xlsx tetapi isinya bukan xlsx ditolak', function () {
+    $this->actingAs($this->op);
+    // Berkas sungguhan: UploadedFile::fake() menebak MIME dari nama sehingga tidak bisa menguji penyamaran.
+    $path = tempnam(sys_get_temp_dir(), 'imp');
+    file_put_contents($path, "nik,nisn,nama\n1,2,Budi\n");
+    $palsu = new UploadedFile($path, 'siswa.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
+
+    $this->post('/siswa/impor', ['file' => $palsu])->assertSessionHasErrors('file');
+
+    expect(Student::count())->toBe(0);
+});

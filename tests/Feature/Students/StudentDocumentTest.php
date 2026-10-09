@@ -107,3 +107,41 @@ test('detail siswa menyertakan dokumen hanya bagi pemilik dokumen.lihat', functi
     $this->actingAs(makeUserWith(['siswa.lihat'], $this->school, true, 'tanpa-dok2'))
         ->get("/siswa/{$this->student->id}")->assertInertia(fn ($p) => $p->has('documents', 0));
 });
+
+/** Berkas sungguhan di disk: MIME-nya ditebak dari isi (UploadedFile::fake() menebak dari nama sehingga tidak bisa menguji penyamaran). */
+function realUpload(string $nama, string $isi): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'upl');
+    file_put_contents($path, $isi);
+
+    return new UploadedFile($path, $nama, 'application/pdf', null, true);
+}
+
+test('berkas bernama pdf tetapi isinya bukan PDF ditolak dan tidak tersimpan', function (string $isi) {
+    $this->actingAs($this->op);
+
+    $this->post("/siswa/{$this->student->id}/dokumen/kk", ['file' => realUpload('kk.pdf', $isi)])->assertSessionHasErrors('file');
+
+    expect($this->student->documents()->count())->toBe(0)->and(Storage::disk('local')->allFiles())->toBe([]);
+})->with(["<?php echo 'x';", '<svg onload="alert(1)"></svg>', '<html><script>alert(1)</script></html>']);
+
+test('ekstensi eksekusi server ditolak walau isinya PDF', function (string $nama) {
+    $this->actingAs($this->op);
+
+    $this->post("/siswa/{$this->student->id}/dokumen/kk", ['file' => realUpload($nama, '%PDF-1.4 palsu')])->assertSessionHasErrors('file');
+
+    expect($this->student->documents()->count())->toBe(0);
+})->with(['shell.php', 'shell.phtml', 'shell.phar']);
+
+test('ekstensi simpan ditentukan isi berkas, bukan nama dari klien', function (string $nama) {
+    $this->actingAs($this->op);
+
+    $this->post("/siswa/{$this->student->id}/dokumen/kk", ['file' => realUpload($nama, '%PDF-1.4 isi pdf')])->assertSessionHasNoErrors();
+
+    expect($this->student->documents()->firstOrFail()->path)->toEndWith('.pdf');
+})->with(['gambar.svg', 'halaman.html']);
+
+test('disk dokumen privat tanpa penyaji publik', function () {
+    expect(config('filesystems.disks.local.serve'))->toBeFalse()
+        ->and(config('filesystems.disks.local.root'))->toBe(storage_path('app/private'));
+});

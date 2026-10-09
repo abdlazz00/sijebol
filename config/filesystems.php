@@ -33,7 +33,8 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            'serve' => true,
+            // Dokumen diunduh lewat controller berizin; penyaji URL bertanda tangan bawaan dimatikan agar tidak ada rute storage/{path}.
+            'serve' => false,
             'throw' => false,
             'report' => false,
         ],
