@@ -13,11 +13,12 @@ test('semua respons web membawa header keamanan dasar', function () {
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 });
 
 test('halaman error dan unduhan ikut membawa header', function () {
-    $this->get('/tidak-ada')->assertStatus(404)->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('X-Frame-Options', 'DENY');
+    $this->get('/tidak-ada')->assertStatus(404)->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('X-Frame-Options', 'DENY')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 
     $user = makeUserWith(['siswa.impor'], roleName: 'pengunduh');
     $this->actingAs($user)->get('/siswa/impor/template')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
@@ -55,4 +56,15 @@ test('CSP tidak dipasang di lingkungan local atau saat dimatikan', function () {
     app()->detectEnvironment(fn () => 'testing');
     config(['security.csp' => false]);
     $this->get('/login')->assertHeaderMissing('Content-Security-Policy')->assertHeader('X-Frame-Options', 'DENY');
+});
+
+test('mesin pencari dilarang mengindeks: meta robots dan robots.txt', function () {
+    $this->get('/login')->assertSee('<meta name="robots" content="noindex, nofollow">', false);
+
+    $robots = str_replace('
+', '
+', file_get_contents(public_path('robots.txt')));
+    expect($robots)->toBe('User-agent: *
+Disallow: /
+');
 });
