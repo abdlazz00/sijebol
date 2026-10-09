@@ -4,6 +4,7 @@ import LoadFailedBanner from '@/Components/shared/LoadFailedBanner.vue';
 import { Sheet, SheetContent, SheetTitle } from '@/Components/ui/sheet';
 import { Toaster } from '@/Components/ui/sonner';
 import { useFlash } from '@/composables/useFlash';
+import { useRouteFocus } from '@/composables/useRouteFocus';
 import { Head } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { toast } from 'vue-sonner';
@@ -19,6 +20,7 @@ const crumbs = computed<Crumb[]>(
 const collapsed = ref(false);
 const drawerOpen = ref(false);
 
+const { announcement } = useRouteFocus();
 const { flash } = useFlash();
 watch(
     flash,
@@ -32,6 +34,11 @@ watch(
 
 <template>
     <Head :title="title" />
+    <a
+        href="#konten"
+        class="bg-background text-foreground focus-visible:ring-ring sr-only rounded-md px-4 py-2 text-sm font-medium shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus-visible:ring-2"
+        >Lewati ke konten</a
+    >
     <div class="bg-background flex min-h-dvh">
         <aside
             class="hidden shrink-0 transition-[width] lg:block"
@@ -58,11 +65,16 @@ watch(
                 @toggle-sidebar="collapsed = !collapsed"
                 @open-drawer="drawerOpen = true"
             />
-            <main class="mx-auto w-full max-w-[1280px] flex-1 p-4 sm:p-6">
+            <main
+                id="konten"
+                tabindex="-1"
+                class="mx-auto w-full max-w-[1280px] flex-1 p-4 focus:outline-none sm:p-6"
+            >
                 <LoadFailedBanner />
                 <slot />
             </main>
         </div>
+        <p class="sr-only" role="status">{{ announcement }}</p>
         <Toaster />
     </div>
 </template>
