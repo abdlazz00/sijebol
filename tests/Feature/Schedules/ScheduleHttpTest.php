@@ -100,3 +100,18 @@ test('daftar menyaring periode dan memuat ringkasan status', function () {
         ->has('schedules.data', 1)->where('schedules.data.0.participants_count', 1)->where('schedules.data.0.counts.terjadwal', 1));
     $this->get('/jadwal?filter[period]=lewat')->assertInertia(fn (Assert $p) => $p->has('schedules.data', 1)->where('schedules.data.0.is_past', true));
 });
+
+test('daftar jadwal: akan datang terdekat dulu, lalu yang lewat terbaru dulu', function () {
+    $tanggal = fn (int $hari) => now('Asia/Jakarta')->addDays($hari)->toDateString();
+    foreach ([5, -3, 1, -1, 0] as $hari) {
+        makeSchedule($this->school, $tanggal($hari));
+    }
+
+    $this->actingAs($this->admin)->get('/jadwal')->assertInertia(fn (Assert $p) => $p
+        ->where('schedules.data.0.date', $tanggal(0))->where('schedules.data.1.date', $tanggal(1))
+        ->where('schedules.data.2.date', $tanggal(5))->where('schedules.data.3.date', $tanggal(-1))
+        ->where('schedules.data.4.date', $tanggal(-3)));
+
+    $this->get('/jadwal?filter[period]=lewat')->assertInertia(fn (Assert $p) => $p
+        ->where('schedules.data.0.date', $tanggal(-1))->where('schedules.data.1.date', $tanggal(-3)));
+});

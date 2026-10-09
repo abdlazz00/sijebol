@@ -16,7 +16,12 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
 {
     public function paginate(int $perPage = 20): LengthAwarePaginator
     {
-        $base = Schedule::query()->with(['school', 'entries:id,schedule_id,status'])->orderByDesc('date')->orderByDesc('id');
+        $today = Schedule::today();
+        // Akan datang dulu (terdekat), lalu yang lewat (terbaru): bendera lewat, tanggal naik untuk yang akan datang, lalu menurun.
+        $base = Schedule::query()->with(['school', 'entries:id,schedule_id,status'])
+            ->orderByRaw('date < ?', [$today])
+            ->orderByRaw('case when date >= ? then date end asc', [$today])
+            ->orderByDesc('date')->orderBy('id');
 
         return QueryBuilder::for($base)
             ->allowedFilters(
