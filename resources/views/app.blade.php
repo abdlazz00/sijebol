@@ -11,7 +11,7 @@
         <link href="https://fonts.bunny.net/css?family=inter:400,500,600|poppins:700|plus-jakarta-sans:400&display=swap" rel="stylesheet" />
 
         <!-- Scripts -->
-        @routes
+        @routes(nonce: request()->attributes->get('csp_nonce'))
         @vite(['resources/js/app.ts', "resources/js/Pages/{$page['component']}.vue"])
         @inertiaHead
     </head>
