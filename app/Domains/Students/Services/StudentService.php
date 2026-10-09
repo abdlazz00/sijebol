@@ -6,7 +6,6 @@ use App\Domains\Access\Exceptions\AccessRuleException;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Storage;
 
@@ -20,10 +19,10 @@ class StudentService
         return $this->students->paginate();
     }
 
-    /** @return Collection<int, Student> */
-    public function forSchool(int $schoolId): Collection
+    /** @return LengthAwarePaginator<int, Student> */
+    public function candidatesPage(int $schoolId, ?string $q): LengthAwarePaginator
     {
-        return $this->students->forSchool($schoolId);
+        return $this->students->searchForSchool($schoolId, $q);
     }
 
     /** @param array<string, mixed> $data */

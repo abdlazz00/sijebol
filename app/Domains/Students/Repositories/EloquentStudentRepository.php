@@ -8,7 +8,6 @@ use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
 use App\Domains\Students\Services\EligibilityService;
 use Closure;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -53,10 +52,16 @@ class EloquentStudentRepository implements StudentRepositoryInterface
             ->withQueryString();
     }
 
-    public function forSchool(int $schoolId): Collection
+    public function searchForSchool(int $schoolId, ?string $q, int $perPage = 20): LengthAwarePaginator
     {
+        $like = $q === null || trim($q) === ''
+            ? null
+            : '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], trim($q)).'%';
+
         return Student::query()->where('school_id', $schoolId)
-            ->with(['documents', 'registrationEntries'])->orderBy('name')->orderBy('id')->get();
+            ->when($like !== null, fn (Builder $b) => $b->where(fn (Builder $w) => $w->where('name', 'like', $like)->orWhere('nisn', 'like', $like)))
+            ->with(['documents', 'registrationEntries'])->orderBy('name')->orderBy('id')
+            ->paginate($perPage)->withQueryString();
     }
 
     public function create(array $attributes): Student

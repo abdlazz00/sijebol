@@ -48,14 +48,14 @@ test('staf kecamatan wajib memilih sekolah dan melihat kandidat sekolah itu', fu
     $this->get("/pendaftaran/buat?school_id={$this->school->id}")->assertInertia(fn (Assert $p) => $p
         ->component('Pendaftaran/Form')
         ->has('schools', School::count())
-        ->has('candidates', 1)
-        ->where('candidates.0.eligible', true));
-    $this->get('/pendaftaran/buat')->assertInertia(fn (Assert $p) => $p->has('candidates', 0));
+        ->has('candidates.data', 1)
+        ->where('candidates.data.0.eligible', true));
+    $this->get('/pendaftaran/buat')->assertInertia(fn (Assert $p) => $p->has('candidates.data', 0));
 });
 
 test('operator melihat kandidat sekolahnya tanpa daftar sekolah', function () {
     $this->actingAs($this->op)->get('/pendaftaran/buat')->assertInertia(fn (Assert $p) => $p
-        ->where('schools', null)->has('candidates', 1)->where('candidates.0.selected', false));
+        ->where('schools', null)->has('candidates.data', 1)->where('candidates.data.0.selected', false));
 });
 
 test('ubah dan hapus draf; pendaftaran terajukan tidak dapat diubah', function () {

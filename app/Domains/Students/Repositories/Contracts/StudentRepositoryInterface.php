@@ -3,7 +3,6 @@
 namespace App\Domains\Students\Repositories\Contracts;
 
 use App\Domains\Students\Models\Student;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface StudentRepositoryInterface
@@ -15,8 +14,13 @@ interface StudentRepositoryInterface
      */
     public function paginate(int $perPage = 20): LengthAwarePaginator;
 
-    /** @return Collection<int, Student> */
-    public function forSchool(int $schoolId): Collection;
+    /**
+     * Siswa sekolah, dicari menurut nama atau NISN (`$q`, `%` dan `_` literal), urut nama; memuat dokumen dan
+     * entri pendaftaran untuk pemeriksaan kelayakan.
+     *
+     * @return LengthAwarePaginator<int, Student>
+     */
+    public function searchForSchool(int $schoolId, ?string $q, int $perPage = 20): LengthAwarePaginator;
 
     /** @param array<string, mixed> $attributes */
     public function create(array $attributes): Student;

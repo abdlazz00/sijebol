@@ -14,6 +14,7 @@ use App\Domains\Students\Services\StudentService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -42,7 +43,8 @@ class RegistrationController extends Controller
 
         return Inertia::render('Pendaftaran/Form', [
             'registration' => null,
-            'candidates' => $this->candidates($schoolId, null),
+            'candidates' => $this->candidates($schoolId, null, $request),
+            'selected' => [],
             'schools' => $this->schools->optionsFor($user),
             'school_id' => $schoolId,
         ]);
@@ -68,18 +70,20 @@ class RegistrationController extends Controller
         ]);
     }
 
-    public function edit(Registration $registration): Response|RedirectResponse
+    public function edit(Request $request, Registration $registration): Response|RedirectResponse
     {
         if (! $registration->isDraft()) {
             return redirect()->route('pendaftaran.show', $registration)
                 ->with('error', 'Pendaftaran yang sudah diajukan tidak dapat diubah.');
         }
 
-        $registration->load('entries');
+        $registration->load(['entries.student.documents', 'entries.student.registrationEntries']);
 
         return Inertia::render('Pendaftaran/Form', [
             'registration' => ['id' => $registration->id, 'title' => $registration->title, 'expected_count' => $registration->expected_count],
-            'candidates' => $this->candidates($registration->school_id, $registration),
+            'candidates' => $this->candidates($registration->school_id, $registration, $request),
+            // Pilihan awal dikirim terpisah: siswa terpilih bisa berada di halaman lain dari hasil pencarian.
+            'selected' => $registration->entries->map(fn (RegistrationStudent $e) => $this->candidateRow($e->student, $registration, true))->values()->all(),
             'schools' => null,
             'school_id' => $registration->school_id,
         ]);
@@ -127,27 +131,34 @@ class RegistrationController extends Controller
         ];
     }
 
-    /** @return list<array<string, mixed>> */
-    private function candidates(?int $schoolId, ?Registration $registration): array
+    /** @return LengthAwarePaginator<int, array<string, mixed>> */
+    private function candidates(?int $schoolId, ?Registration $registration, Request $request): LengthAwarePaginator
     {
         if ($schoolId === null) {
-            return [];
+            return new LengthAwarePaginator([], 0, 20);
         }
+
+        $q = $request->query('q');
         $selected = $registration?->entries->pluck('student_id')->all() ?? [];
 
-        return $this->students->forSchool($schoolId)->map(function (Student $s) use ($registration, $selected) {
-            $check = $this->eligibility->check($s, null, $registration?->id);
+        return $this->students->candidatesPage($schoolId, is_string($q) ? $q : null)
+            ->through(fn (Student $s) => $this->candidateRow($s, $registration, in_array($s->id, $selected, true)));
+    }
 
-            return [
-                'id' => $s->id,
-                'name' => $s->name,
-                'nisn' => $s->nisn,
-                'age' => $this->eligibility->age($s),
-                'eligible' => $check['eligible'],
-                'reasons' => $check['reasons'],
-                'missing_docs' => collect(['kk', 'akta_lahir'])->diff($s->documents->pluck('type'))->isNotEmpty(),
-                'selected' => in_array($s->id, $selected, true),
-            ];
-        })->values()->all();
+    /** @return array<string, mixed> */
+    private function candidateRow(Student $s, ?Registration $registration, bool $selected): array
+    {
+        $check = $this->eligibility->check($s, null, $registration?->id);
+
+        return [
+            'id' => $s->id,
+            'name' => $s->name,
+            'nisn' => $s->nisn,
+            'age' => $this->eligibility->age($s),
+            'eligible' => $check['eligible'],
+            'reasons' => $check['reasons'],
+            'missing_docs' => collect(['kk', 'akta_lahir'])->diff($s->documents->pluck('type'))->isNotEmpty(),
+            'selected' => $selected,
+        ];
     }
 }
