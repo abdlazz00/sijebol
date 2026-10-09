@@ -30,7 +30,7 @@ enum RegistrationStatus: string
     }
 
     /**
-     * Transisi yang sah dari status ini (state machine spec v1 §3.7, ditambah keluarkan dari jadwal).
+     * Transisi yang sah dari status ini (state machine spec v1 §3.7, ditambah keluarkan dari jadwal dan batalkan penandaan).
      *
      * @return list<self>
      */
@@ -42,6 +42,7 @@ enum RegistrationStatus: string
             self::PerluPerbaikan => [self::Diajukan],
             self::Terverifikasi => [self::Terjadwal],
             self::Terjadwal => [self::Terverifikasi, self::SudahRekaman, self::TidakHadir, self::BelumRekaman],
+            self::SudahRekaman, self::TidakHadir, self::BelumRekaman => [self::Terjadwal],
             default => [],
         };
     }

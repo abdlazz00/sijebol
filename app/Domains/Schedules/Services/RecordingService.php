@@ -3,23 +3,27 @@
 namespace App\Domains\Schedules\Services;
 
 use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\ScheduleNotification;
+use App\Domains\Notifications\Services\NotificationService;
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Services\StatusTransitioner;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Repositories\Contracts\ScheduleRepositoryInterface;
 use App\Models\User;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class RecordingService
 {
-    /** Status kehadiran yang boleh ditandai; ketiganya final. */
+    /** Status kehadiran yang boleh ditandai; ketiganya dapat dibatalkan kembali ke Terjadwal. */
     private const MARKS = [RegistrationStatus::SudahRekaman, RegistrationStatus::TidakHadir, RegistrationStatus::BelumRekaman];
 
     public function __construct(
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly StatusTransitioner $transitions,
+        private readonly NotificationService $notifications,
     ) {}
 
     /**
@@ -37,7 +41,7 @@ class RecordingService
             throw new AccessRuleException('Penandaan baru dapat dilakukan pada atau setelah tanggal jadwal.');
         }
 
-        DB::transaction(function () use ($schedule, $entryIds, $to, $note, $actor) {
+        $count = DB::transaction(function () use ($schedule, $entryIds, $to, $note, $actor) {
             $entries = $this->schedules->lockEntries($entryIds);
             $invalid = $entries->count() !== count(array_unique($entryIds))
                 || $entries->contains(fn (RegistrationStudent $e) => $e->schedule_id !== $schedule->id || $e->status !== RegistrationStatus::Terjadwal);
@@ -50,6 +54,51 @@ class RecordingService
             }
             activity('jadwal')->performedOn($schedule)->causedBy($actor)
                 ->withProperties(['status' => $to->value, 'jumlah' => $entries->count()])->log('rekaman.ditandai');
+
+            return $entries->count();
         });
+
+        $this->notifications->toSchool(
+            'jadwal.lihat',
+            ScheduleNotification::marked($schedule->id, $count, $to->label(), $schedule->date->toDateString()),
+            $schedule->school_id,
+        );
+    }
+
+    /** Membatalkan penandaan satu siswa: kembali ke Terjadwal pada jadwal yang sama, dengan catatan. */
+    public function undo(RegistrationStudent $entry, string $note, User $actor): void
+    {
+        if (! in_array($entry->status, self::MARKS, true) || $entry->schedule_id === null) {
+            throw new AccessRuleException('Hanya siswa yang sudah ditandai yang dapat dibatalkan penandaannya.');
+        }
+        $previous = $entry->status;
+        $schedule = $entry->schedule;
+        $conflict = 'Siswa sudah memiliki pendaftaran aktif lain; penandaan tidak dapat dibatalkan.';
+
+        try {
+            DB::transaction(function () use ($entry, $note, $actor, $previous, $schedule, $conflict) {
+                // Tidak hadir dan Belum rekaman melepas slot entri aktif; siswa mungkin sudah didaftarkan ulang.
+                $busy = RegistrationStudent::query()
+                    ->where('student_id', $entry->student_id)->where('id', '!=', $entry->id)
+                    ->whereIn('status', RegistrationStatus::values(RegistrationStatus::active()))
+                    ->lockForUpdate()->count() > 0;
+                if ($busy) {
+                    throw new AccessRuleException($conflict);
+                }
+
+                $this->transitions->move($entry, RegistrationStatus::Terjadwal, $actor, $note);
+                activity('jadwal')->performedOn($schedule)->causedBy($actor)
+                    ->withProperties(['status_lama' => $previous->value, 'siswa_id' => $entry->student_id])->log('rekaman.dibatalkan');
+            });
+        } catch (UniqueConstraintViolationException) {
+            // Balapan: pendaftaran aktif baru masuk setelah pemeriksaan di atas; indeks unik active_student_id menolaknya.
+            throw new AccessRuleException($conflict);
+        }
+
+        $this->notifications->toSchool(
+            'jadwal.lihat',
+            ScheduleNotification::undone($schedule->id, $previous->label()),
+            $schedule->school_id,
+        );
     }
 }

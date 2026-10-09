@@ -28,5 +28,6 @@ return [
         'jadwal.penempatan' => 'Penempatan siswa di jadwal',
         'rekaman.ditandai' => 'Rekaman ditandai',
         'laporan.diekspor' => 'Laporan diekspor',
+        'rekaman.dibatalkan' => 'Penandaan rekaman dibatalkan',
     ],
 ];

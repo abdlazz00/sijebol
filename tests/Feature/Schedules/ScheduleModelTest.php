@@ -11,9 +11,9 @@ afterEach(fn () => Carbon::setTestNow());
 test('peta transisi penjadwalan dan penandaan', function () {
     expect(S::Terverifikasi->next())->toBe([S::Terjadwal])
         ->and(S::Terjadwal->next())->toBe([S::Terverifikasi, S::SudahRekaman, S::TidakHadir, S::BelumRekaman])
-        ->and(S::SudahRekaman->next())->toBe([])
-        ->and(S::TidakHadir->next())->toBe([])
-        ->and(S::BelumRekaman->next())->toBe([]);
+        ->and(S::SudahRekaman->next())->toBe([S::Terjadwal])
+        ->and(S::TidakHadir->next())->toBe([S::Terjadwal])
+        ->and(S::BelumRekaman->next())->toBe([S::Terjadwal]);
 });
 
 test('transisi baru sah dan atribut tambahan ikut diperbarui', function () {
@@ -34,7 +34,7 @@ test('transisi ilegal menuju dan dari penjadwalan ditolak', function (S $from, S
 
     expect(fn () => app(StatusTransitioner::class)->move($entry, $to, User::factory()->create()))->toThrow(AccessRuleException::class);
 })->with([
-    [S::Diajukan, S::Terjadwal], [S::PerluPerbaikan, S::Terjadwal], [S::SudahRekaman, S::Terjadwal],
+    [S::Diajukan, S::Terjadwal], [S::PerluPerbaikan, S::Terjadwal], [S::SudahRekaman, S::TidakHadir],
     [S::TidakHadir, S::SudahRekaman], [S::Terverifikasi, S::SudahRekaman], [S::Terjadwal, S::Diajukan],
 ]);
 

@@ -22,6 +22,16 @@ class ScheduleNotification extends BaseNotification
         return new self($scheduleId, 'Jadwal diubah', 'Jadwal sekarang pada '.self::format($date)." di {$location}.");
     }
 
+    public static function marked(int $scheduleId, int $count, string $statusLabel, string $date): self
+    {
+        return new self($scheduleId, 'Rekaman ditandai', "{$count} siswa ditandai {$statusLabel} pada ".self::format($date).'.');
+    }
+
+    public static function undone(int $scheduleId, string $statusLabel): self
+    {
+        return new self($scheduleId, 'Penandaan dibatalkan', "Penandaan {$statusLabel} dibatalkan; siswa kembali Terjadwal.");
+    }
+
     public function title(): string
     {
         return $this->title;

@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\ScheduleNotification;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Registrations\Services\RegistrationService;
 use App\Domains\Schedules\Services\RecordingService;
@@ -9,10 +10,13 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\ValidationException;
 use Spatie\Activitylog\Models\Activity;
+use Spatie\Permission\Models\Permission;
 
 afterEach(fn () => Carbon::setTestNow());
 
 beforeEach(function () {
+    // Penerima notifikasi penandaan dicari lewat permission ini; di produksi sudah dibuat seeder.
+    Permission::findOrCreate('jadwal.lihat', 'web');
     Notification::fake();
     $this->school = School::factory()->create();
     $this->admin = makeUserWith(['rekaman.tandai'], roleName: 'admin-rek');
@@ -95,4 +99,51 @@ test('Tidak hadir dapat didaftarkan lagi, Sudah rekaman tidak; kunci data ikut t
 
     $ditolak = $registrations->createDraft(['title' => 'Gelombang 3', 'student_ids' => [$hadir->id]], $op);
     expect(fn () => $registrations->submit($ditolak, $op))->toThrow(ValidationException::class);
+});
+
+test('penandaan massal memberi tahu operator sekolah itu satu kali', function () {
+    $op = makeUserWith(['jadwal.lihat'], $this->school, true, 'op-mark');
+    $lain = makeUserWith(['jadwal.lihat'], School::factory()->create(), true, 'op-mark');
+    $a = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $b = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+
+    $this->service->mark($this->hariIni, [$a->id, $b->id], S::TidakHadir, null, $this->admin);
+
+    Notification::assertSentToTimes($op, ScheduleNotification::class, 1);
+    Notification::assertSentTo($op, ScheduleNotification::class, fn (ScheduleNotification $n) => $n->title() === 'Rekaman ditandai' && str_starts_with($n->body(), '2 siswa ditandai Tidak hadir'));
+    Notification::assertNotSentTo($lain, ScheduleNotification::class);
+});
+
+test('batalkan penandaan mengembalikan ke Terjadwal dengan jadwal utuh, riwayat, log, dan notifikasi', function (S $status) {
+    $op = makeUserWith(['jadwal.lihat'], $this->school, true, 'op-undo');
+    $e = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $this->service->mark($this->hariIni, [$e->id], $status, null, $this->admin);
+
+    $this->service->undo($e->fresh(), 'Salah tandai', $this->admin);
+
+    expect($e->fresh()->status)->toBe(S::Terjadwal)
+        ->and($e->fresh()->schedule_id)->toBe($this->hariIni->id)
+        ->and($e->fresh()->note)->toBe('Salah tandai')
+        ->and($e->histories()->count())->toBe(2)
+        ->and(Activity::where('description', 'rekaman.dibatalkan')->count())->toBe(1);
+    Notification::assertSentTo($op, ScheduleNotification::class, fn (ScheduleNotification $n) => $n->title() === 'Penandaan dibatalkan');
+})->with([[S::SudahRekaman], [S::TidakHadir], [S::BelumRekaman]]);
+
+test('batalkan hanya untuk entri yang sudah ditandai', function () {
+    $e = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+
+    expect(fn () => $this->service->undo($e, 'x', $this->admin))->toThrow(AccessRuleException::class);
+    expect($e->fresh()->status)->toBe(S::Terjadwal)->and($e->histories()->count())->toBe(0);
+});
+
+test('batalkan ditolak bila siswa sudah punya pendaftaran aktif lain', function () {
+    $student = eligibleStudent($this->school);
+    $lama = makeEntry(S::Terjadwal, $this->school, $student);
+    $lama->update(['schedule_id' => $this->hariIni->id]);
+    $this->service->mark($this->hariIni, [$lama->id], S::TidakHadir, null, $this->admin);
+    makeEntry(S::Diajukan, $this->school, $student);
+
+    expect(fn () => $this->service->undo($lama->fresh(), 'x', $this->admin))->toThrow(AccessRuleException::class);
+
+    expect($lama->fresh()->status)->toBe(S::TidakHadir)->and(Activity::where('description', 'rekaman.dibatalkan')->count())->toBe(0);
 });

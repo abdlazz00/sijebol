@@ -55,6 +55,15 @@ test('isi notifikasi memuat tanggal dan lokasi', function () {
         ->and($assigned->url())->toBe('/jadwal/7')
         ->and($changed->title())->toBe('Jadwal diubah')
         ->and($changed->body())->toBe('Jadwal sekarang pada 5 Desember 2026 di Lapangan.');
+
+    $marked = ScheduleNotification::marked(7, 2, 'Tidak hadir', '2026-12-01');
+    $undone = ScheduleNotification::undone(7, 'Sudah rekaman');
+
+    expect($marked->title())->toBe('Rekaman ditandai')
+        ->and($marked->body())->toBe('2 siswa ditandai Tidak hadir pada 1 Desember 2026.')
+        ->and($marked->url())->toBe('/jadwal/7')
+        ->and($undone->title())->toBe('Penandaan dibatalkan')
+        ->and($undone->body())->toBe('Penandaan Sudah rekaman dibatalkan; siswa kembali Terjadwal.');
 });
 
 test('jadwal akan datang hanya milik sekolah pengguna dan tanpa yang lewat', function () {
