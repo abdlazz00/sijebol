@@ -29,6 +29,15 @@ interface ScheduleRepositoryInterface
     /** @param array<string, mixed> $attributes */
     public function update(Schedule $schedule, array $attributes): Schedule;
 
+    public function delete(Schedule $schedule): void;
+
+    /**
+     * Jadwal tujuan pindah: sekolah sama, hari ini atau setelahnya, selain `$current`, tanggal naik.
+     *
+     * @return Collection<int, Schedule>
+     */
+    public function targets(Schedule $current): Collection;
+
     /**
      * Entri Terverifikasi sekolah jadwal yang belum punya jadwal, dengan siswa dan pendaftarannya.
      *

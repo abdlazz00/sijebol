@@ -118,4 +118,54 @@ class ScheduleService
                 ->withProperties(['dikeluarkan' => 1])->log('jadwal.penempatan');
         });
     }
+
+    /** @return Collection<int, Schedule> */
+    public function targets(Schedule $current): Collection
+    {
+        return $this->schedules->targets($current);
+    }
+
+    public function delete(Schedule $schedule, User $actor): void
+    {
+        // Entri yang sudah ditandai tetap memegang schedule_id sebagai jejak, jadi jadwal berriwayat tidak dapat dihapus.
+        if ($schedule->entries()->exists()) {
+            throw new AccessRuleException('Jadwal masih memiliki siswa; keluarkan atau batalkan penandaan mereka lebih dulu.');
+        }
+
+        DB::transaction(function () use ($schedule, $actor) {
+            activity('jadwal')->performedOn($schedule)->causedBy($actor)->log('jadwal.dihapus');
+            $this->schedules->delete($schedule);
+        });
+    }
+
+    public function move(RegistrationStudent $entry, Schedule $target, User $actor): void
+    {
+        if ($entry->status !== RegistrationStatus::Terjadwal) {
+            throw new AccessRuleException('Hanya siswa Terjadwal yang dapat dipindahkan.');
+        }
+        if ($target->id === $entry->schedule_id) {
+            throw new AccessRuleException('Siswa sudah berada di jadwal ini.');
+        }
+        if ($target->school_id !== $entry->school_id) {
+            throw new AccessRuleException('Jadwal tujuan harus milik sekolah yang sama.');
+        }
+        if ($target->isPast()) {
+            throw new AccessRuleException('Jadwal tujuan sudah lewat.');
+        }
+
+        DB::transaction(function () use ($entry, $target, $actor) {
+            $from = $entry->schedule;
+            // Dua langkah lewat StatusTransitioner (keluarkan lalu tempatkan) agar peta transisi dan riwayat tetap utuh.
+            $this->transitions->move($entry, RegistrationStatus::Terverifikasi, $actor, 'Dipindahkan dari jadwal '.$from->date->toDateString(), ['schedule_id' => null]);
+            $this->transitions->move($entry, RegistrationStatus::Terjadwal, $actor, 'Dipindahkan ke jadwal '.$target->date->toDateString(), ['schedule_id' => $target->id]);
+            activity('jadwal')->performedOn($target)->causedBy($actor)
+                ->withProperties(['dari' => $from->id, 'siswa_id' => $entry->student_id])->log('jadwal.dipindahkan');
+        });
+
+        $this->notifications->toSchool(
+            'jadwal.lihat',
+            ScheduleNotification::assigned($target->id, 1, $target->date->toDateString(), $target->location),
+            $target->school_id,
+        );
+    }
 }

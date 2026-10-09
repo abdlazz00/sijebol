@@ -52,6 +52,18 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
         return $schedule;
     }
 
+    public function delete(Schedule $schedule): void
+    {
+        $schedule->delete();
+    }
+
+    public function targets(Schedule $current): Collection
+    {
+        return Schedule::query()
+            ->where('school_id', $current->school_id)->where('id', '!=', $current->id)
+            ->where('date', '>=', Schedule::today())->orderBy('date')->orderBy('id')->get();
+    }
+
     public function candidates(Schedule $schedule): Collection
     {
         return RegistrationStudent::query()->with(['student', 'registration'])
