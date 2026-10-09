@@ -2,7 +2,6 @@
 
 namespace App\Domains\Students\Models;
 
-use App\Domains\Schools\Models\School;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,12 +38,6 @@ class StudentImport extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
-    }
-
-    /** @return BelongsTo<School, $this> */
-    public function school(): BelongsTo
-    {
-        return $this->belongsTo(School::class);
     }
 
     /** Hasil impor hanya untuk pembuatnya dan staf kecamatan (tidak terikat sekolah). */
