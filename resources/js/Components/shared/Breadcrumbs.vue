@@ -27,7 +27,7 @@ defineProps<{ items: Crumb[] }>();
                 <Link
                     v-if="item.href && index < items.length - 1"
                     :href="item.href"
-                    class="hover:underline"
+                    class="inline-block py-0.5 hover:underline"
                 >
                     {{ item.label }}
                 </Link>

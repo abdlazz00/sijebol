@@ -137,7 +137,7 @@ const columns = computed(() => [
                         <div class="min-w-0">
                             <Link
                                 :href="route('jadwal.show', row.id)"
-                                class="block truncate text-sm leading-5 font-semibold hover:underline"
+                                class="block truncate py-0.5 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ formatDateWithDay(row.date) }}
                             </Link>
