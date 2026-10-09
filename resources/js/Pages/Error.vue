@@ -4,7 +4,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import AuthLayout from '@/Layouts/AuthLayout.vue';
 import type { PageProps } from '@/types';
 import { Link, usePage } from '@inertiajs/vue3';
-import { SearchX, ShieldAlert, TriangleAlert } from '@lucide/vue';
+import { Clock, SearchX, ShieldAlert, TriangleAlert } from '@lucide/vue';
 import { computed } from 'vue';
 
 const props = defineProps<{ status: number }>();
@@ -22,6 +22,11 @@ const messages: Record<
         icon: SearchX,
         title: 'Halaman tidak ditemukan',
         text: 'Periksa kembali alamat atau kembali ke beranda.',
+    },
+    429: {
+        icon: Clock,
+        title: 'Terlalu banyak permintaan',
+        text: 'Tunggu sebentar, lalu coba lagi.',
     },
 };
 const fallback = {

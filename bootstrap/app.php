@@ -9,6 +9,7 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\ThrottleRequests;
 use Inertia\Inertia;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -24,7 +25,11 @@ return Application::configure(basePath: dirname(__DIR__))
             HandleInertiaRequests::class,
             EnsureAccountIsActive::class,
             AddLinkHeadersForPreloadedAssets::class,
+            'throttle:web',
         ]);
+
+        // ThrottleRequests berprioritas lebih awal daripada middleware biasa; tanpa ini respons 429 lolos tanpa header keamanan.
+        $middleware->prependToPriorityList(before: ThrottleRequests::class, prepend: SecurityHeaders::class);
 
         //
     })
@@ -35,11 +40,16 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->respond(function (Response $response, Throwable $e, Request $request) {
             $status = $response->getStatusCode();
 
-            if (! in_array($status, [403, 404, 500, 503], true) || $request->expectsJson() || ($status === 500 && config('app.debug'))) {
+            if (! in_array($status, [403, 404, 429, 500, 503], true) || $request->expectsJson() || ($status === 500 && config('app.debug'))) {
                 return $response;
             }
 
-            return Inertia::render('Error', ['status' => $status])->toResponse($request)->setStatusCode($status);
+            $page = Inertia::render('Error', ['status' => $status])->toResponse($request)->setStatusCode($status);
+            if ($response->headers->has('Retry-After')) {
+                $page->headers->set('Retry-After', (string) $response->headers->get('Retry-After'));
+            }
+
+            return $page;
         });
 
         $exceptions->shouldRenderJsonWhen(
