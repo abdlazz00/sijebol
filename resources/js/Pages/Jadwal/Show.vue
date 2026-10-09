@@ -3,7 +3,9 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EntryChecklist from '@/Components/shared/EntryChecklist.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
+import FormField from '@/Components/shared/FormField.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
+import SelectField from '@/Components/shared/SelectField.vue';
 import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import { Button } from '@/Components/ui/button';
 import {
@@ -16,21 +18,29 @@ import {
 } from '@/Components/ui/dialog';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDateWithDay } from '@/lib/date';
+import { formatDate, formatDateWithDay } from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
 import type {
     ChecklistItem,
     ParticipantRow,
     ScheduleDetail,
+    ScheduleTarget,
 } from '@/types/schedule';
 import { Link, router } from '@inertiajs/vue3';
-import { ClipboardCheck, Pencil, UserPlus } from '@lucide/vue';
+import {
+    ClipboardCheck,
+    MoveRight,
+    Pencil,
+    Trash2,
+    UserPlus,
+} from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
     schedule: ScheduleDetail;
     participants: ParticipantRow[];
     candidates: ChecklistItem[];
+    targets: ScheduleTarget[];
 }>();
 
 const { can } = usePermission();
@@ -48,7 +58,7 @@ const columns = computed(() => [
     { key: 'student', label: 'Siswa' },
     { key: 'status', label: 'Status', class: 'w-[176px]' },
     ...(canEdit.value
-        ? [{ key: 'actions', label: 'Aksi', class: 'w-[140px] text-right' }]
+        ? [{ key: 'actions', label: 'Aksi', class: 'w-[220px] text-right' }]
         : []),
 ]);
 
@@ -97,6 +107,44 @@ function remove() {
         );
 }
 
+const canDelete = computed(
+    () => canEdit.value && props.participants.length === 0,
+);
+const deleteOpen = ref(false);
+
+function destroy() {
+    router.delete(route('jadwal.destroy', props.schedule.id));
+}
+
+const moving = ref<ParticipantRow | null>(null);
+const targetId = ref<number | null>(null);
+const moveOpen = computed({
+    get: () => moving.value !== null,
+    set: (open: boolean) => {
+        if (!open) moving.value = null;
+    },
+});
+const targetOptions = computed(() =>
+    props.targets.map((t) => ({
+        value: t.id,
+        label: `${formatDate(t.date)} · ${t.location}`,
+    })),
+);
+
+function startMove(row: ParticipantRow) {
+    targetId.value = null;
+    moving.value = row;
+}
+
+function move() {
+    if (!moving.value || targetId.value === null) return;
+    router.post(
+        route('jadwal.siswa.pindah', [props.schedule.id, moving.value.id]),
+        { target_schedule_id: targetId.value },
+        { preserveScroll: true },
+    );
+}
+
 const crumbs = computed(() => [
     { label: 'Jadwal', href: route('jadwal.index') },
     { label: formatDateWithDay(props.schedule.date) },
@@ -132,6 +180,16 @@ const crumbs = computed(() => [
                         <Pencil class="size-4" aria-hidden="true" />
                         Ubah
                     </Link>
+                </Button>
+                <Button
+                    v-if="canDelete"
+                    type="button"
+                    variant="outline"
+                    class="h-10 px-4"
+                    @click="deleteOpen = true"
+                >
+                    <Trash2 class="size-4" aria-hidden="true" />
+                    Hapus
                 </Button>
                 <Button
                     v-if="can(PERMISSIONS.RekamanLihat)"
@@ -176,7 +234,7 @@ const crumbs = computed(() => [
                     :columns="columns"
                     :rows="participants"
                     row-class="h-16"
-                    table-class="min-w-[560px]"
+                    table-class="min-w-[640px]"
                 >
                     <template #cell-student="{ row }">
                         <div class="min-w-0">
@@ -197,7 +255,22 @@ const crumbs = computed(() => [
                         <StatusBadge :status="row.status" kind="registration" />
                     </template>
                     <template #cell-actions="{ row }">
-                        <div class="flex justify-end">
+                        <div class="flex justify-end gap-1">
+                            <Button
+                                v-if="
+                                    row.status === 'terjadwal' && targets.length
+                                "
+                                type="button"
+                                variant="ghost"
+                                class="h-9 px-3"
+                                @click="startMove(row)"
+                            >
+                                <MoveRight class="size-4" aria-hidden="true" />
+                                Pindahkan
+                                <span class="sr-only">{{
+                                    row.student.name
+                                }}</span>
+                            </Button>
                             <Button
                                 v-if="row.status === 'terjadwal'"
                                 type="button"
@@ -258,5 +331,32 @@ const crumbs = computed(() => [
             destructive
             @confirm="remove"
         />
+
+        <ConfirmDialog
+            v-model:open="deleteOpen"
+            title="Hapus jadwal ini?"
+            description="Jadwal tanpa peserta dihapus permanen dan tercatat di log aktivitas."
+            confirm-label="Hapus jadwal"
+            destructive
+            @confirm="destroy"
+        />
+
+        <ConfirmDialog
+            v-model:open="moveOpen"
+            :title="`Pindahkan ${moving?.student.name ?? ''}?`"
+            description="Siswa dipindahkan ke jadwal lain milik sekolah ini dan operator sekolah diberi tahu."
+            confirm-label="Pindahkan"
+            :confirm-disabled="targetId === null"
+            @confirm="move"
+        >
+            <FormField v-slot="{ id }" label="Jadwal tujuan">
+                <SelectField
+                    :id="id"
+                    v-model="targetId"
+                    :options="targetOptions"
+                    placeholder="Pilih jadwal tujuan"
+                />
+            </FormField>
+        </ConfirmDialog>
     </AppLayout>
 </template>

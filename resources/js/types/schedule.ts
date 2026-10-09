@@ -31,3 +31,9 @@ export type ChecklistItem = {
     nisn: string;
     hint?: string | null;
 };
+
+export type ScheduleTarget = {
+    id: number;
+    date: string;
+    location: string;
+};

@@ -18,7 +18,7 @@ import type {
     ParticipantRow,
     ScheduleDetail,
 } from '@/types/schedule';
-import { useForm } from '@inertiajs/vue3';
+import { router, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
@@ -83,10 +83,37 @@ function save() {
     });
 }
 
-const markedColumns = [
+const canUndo = computed(() => can(PERMISSIONS.RekamanTandai));
+const markedColumns = computed(() => [
     { key: 'student', label: 'Siswa' },
     { key: 'status', label: 'Status', class: 'w-[176px]' },
-];
+    ...(canUndo.value
+        ? [{ key: 'actions', label: 'Aksi', class: 'w-[120px] text-right' }]
+        : []),
+]);
+
+const undoing = ref<ParticipantRow | null>(null);
+const undoNote = ref('');
+const undoOpen = computed({
+    get: () => undoing.value !== null,
+    set: (open: boolean) => {
+        if (!open) undoing.value = null;
+    },
+});
+
+function startUndo(row: ParticipantRow) {
+    undoNote.value = '';
+    undoing.value = row;
+}
+
+function undo() {
+    if (!undoing.value) return;
+    router.post(
+        route('jadwal.rekaman.batalkan', [props.schedule.id, undoing.value.id]),
+        { note: undoNote.value.trim() },
+        { preserveScroll: true },
+    );
+}
 
 const crumbs = computed(() => [
     { label: 'Jadwal', href: route('jadwal.index') },
@@ -121,8 +148,8 @@ const crumbs = computed(() => [
                         Siswa terjadwal
                     </h2>
                     <p class="text-muted-foreground text-xs leading-4">
-                        Pilih siswa, tentukan status, lalu simpan. Status akhir
-                        tidak dapat diubah.
+                        Pilih siswa, tentukan status, lalu simpan. Status dapat
+                        dibatalkan kemudian oleh petugas dengan catatan.
                     </p>
                 </div>
 
@@ -238,7 +265,7 @@ const crumbs = computed(() => [
                     :columns="markedColumns"
                     :rows="marked"
                     row-class="h-14"
-                    table-class="min-w-[480px]"
+                    table-class="min-w-[560px]"
                 >
                     <template #cell-student="{ row }">
                         <div class="min-w-0">
@@ -255,6 +282,21 @@ const crumbs = computed(() => [
                     <template #cell-status="{ row }">
                         <StatusBadge :status="row.status" kind="registration" />
                     </template>
+                    <template #cell-actions="{ row }">
+                        <div class="flex justify-end">
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                class="h-9 px-3"
+                                @click="startUndo(row)"
+                            >
+                                Batalkan
+                                <span class="sr-only"
+                                    >penandaan {{ row.student.name }}</span
+                                >
+                            </Button>
+                        </div>
+                    </template>
                     <template #empty>
                         <p class="text-muted-foreground p-6 text-sm">
                             Belum ada siswa yang ditandai.
@@ -267,9 +309,33 @@ const crumbs = computed(() => [
         <ConfirmDialog
             v-model:open="confirmOpen"
             :title="`Tandai ${form.entry_ids.length} siswa sebagai ${statusLabel}?`"
-            description="Status akhir tidak dapat diubah setelah disimpan."
+            description="Penandaan dapat dibatalkan kemudian dengan catatan."
             confirm-label="Simpan penandaan"
             @confirm="save"
         />
+
+        <ConfirmDialog
+            v-model:open="undoOpen"
+            :title="`Batalkan penandaan ${undoing?.student.name ?? ''}?`"
+            description="Siswa kembali menjadi Terjadwal pada jadwal ini dan operator sekolah diberi tahu."
+            confirm-label="Batalkan penandaan"
+            destructive
+            :confirm-disabled="!undoNote.trim()"
+            @confirm="undo"
+        >
+            <FormField
+                v-slot="{ id, describedBy }"
+                label="Catatan"
+                hint="Wajib; jelaskan alasan pembatalan."
+            >
+                <Textarea
+                    :id="id"
+                    v-model="undoNote"
+                    rows="3"
+                    maxlength="500"
+                    :aria-describedby="describedBy"
+                />
+            </FormField>
+        </ConfirmDialog>
     </AppLayout>
 </template>
