@@ -1,5 +1,6 @@
 import '../css/app.css';
 
+import { attachLoadFailure } from '@/composables/useLoadFailure';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createApp, DefineComponent, h } from 'vue';
@@ -15,6 +16,7 @@ createInertiaApp({
             import.meta.glob<DefineComponent>('./Pages/**/*.vue'),
         ),
     setup({ el, App, props, plugin }) {
+        attachLoadFailure();
         createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)

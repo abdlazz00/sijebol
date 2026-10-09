@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Crumb } from '@/Components/shared/Breadcrumbs.vue';
+import LoadFailedBanner from '@/Components/shared/LoadFailedBanner.vue';
 import { Sheet, SheetContent, SheetTitle } from '@/Components/ui/sheet';
 import { Toaster } from '@/Components/ui/sonner';
 import { useFlash } from '@/composables/useFlash';
@@ -58,6 +59,7 @@ watch(
                 @open-drawer="drawerOpen = true"
             />
             <main class="mx-auto w-full max-w-[1280px] flex-1 p-4 sm:p-6">
+                <LoadFailedBanner />
                 <slot />
             </main>
         </div>
