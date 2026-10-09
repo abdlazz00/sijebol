@@ -1,21 +1,26 @@
 <script setup lang="ts">
+import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
 import FormField from '@/Components/shared/FormField.vue';
+import InlineAlert from '@/Components/shared/InlineAlert.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import Pagination from '@/Components/shared/Pagination.vue';
 import SearchInput from '@/Components/shared/SearchInput.vue';
 import SelectField from '@/Components/shared/SelectField.vue';
 import { Button } from '@/Components/ui/button';
+import { Checkbox } from '@/Components/ui/checkbox';
 import { useDataTable } from '@/composables/useDataTable';
+import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { formatWhen } from '@/lib/date';
+import { PERMISSIONS } from '@/lib/permissions';
 import type { Paginator } from '@/types/access';
 import type { QueueRow } from '@/types/registration';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { BadgeCheck, Search } from '@lucide/vue';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     queue: Paginator<QueueRow>;
@@ -38,7 +43,58 @@ const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
 );
 
+const { can } = usePermission();
+const canDecide = computed(() => can(PERMISSIONS.VerifikasiPutuskan));
+
+const selected = ref<number[]>([]);
+const approveOpen = ref(false);
+const approving = ref(false);
+const approveError = ref<string | null>(null);
+
+// Pilihan hanya berlaku untuk halaman yang sedang dilihat.
+watch(
+    () => props.queue.data,
+    () => (selected.value = []),
+);
+
+const allSelected = computed(
+    () =>
+        props.queue.data.length > 0 &&
+        selected.value.length === props.queue.data.length,
+);
+
+function toggle(id: number, on: boolean) {
+    selected.value = on
+        ? [...selected.value, id]
+        : selected.value.filter((x) => x !== id);
+}
+
+function toggleAll(on: boolean) {
+    selected.value = on ? props.queue.data.map((r) => r.id) : [];
+}
+
+function approve() {
+    router.post(
+        route('verifikasi.setujui'),
+        { entry_ids: selected.value },
+        {
+            preserveScroll: true,
+            onStart: () => {
+                approving.value = true;
+                approveError.value = null;
+            },
+            onFinish: () => (approving.value = false),
+            onSuccess: () => (selected.value = []),
+            onError: (errors) =>
+                (approveError.value = errors.entry_ids ?? 'Gagal menyetujui.'),
+        },
+    );
+}
+
 const columns = computed(() => [
+    ...(canDecide.value
+        ? [{ key: 'select', label: 'Pilih', class: 'w-[64px]' }]
+        : []),
     { key: 'student', label: 'Siswa', class: 'w-[240px]' },
     ...(props.schools ? [{ key: 'school', label: 'Sekolah' }] : []),
     { key: 'registration', label: 'Pendaftaran' },
@@ -51,7 +107,7 @@ const columns = computed(() => [
     <AppLayout title="Antrean verifikasi">
         <PageHeader
             title="Antrean verifikasi"
-            description="Periksa siswa yang diajukan sekolah dan putuskan satu per satu."
+            description="Periksa siswa yang diajukan sekolah; putuskan satu per satu atau setujui beberapa sekaligus."
         />
 
         <div class="flex flex-col gap-6">
@@ -84,6 +140,37 @@ const columns = computed(() => [
             </div>
 
             <div class="flex flex-col gap-4">
+                <InlineAlert v-if="approveError">{{
+                    approveError
+                }}</InlineAlert>
+                <div
+                    v-if="canDecide && queue.data.length"
+                    class="flex flex-wrap items-center gap-3"
+                >
+                    <Checkbox
+                        id="pilih-semua"
+                        :model-value="allSelected"
+                        @update:model-value="toggleAll($event === true)"
+                    />
+                    <label for="pilih-semua" class="text-sm leading-5"
+                        >Pilih semua di halaman ini</label
+                    >
+                    <p
+                        role="status"
+                        class="text-muted-foreground text-sm leading-5"
+                    >
+                        {{ selected.length }} dipilih
+                    </p>
+                    <Button
+                        type="button"
+                        class="ml-auto h-10 px-4"
+                        :disabled="!selected.length || approving"
+                        @click="approveOpen = true"
+                    >
+                        <BadgeCheck class="size-4" aria-hidden="true" />
+                        Setujui terpilih
+                    </Button>
+                </div>
                 <p
                     class="text-muted-foreground flex items-center gap-2 text-xs leading-4 md:hidden"
                 >
@@ -97,6 +184,16 @@ const columns = computed(() => [
                     row-class="h-16"
                     table-class="min-w-[800px]"
                 >
+                    <template #cell-select="{ row }">
+                        <Checkbox
+                            :id="`pilih-${row.id}`"
+                            :model-value="selected.includes(row.id)"
+                            :aria-label="`Pilih ${row.student.name}`"
+                            @update:model-value="
+                                toggle(row.id, $event === true)
+                            "
+                        />
+                    </template>
                     <template #cell-student="{ row }">
                         <div class="min-w-0">
                             <p class="truncate text-sm leading-5 font-semibold">
@@ -151,5 +248,13 @@ const columns = computed(() => [
                 <Pagination :paginator="queue" />
             </div>
         </div>
+
+        <ConfirmDialog
+            v-model:open="approveOpen"
+            :title="`Setujui ${selected.length} siswa?`"
+            description="Kelayakan setiap siswa diperiksa ulang. Bila ada yang tidak layak, tidak ada yang disetujui."
+            confirm-label="Setujui"
+            @confirm="approve"
+        />
     </AppLayout>
 </template>
