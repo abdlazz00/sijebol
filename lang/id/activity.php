@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'pendaftaran' => 'Pendaftaran', 'jadwal' => 'Jadwal', 'default' => 'Data'],
+    'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'pendaftaran' => 'Pendaftaran', 'jadwal' => 'Jadwal', 'laporan' => 'Laporan', 'default' => 'Data'],
     'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa', 'Registration' => 'Pendaftaran', 'Schedule' => 'Jadwal'],
     'actions' => [
         'login' => 'Login',
@@ -27,5 +27,6 @@ return [
         'jadwal.diubah' => 'Jadwal diubah',
         'jadwal.penempatan' => 'Penempatan siswa di jadwal',
         'rekaman.ditandai' => 'Rekaman ditandai',
+        'laporan.diekspor' => 'Laporan diekspor',
     ],
 ];

@@ -63,6 +63,8 @@ dataset('rute', [
     ['DELETE', '/jadwal/{schedule}/siswa/{slot}', 'jadwal.ubah'],
     ['GET', '/jadwal/{schedule}/rekaman', 'rekaman.lihat'],
     ['POST', '/jadwal/{schedule}/rekaman', 'rekaman.tandai'],
+    ['GET', '/laporan', 'laporan.lihat'],
+    ['GET', '/laporan/ekspor', 'laporan.lihat'],
 ]);
 
 function resolveUri(string $uri): string

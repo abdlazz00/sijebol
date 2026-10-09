@@ -14,7 +14,7 @@ test('menu disaring menurut izin dan grup kosong dibuang', function () {
     $menuAdmin = app(MenuService::class)->forUser($admin);
 
     expect(collect($menuOperator)->pluck('group')->all())->toBe(['Utama', 'Data Siswa', 'Jadwal'])
-        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Data Siswa', 'Verifikasi', 'Jadwal', 'Sistem'])
+        ->and(collect($menuAdmin)->pluck('group')->all())->toBe(['Utama', 'Manajemen Akses', 'Master Data', 'Data Siswa', 'Verifikasi', 'Jadwal', 'Laporan', 'Sistem'])
         ->and(collect($menuAdmin)->firstWhere('group', 'Manajemen Akses')['items'][0])
         ->toBe(['label' => 'Pengguna', 'href' => '/pengguna', 'icon' => 'users']);
 });
@@ -43,4 +43,11 @@ test('menu Jadwal tampil untuk pemegang jadwal.lihat', function () {
     $operator = app(MenuService::class)->forUser(User::factory()->create()->assignRole('operator-sekolah'));
 
     expect(collect($operator)->firstWhere('group', 'Jadwal')['items'][0])->toBe(['label' => 'Jadwal', 'href' => '/jadwal', 'icon' => 'calendar-days']);
+});
+
+test('menu Laporan tampil untuk pemegang laporan.lihat', function () {
+    $staf = makeUserWith(['laporan.lihat'], roleName: 'pelapor-menu');
+
+    expect(collect(app(MenuService::class)->forUser($staf))->firstWhere('group', 'Laporan')['items'][0])
+        ->toBe(['label' => 'Rekap pendaftaran', 'href' => '/laporan', 'icon' => 'file-spreadsheet']);
 });
