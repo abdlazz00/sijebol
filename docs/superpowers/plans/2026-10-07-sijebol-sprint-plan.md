@@ -176,6 +176,8 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 **Status Fase 6b (2026-10-09): SELESAI** (spec: `specs/2026-10-09-fase-6b-alur-lapangan-design.md`, rencana: `plans/2026-10-09-fase-6b-alur-lapangan.md`). Batalkan penandaan rekaman (status akhir kembali ke Terjadwal dengan catatan wajib, ditolak bila siswa punya entri aktif lain), hapus jadwal kosong, pindah siswa antar-jadwal (atomik), notifikasi penandaan dan pembatalannya, daftar jadwal terdekat-dulu, serta setujui massal verifikasi (maks 50, atomik, kelayakan diperiksa ulang, satu notifikasi per pendaftaran). **6c** (hardening, ketahanan, polesan) belum dimulai; **rilis ditahan**.
 
+**Status Fase 6c-1 (2026-10-09): SELESAI** (spec: `specs/2026-10-09-fase-6c1-hardening-design.md`, rencana: `plans/2026-10-09-fase-6c1-hardening.md`). Header keamanan (`SecurityHeaders`: nosniff, X-Frame-Options, Referrer-Policy, Permissions-Policy, HSTS di HTTPS, CSP bernonce di luar `local`, diverifikasi di browser dengan build produksi tanpa pelanggaran), limiter `web` 240/mnt per pengguna dengan halaman 429, rute `storage/{path}` dan `sanctum/csrf-cookie` dimatikan, tes audit rute struktural (rute baru tanpa penjaga membuat tes gagal), tes unggah berkas sungguhan, indeks `activity_log.created_at`, dan tes jumlah query sepuluh halaman daftar (tidak ditemukan N+1). **6c-2** (ketahanan: gagal memuat, pencarian siswa dari server, impor Excel lewat queue) dan **6c-3** (polesan dan aksesibilitas) belum dimulai; **rilis ditahan**.
+
 ### Track BE
 1. Data blok beranda sesuai permission (ringkasan angka, perlu tindakan, jadwal terdekat).
 2. Laporan dasar: rekap per sekolah dan per status; ekspor Excel.
