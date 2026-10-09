@@ -2,13 +2,17 @@
 
 namespace App\Domains\Students\Services;
 
+use App\Domains\Students\Jobs\ImportStudentsJob;
 use App\Domains\Students\Models\Student;
+use App\Domains\Students\Models\StudentImport;
 use App\Domains\Students\Support\StudentRules;
 use App\Models\User;
 use Carbon\Carbon;
 use Carbon\Exceptions\InvalidFormatException;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Maatwebsite\Excel\Concerns\ToArray;
 use Maatwebsite\Excel\Concerns\WithHeadingRow;
@@ -24,39 +28,84 @@ class StudentImportService
     private const REQUIRED = ['nik', 'nisn', 'nama', 'tanggal_lahir', 'jenis_kelamin'];
 
     /**
-     * @return array{imported: int, failed: list<array{row: int, reason: string}>}
+     * Pra-periksa sinkron (sekolah, format, kolom wajib, batas baris), simpan berkas, buat baris impor, dan antrekan job.
      *
      * @throws ValidationException
      */
-    public function import(UploadedFile $file, User $actor, ?int $schoolId): array
+    public function prepare(UploadedFile $file, User $actor, ?int $schoolId): StudentImport
     {
         $schoolId = $actor->school_id ?? $schoolId;
         if ($schoolId === null) {
             throw ValidationException::withMessages(['school_id' => 'Pilih sekolah.']);
         }
 
-        $rows = $this->read($file);
-        $imported = 0;
-        $failed = [];
-        $seen = [];
+        $this->read($file);
 
-        foreach ($rows as $index => $row) {
-            if ($this->isBlank($row)) {
-                continue;
-            }
-            $rowNumber = $index + 2; // baris 1 adalah judul
+        $import = StudentImport::create([
+            'user_id' => $actor->id,
+            'school_id' => $schoolId,
+            'original_name' => $file->getClientOriginalName(),
+            'path' => $file->storeAs('imports', Str::uuid().'.xlsx', 'local'),
+        ]);
+        ImportStudentsJob::dispatch($import->id);
 
-            $reason = $this->importRow($row, $schoolId, $seen);
-            if ($reason === null) {
-                $imported++;
-            } else {
-                $failed[] = ['row' => $rowNumber, 'reason' => $reason];
+        return $import;
+    }
+
+    /** Isi job: memproses baris, menyimpan hasil, dan menghapus berkas (juga bila gagal di tengah jalan). */
+    public function run(StudentImport $import): void
+    {
+        $import->update(['status' => StudentImport::BERJALAN, 'started_at' => now()]);
+
+        try {
+            $rows = $this->read((string) $import->path, 'local');
+            $imported = 0;
+            $failed = [];
+            $seen = [];
+
+            foreach ($rows as $index => $row) {
+                if ($this->isBlank($row)) {
+                    continue;
+                }
+
+                $reason = $this->importRow($row, $import->school_id, $seen);
+                if ($reason === null) {
+                    $imported++;
+                } else {
+                    $failed[] = ['row' => $index + 2, 'reason' => $reason]; // baris 1 adalah judul
+                }
             }
+
+            $import->update(['status' => StudentImport::SELESAI, 'imported' => $imported, 'failed' => $failed, 'finished_at' => now()]);
+            activity('siswa')->causedBy($import->user)->withProperties(['berhasil' => $imported, 'gagal' => count($failed)])->log('siswa.diimpor');
+        } finally {
+            $this->discardFile($import);
         }
+    }
 
-        activity('siswa')->causedBy($actor)->withProperties(['berhasil' => $imported, 'gagal' => count($failed)])->log('siswa.diimpor');
+    public function markFailed(StudentImport $import): void
+    {
+        $import->update([
+            'status' => StudentImport::GAGAL,
+            'error' => 'Impor gagal diproses. Periksa berkas lalu coba lagi.',
+            'finished_at' => now(),
+        ]);
+        $this->discardFile($import);
+    }
 
-        return ['imported' => $imported, 'failed' => $failed];
+    public function findVisible(int $id, User $user): ?StudentImport
+    {
+        $import = StudentImport::query()->find($id);
+
+        return $import !== null && $user->can('siswa.impor') && $import->visibleTo($user) ? $import : null;
+    }
+
+    private function discardFile(StudentImport $import): void
+    {
+        if ($import->path !== null) {
+            Storage::disk('local')->delete($import->path);
+            $import->update(['path' => null]);
+        }
     }
 
     /**
@@ -102,7 +151,7 @@ class StudentImportService
      *
      * @throws ValidationException
      */
-    private function read(UploadedFile $file): array
+    private function read(UploadedFile|string $file, ?string $disk = null): array
     {
         // WithLimit menghentikan pembacaan di baris ke-501, jadi berkas yang mengembang tidak dimuat seluruhnya.
         $reader = new class implements ToArray, WithHeadingRow, WithLimit
@@ -116,7 +165,7 @@ class StudentImportService
         };
 
         /** @var list<array<string, mixed>> $rows */
-        $rows = Excel::toArray($reader, $file)[0] ?? [];
+        $rows = Excel::toArray($reader, $file, $disk)[0] ?? [];
 
         // Pembaca bisa menambah satu baris kosong di ujung; hanya baris terisi yang dihitung.
         if (count(array_filter($rows, fn (array $row) => ! $this->isBlank($row))) > self::MAX_ROWS) {

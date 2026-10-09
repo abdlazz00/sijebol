@@ -3,8 +3,10 @@
 namespace App\Domains\Students\Http\Controllers;
 
 use App\Domains\Students\Exports\StudentTemplateExport;
+use App\Domains\Students\Models\StudentImport;
 use App\Domains\Students\Services\StudentImportService;
 use App\Http\Controllers\Controller;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Maatwebsite\Excel\Facades\Excel;
@@ -35,8 +37,15 @@ class StudentImportController extends Controller
             ],
         );
 
-        $result = $this->import->import($request->file('file'), $request->user(), $request->integer('school_id') ?: null);
+        $import = $this->import->prepare($request->file('file'), $request->user(), $request->integer('school_id') ?: null);
 
-        return back()->with('import_result', $result);
+        return back()->with('import', ['id' => $import->id]);
+    }
+
+    public function show(Request $request, StudentImport $import): JsonResponse
+    {
+        abort_unless($import->visibleTo($request->user()), 404);
+
+        return response()->json($import->payload());
     }
 }

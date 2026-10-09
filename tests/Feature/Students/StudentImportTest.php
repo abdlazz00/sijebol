@@ -2,7 +2,9 @@
 
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
+use App\Domains\Students\Models\StudentImport;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -30,7 +32,14 @@ function xlsx(array $rows, array $heading = ['NIK', 'NISN', 'Nama', 'Tanggal lah
     return new UploadedFile($path, 'siswa.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
 }
 
+/** Impor terakhir yang tersimpan; queue sync memproses job di dalam request. */
+function lastImport(): StudentImport
+{
+    return StudentImport::query()->latest('id')->firstOrFail();
+}
+
 beforeEach(function () {
+    Storage::fake('local');
     $this->school = School::factory()->create();
     $this->op = makeUserWith(['siswa.lihat', 'siswa.impor'], $this->school, true, 'op-impor');
 });
@@ -44,12 +53,13 @@ test('sebagian baris gagal: yang benar masuk, yang salah dilaporkan dengan nomor
     ]);
 
     $this->actingAs($this->op)->post('/siswa/impor', ['file' => $file])
-        ->assertRedirect()->assertSessionHas('import_result', fn ($r) => $r['imported'] === 2
-            && $r['failed'] === [
-                ['row' => 3, 'reason' => 'NIK harus 16 digit angka.'],
-                ['row' => 5, 'reason' => 'NIK ganda di berkas.'],
-            ]);
+        ->assertRedirect()->assertSessionHas('import.id');
 
+    expect(lastImport()->imported)->toBe(2)
+        ->and(lastImport()->failed)->toBe([
+            ['row' => 3, 'reason' => 'NIK harus 16 digit angka.'],
+            ['row' => 5, 'reason' => 'NIK ganda di berkas.'],
+        ]);
     expect(Student::count())->toBe(2)
         ->and(Student::where('name', 'Siti')->first()->birth_date->toDateString())->toBe('2009-06-02');
 });
@@ -60,9 +70,10 @@ test('NIK bertipe angka ditolak, NISN angka dipulihkan dengan nol di depan', fun
         ['3201123412341299', 12345678, 'NISN Angka', '2009-05-01', 'L'],
     ], teks: false);
 
-    $this->actingAs($this->op)->post('/siswa/impor', ['file' => $file])
-        ->assertSessionHas('import_result', fn ($r) => $r['imported'] === 1
-            && $r['failed'] === [['row' => 2, 'reason' => 'NIK harus diisi sebagai teks (format kolom NIK = Teks).']]);
+    $this->actingAs($this->op)->post('/siswa/impor', ['file' => $file]);
+
+    expect(lastImport()->imported)->toBe(1)
+        ->and(lastImport()->failed)->toBe([['row' => 2, 'reason' => 'NIK harus diisi sebagai teks (format kolom NIK = Teks).']]);
 
     expect(Student::first()->nisn)->toBe('0012345678');
 });
@@ -74,8 +85,9 @@ test('tanggal bernomor serial Excel dan baris kosong ditangani', function () {
         ['3201123412341235', '0012345679', 'Setelah Kosong', '2009-05-01', 'P'],
     ]);
 
-    $this->actingAs($this->op)->post('/siswa/impor', ['file' => $file])
-        ->assertSessionHas('import_result', fn ($r) => $r['imported'] === 2 && $r['failed'] === []);
+    $this->actingAs($this->op)->post('/siswa/impor', ['file' => $file]);
+
+    expect(lastImport()->imported)->toBe(2)->and(lastImport()->failed)->toBe([]);
 
     expect(Student::where('name', 'Serial')->first()->birth_date->toDateString())->toBe('2009-07-06');
 });
@@ -137,8 +149,9 @@ test('tepat 500 baris diterima', function () {
         range(1, 500),
     );
 
-    $this->actingAs($this->op)->post('/siswa/impor', ['file' => xlsx($baris)])
-        ->assertSessionHas('import_result', fn ($r) => $r['imported'] === 500 && $r['failed'] === []);
+    $this->actingAs($this->op)->post('/siswa/impor', ['file' => xlsx($baris)]);
+
+    expect(lastImport()->imported)->toBe(500)->and(lastImport()->failed)->toBe([]);
 });
 
 test('berkas bernama xlsx tetapi isinya bukan xlsx ditolak', function () {

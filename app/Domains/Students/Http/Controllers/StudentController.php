@@ -7,6 +7,7 @@ use App\Domains\Students\Http\Requests\StudentRequest;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
 use App\Domains\Students\Services\StudentDocumentService;
+use App\Domains\Students\Services\StudentImportService;
 use App\Domains\Students\Services\StudentService;
 use App\Http\Controllers\Controller;
 use App\Support\Nik;
@@ -22,6 +23,7 @@ class StudentController extends Controller
         private readonly EligibilityService $eligibility,
         private readonly SchoolService $schools,
         private readonly StudentDocumentService $documents,
+        private readonly StudentImportService $imports,
     ) {}
 
     public function index(Request $request): Response
@@ -30,6 +32,9 @@ class StudentController extends Controller
             'students' => $this->students->paginate()->through(fn (Student $s) => $this->row($s)),
             'filters' => $request->query('filter', []),
             'schools' => $this->schools->optionsFor($request->user()),
+            'recent_import' => $request->filled('impor')
+                ? $this->imports->findVisible($request->integer('impor'), $request->user())?->payload()
+                : null,
         ]);
     }
 
