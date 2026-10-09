@@ -36,7 +36,7 @@ watch(
     <Head :title="title" />
     <a
         href="#konten"
-        class="bg-background text-foreground focus-visible:ring-ring sr-only rounded-md px-4 py-2 text-sm font-medium shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus-visible:ring-2"
+        class="bg-background text-foreground focus-visible:ring-ring sr-only rounded-md text-sm font-medium shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus-visible:ring-2"
         >Lewati ke konten</a
     >
     <div class="bg-background flex min-h-dvh">

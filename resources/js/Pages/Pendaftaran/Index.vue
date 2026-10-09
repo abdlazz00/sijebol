@@ -154,7 +154,7 @@ function destroy() {
                         <div class="min-w-0">
                             <Link
                                 :href="route('pendaftaran.show', row.id)"
-                                class="block truncate py-0.5 text-sm leading-5 font-semibold hover:underline"
+                                class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ row.title }}
                             </Link>

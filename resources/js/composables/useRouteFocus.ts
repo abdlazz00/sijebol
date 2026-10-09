@@ -33,14 +33,14 @@ export function createRouteFocus(doc: DocLike = document) {
             last = page.component;
             if (!changed) return;
 
-            // Tunggu DOM halaman baru dan judul dokumen (Head) diperbarui.
+            // Head Inertia memperbarui judul dengan debounce 1 ms; beri jeda agar judul sudah baru.
             void nextTick(() =>
                 setTimeout(() => {
                     doc.getElementById('konten')?.focus({
                         preventScroll: true,
                     });
                     announcement.value = `Halaman: ${doc.title}`;
-                }, 0),
+                }, 50),
             );
         });
     }

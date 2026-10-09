@@ -241,7 +241,7 @@ const crumbs = computed(() => [
                         <div class="min-w-0">
                             <Link
                                 :href="route('siswa.show', row.student.id)"
-                                class="block truncate py-0.5 text-sm leading-5 font-semibold hover:underline"
+                                class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ row.student.name }}
                             </Link>

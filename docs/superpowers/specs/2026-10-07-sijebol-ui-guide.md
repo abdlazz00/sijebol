@@ -236,6 +236,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - **Loading:** skeleton untuk tabel dan kartu; tombol submit menampilkan spinner dan nonaktif saat proses.
 - **Tanggal dan waktu:** format `7 Okt 2026`, `14.30`; relatif untuk waktu dekat ("2 menit lalu"); satu formatter di kode (`lib/date.ts`), jadi tidak ada format berbeda antarkomponen.
 - **Aksesibilitas:** semua kontrol dapat dioperasikan dengan keyboard; urutan fokus logis; label terhubung ke input; status tidak hanya dibedakan lewat warna (badge selalu bertuliskan teks); area sentuh minimal 40 px.
+- **Navigasi keyboard (6c-3):** tautan "Lewati ke konten" adalah fokus pertama di `AppLayout` dan menuju `main#konten`; saat pindah ke halaman lain (komponen berbeda) fokus dipindah ke `#konten` dan wilayah `role=status` mengumumkan "Halaman: {judul}" (tidak pada muat awal, filter, atau partial reload). Tautan teks memakai cincin fokus 2 px `--ring`; tautan di baris tabel dan breadcrumb bertinggi minimal 24 px (`py-1`). Setiap `DataTable` wajib berprop `label` (nama aksesibel tabel; dijaga tes), header memakai `scope="col"`, dan `SearchInput` meneruskan `aria-label` ke input. Sistem tidak terindeks (`noindex`).
 - **Responsif:** breakpoint 768 dan 1280; desain kerja dibuat untuk lebar 1440 (desktop) dan 390 (mobile).
 
 ## 7. Catatan serah terima ke Figma
