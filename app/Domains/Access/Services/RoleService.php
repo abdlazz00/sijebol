@@ -111,8 +111,12 @@ class RoleService
      */
     private function assertScopeAllows(bool $schoolScoped, array $permissions): void
     {
-        if ($schoolScoped && in_array(Permission::LogLihat->value, $permissions, true)) {
-            throw new AccessRuleException('Role terikat sekolah tidak boleh memiliki izin Log Aktivitas karena log mencakup seluruh kecamatan.');
+        $districtWide = [Permission::LogLihat->value => 'Log Aktivitas', Permission::LaporanLihat->value => 'Laporan'];
+
+        foreach ($districtWide as $permission => $label) {
+            if ($schoolScoped && in_array($permission, $permissions, true)) {
+                throw new AccessRuleException("Role terikat sekolah tidak boleh memiliki izin {$label} karena datanya mencakup seluruh kecamatan.");
+            }
         }
     }
 

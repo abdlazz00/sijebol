@@ -142,6 +142,20 @@ test('role terikat sekolah tidak boleh memegang log.lihat (log mencakup seluruh 
     ], $this->super))->toThrow(AccessRuleException::class);
 });
 
+test('role terikat sekolah tidak boleh memegang laporan.lihat (rekap mencakup seluruh kecamatan)', function () {
+    expect(fn () => $this->service->create([
+        'name' => 'operator-laporan', 'is_school_scoped' => true, 'permissions' => ['laporan.lihat'],
+    ], $this->super))->toThrow(AccessRuleException::class);
+
+    $role = $this->service->create([
+        'name' => 'operator-biasa-2', 'is_school_scoped' => true, 'permissions' => ['siswa.lihat'],
+    ], $this->super);
+
+    expect(fn () => $this->service->update($role, [
+        'name' => 'operator-biasa-2', 'is_school_scoped' => true, 'permissions' => ['siswa.lihat', 'laporan.lihat'],
+    ], $this->super))->toThrow(AccessRuleException::class);
+});
+
 test('role global boleh memegang log.lihat', function () {
     $role = $this->service->create([
         'name' => 'auditor', 'is_school_scoped' => false, 'permissions' => ['log.lihat'],
