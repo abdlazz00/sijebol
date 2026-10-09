@@ -92,7 +92,7 @@ function approve() {
 }
 
 const columns = computed(() => [
-    ...(canDecide.value
+    ...(canDecide.value && props.queue.data.length
         ? [{ key: 'select', label: 'Pilih', class: 'w-[64px]' }]
         : []),
     { key: 'student', label: 'Siswa', class: 'w-[240px]' },
