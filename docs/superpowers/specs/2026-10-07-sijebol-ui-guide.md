@@ -194,6 +194,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 
 ### 5.20 Impor Excel
 - Tombol "Impor Excel" membuka dialog: langkah 1 **Unduh template (.xlsx)** dengan catatan "Kolom NIK, NISN, dan Tanggal lahir berformat teks; tanggal diisi YYYY-MM-DD atau DD/MM/YYYY."; langkah 2 pilih berkas .xlsx (maks 2 MB; staf memilih sekolah lebih dulu) lalu **Impor**.
+- Impor diproses di latar belakang (queue): setelah **Impor** dialog menampilkan "Impor sedang diproses" dengan spinner dan boleh ditutup; polling tiap 2 detik, dan bila masih antri lebih dari 20 detik tampil petunjuk "pastikan queue worker berjalan". Pembuat menerima notifikasi "Impor siswa selesai" (atau "gagal") dengan tautan `/siswa?impor={id}` yang membuka dialog berisi hasil tersimpan. Berkas unggahan dihapus setelah diproses.
 - Hasil di dalam dialog: "N siswa berhasil ditambahkan, M baris gagal." dan bila ada yang gagal tabel **Baris / Alasan** (maks tinggi, scroll), tombol Tutup dan "Impor lagi". Galat berkas (kolom wajib hilang, lebih dari 500 baris, bukan .xlsx) tampil sebagai banner di dialog.
 
 ### 5.21 Pendaftaran: daftar dan form `/pendaftaran` (`pendaftaran.lihat`)
@@ -201,7 +202,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - **Form** (`/pendaftaran/buat`, `/pendaftaran/{id}/ubah`, pola 5.8): kartu **Detail pendaftaran** (Judul wajib, Perkiraan jumlah peserta opsional, Sekolah hanya staf saat buat; mengganti sekolah memuat ulang daftar siswa) dan kartu **Pilih siswa** (5.22). Bar aksi bawah: Batal dan **Simpan draf** (menuju detail, tempat **Ajukan** berada).
 
 ### 5.22 Pemilih siswa (`StudentMultiSelect`)
-- Kolom cari (nama atau NISN), tombol **Pilih semua yang eligible**, dan penghitung "N dipilih" (`role="status"`, diumumkan). Tiap baris: kotak centang, nama, NISN dan umur. Baris belum eligible dinonaktifkan dan menampilkan alasannya sebagai teks (bukan hanya warna), disertai tautan "Lengkapi dokumen" ke detail siswa bila dokumen kurang. Siswa yang sudah terpilih tetapi menjadi tidak eligible tetap dapat dibatalkan pilihannya. Galat per siswa (dari server) tampil di bawah barisnya. Dapat dioperasikan dengan keyboard; mobile: baris menumpuk.
+- Daftar dipaginasi 20 per halaman dan dicari di server (cari nama atau NISN dengan debounce; tombol **Sebelumnya**/**Berikutnya** dan "Halaman X dari Y · N siswa"). Pilihan lintas halaman dan hasil pencarian tampil sebagai daftar **Terpilih (N)** berupa chip dengan tombol hapus per siswa. Kolom cari, tombol **Pilih semua yang eligible di halaman ini**, dan penghitung "N dipilih" (`role="status"`, diumumkan). Tiap baris: kotak centang, nama, NISN dan umur. Baris belum eligible dinonaktifkan dan menampilkan alasannya sebagai teks (bukan hanya warna), disertai tautan "Lengkapi dokumen" ke detail siswa bila dokumen kurang. Siswa yang sudah terpilih tetapi menjadi tidak eligible tetap dapat dibatalkan pilihannya. Galat per siswa (dari server) tampil di bawah barisnya. Dapat dioperasikan dengan keyboard; mobile: baris menumpuk.
 
 ### 5.23 Pendaftaran: detail `/pendaftaran/{id}`
 - Header: judul, badge ringkasan, tombol sesuai keadaan. **Draf:** Ubah, **Ajukan** (dialog "Ajukan N siswa untuk diverifikasi? Setelah diajukan pendaftaran tidak dapat diubah.") dan menu Hapus. Kartu **Informasi** (sekolah, dibuat oleh, perkiraan peserta, waktu diajukan). Tabel entri: **Siswa**, **Status** (badge berteks), **Catatan petugas** (untuk perlu perbaikan/ditolak), **Aksi** (Riwayat membuka dialog dengan timeline; untuk perlu perbaikan: Perbaiki data ke detail siswa dan **Ajukan ulang**). Galat pengajuan tampil sebagai banner dan alasan per siswa di baris terkait.
@@ -231,6 +232,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 
 - **Umpan balik:** sukses = toast hijau; gagal form = banner dan pesan per field; aksi merusak = dialog konfirmasi menyebut nama objek.
 - **Izin:** tombol, menu, dan aksi tanpa izin tidak ditampilkan; halaman tanpa izin = 403.
+- **Gagal memuat:** kegagalan jaringan atau respons non-Inertia (mis. 502 dari proxy) menampilkan banner danger di atas konten (`role="alert"`): "Gagal memuat data. Periksa koneksi Anda lalu coba lagi." dengan tombol **Coba lagi** (mengulang kunjungan yang gagal) dan **Tutup**; berlaku untuk semua halaman di dalam layout aplikasi.
 - **Loading:** skeleton untuk tabel dan kartu; tombol submit menampilkan spinner dan nonaktif saat proses.
 - **Tanggal dan waktu:** format `7 Okt 2026`, `14.30`; relatif untuk waktu dekat ("2 menit lalu"); satu formatter di kode (`lib/date.ts`), jadi tidak ada format berbeda antarkomponen.
 - **Aksesibilitas:** semua kontrol dapat dioperasikan dengan keyboard; urutan fokus logis; label terhubung ke input; status tidak hanya dibedakan lewat warna (badge selalu bertuliskan teks); area sentuh minimal 40 px.
