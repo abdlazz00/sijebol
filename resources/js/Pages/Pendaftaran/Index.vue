@@ -143,6 +143,7 @@ function destroy() {
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Daftar pendaftaran"
                     :columns="columns"
                     :rows="registrations.data"
                     :loading="loading"

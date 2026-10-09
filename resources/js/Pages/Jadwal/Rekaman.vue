@@ -262,6 +262,7 @@ const crumbs = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Siswa sudah ditandai"
                     :columns="markedColumns"
                     :rows="marked"
                     row-class="h-14"

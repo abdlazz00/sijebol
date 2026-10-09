@@ -24,6 +24,7 @@ withDefaults(
         loading?: boolean;
         rowClass?: string;
         tableClass?: string;
+        label?: string;
     }>(),
     { rowClass: 'h-12', tableClass: '' },
 );
@@ -31,7 +32,7 @@ withDefaults(
 
 <template>
     <div class="bg-card overflow-x-auto rounded-lg border">
-        <Table :class="tableClass">
+        <Table :class="tableClass" :aria-label="label">
             <TableHeader class="bg-secondary">
                 <TableRow>
                     <TableHead

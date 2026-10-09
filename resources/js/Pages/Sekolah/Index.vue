@@ -104,6 +104,7 @@ const columns = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Daftar sekolah"
                     :columns="columns"
                     :rows="schools.data"
                     :loading="loading"

@@ -231,6 +231,7 @@ const crumbs = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Peserta jadwal"
                     :columns="columns"
                     :rows="participants"
                     row-class="h-16"

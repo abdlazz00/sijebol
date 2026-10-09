@@ -164,6 +164,7 @@ const crumbs = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Entri pendaftaran"
                     :columns="columns"
                     :rows="entries"
                     row-class="h-16"

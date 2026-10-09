@@ -9,6 +9,7 @@ const props = defineProps<{
 
 <template>
     <th
+        scope="col"
         data-slot="table-head"
         :class="
             cn(

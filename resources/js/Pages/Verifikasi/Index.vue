@@ -178,6 +178,7 @@ const columns = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Antrean verifikasi"
                     :columns="columns"
                     :rows="queue.data"
                     :loading="loading"

@@ -2,6 +2,7 @@
 import { Input } from '@/Components/ui/input';
 import { Search } from '@lucide/vue';
 
+defineOptions({ inheritAttrs: false });
 defineProps<{ placeholder?: string; id?: string }>();
 
 const model = defineModel<string>({ default: '' });
@@ -14,6 +15,7 @@ const model = defineModel<string>({ default: '' });
             aria-hidden="true"
         />
         <Input
+            v-bind="$attrs"
             :id="id"
             v-model="model"
             class="h-10 bg-white pl-9"

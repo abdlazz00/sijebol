@@ -143,6 +143,7 @@ function openDetail(row: ActivityRow) {
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Log aktivitas"
                     :columns="columns"
                     :rows="activities.data"
                     :loading="loading"

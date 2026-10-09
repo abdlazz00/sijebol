@@ -145,6 +145,7 @@ const dialog = useDeactivateDialog();
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Daftar pengguna"
                     :columns="columns"
                     :rows="users.data"
                     :loading="loading"

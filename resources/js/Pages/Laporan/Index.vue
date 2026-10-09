@@ -131,6 +131,7 @@ function cell(row: RecapTableRow, key: string): string {
                     kolom lainnya
                 </p>
                 <DataTable
+                    label="Rekap pendaftaran per sekolah"
                     :columns="table.columns"
                     :rows="table.rows"
                     row-class="h-12"

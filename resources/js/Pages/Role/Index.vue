@@ -77,6 +77,7 @@ function destroy() {
                 kolom lainnya
             </p>
             <DataTable
+                label="Daftar role"
                 :columns="columns"
                 :rows="roles"
                 row-class="h-16"

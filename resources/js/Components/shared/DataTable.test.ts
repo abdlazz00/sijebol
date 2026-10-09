@@ -42,3 +42,21 @@ describe('DataTable', () => {
         expect(wrapper.text()).not.toContain('Tidak ada data');
     });
 });
+
+describe('DataTable aksesibilitas', () => {
+    it('memberi aria-label pada tabel dari prop label', () => {
+        const wrapper = mount(DataTable, {
+            props: { columns, rows: [], label: 'Daftar pengguna' },
+        });
+        expect(wrapper.find('table').attributes('aria-label')).toBe(
+            'Daftar pengguna',
+        );
+    });
+
+    it('memberi scope=col pada semua header kolom', () => {
+        const wrapper = mount(DataTable, { props: { columns, rows: [] } });
+        const heads = wrapper.findAll('th');
+        expect(heads.length).toBe(columns.length);
+        heads.forEach((th) => expect(th.attributes('scope')).toBe('col'));
+    });
+});
