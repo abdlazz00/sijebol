@@ -59,3 +59,20 @@ test('pengguna terikat sekolah lain mendapat 404 untuk entri sekolah berbeda', f
     $this->post("/verifikasi/{$entry->id}/putuskan", ['decision' => 'approve'])->assertNotFound();
     $this->get('/verifikasi')->assertInertia(fn (Assert $p) => $p->has('queue.data', 0));
 });
+
+test('setujui massal lewat HTTP: sukses, validasi jumlah dan id ganda, galat entri', function () {
+    $a = makeEntry(S::Diajukan, student: eligibleStudent());
+    $b = makeEntry(S::Diajukan, student: eligibleStudent());
+    $this->actingAs($this->petugas);
+
+    $this->post('/verifikasi/setujui', [])->assertSessionHasErrors('entry_ids');
+    $this->post('/verifikasi/setujui', ['entry_ids' => []])->assertSessionHasErrors('entry_ids');
+    $this->post('/verifikasi/setujui', ['entry_ids' => [$a->id, $a->id]])->assertSessionHasErrors('entry_ids.1');
+    $this->post('/verifikasi/setujui', ['entry_ids' => range(1, 51)])->assertSessionHasErrors('entry_ids');
+    expect($a->fresh()->status)->toBe(S::Diajukan);
+
+    $this->post('/verifikasi/setujui', ['entry_ids' => [$a->id, $b->id]])->assertRedirect('/verifikasi')->assertSessionHas('success', '2 siswa disetujui.');
+    expect($a->fresh()->status)->toBe(S::Terverifikasi)->and($b->fresh()->status)->toBe(S::Terverifikasi);
+
+    $this->post('/verifikasi/setujui', ['entry_ids' => [$a->id]])->assertSessionHasErrors('entry_ids');
+});

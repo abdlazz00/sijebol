@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function () {
         ->middleware(['can:pendaftaran.ajukan', 'throttle:60,1'])->scopeBindings()->name('pendaftaran.resubmit');
 
     Route::get('verifikasi', [VerificationController::class, 'index'])->middleware('can:verifikasi.lihat')->name('verifikasi.index');
+    Route::post('verifikasi/setujui', [VerificationController::class, 'approveMany'])->middleware(['can:verifikasi.putuskan', 'throttle:30,1'])->name('verifikasi.setujui');
     Route::get('verifikasi/{entry}', [VerificationController::class, 'show'])->middleware('can:verifikasi.lihat')->name('verifikasi.show');
     Route::post('verifikasi/{entry}/putuskan', [VerificationController::class, 'decide'])->middleware(['can:verifikasi.putuskan', 'throttle:60,1'])->name('verifikasi.decide');
 });

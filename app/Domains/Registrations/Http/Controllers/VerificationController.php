@@ -2,6 +2,7 @@
 
 namespace App\Domains\Registrations\Http\Controllers;
 
+use App\Domains\Registrations\Http\Requests\ApproveManyRequest;
 use App\Domains\Registrations\Http\Requests\DecisionRequest;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Services\VerificationService;
@@ -60,6 +61,13 @@ class VerificationController extends Controller
             'documents' => $request->user()->can('dokumen.lihat') ? $this->documents->rows($student) : [],
             'eligibility' => $this->eligibility->check($student, null, $entry->registration_id),
         ]);
+    }
+
+    public function approveMany(ApproveManyRequest $request): RedirectResponse
+    {
+        $count = $this->verification->approveMany($request->validated('entry_ids'), $request->user());
+
+        return redirect()->route('verifikasi.index')->with('success', "{$count} siswa disetujui.");
     }
 
     public function decide(DecisionRequest $request, RegistrationStudent $entry): RedirectResponse

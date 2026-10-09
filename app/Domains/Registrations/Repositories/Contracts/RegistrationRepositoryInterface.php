@@ -4,6 +4,7 @@ namespace App\Domains\Registrations\Repositories\Contracts;
 
 use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStudent;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface RegistrationRepositoryInterface
@@ -29,6 +30,14 @@ interface RegistrationRepositoryInterface
     public function update(Registration $registration, array $attributes): Registration;
 
     public function delete(Registration $registration): void;
+
+    /**
+     * Mengunci baris entri (urut id) beserta siswa, dokumen, entri siswa, dan pendaftarannya untuk keputusan massal.
+     *
+     * @param  list<int>  $ids
+     * @return Collection<int, RegistrationStudent>
+     */
+    public function lockEntries(array $ids): Collection;
 
     /**
      * Menyamakan entri draf dengan daftar siswa: yang tidak ada dihapus, yang baru ditambahkan.

@@ -7,6 +7,7 @@ use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Repositories\Contracts\RegistrationRepositoryInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Spatie\QueryBuilder\AllowedFilter;
 use Spatie\QueryBuilder\QueryBuilder;
@@ -49,6 +50,12 @@ class EloquentRegistrationRepository implements RegistrationRepositoryInterface
             )
             ->paginate($perPage)
             ->withQueryString();
+    }
+
+    public function lockEntries(array $ids): Collection
+    {
+        return RegistrationStudent::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()
+            ->with(['student.documents', 'student.registrationEntries', 'registration'])->get();
     }
 
     public function create(array $attributes): Registration
