@@ -68,6 +68,28 @@ describe('StudentMultiSelect', () => {
         expect(text).toContain('Lengkapi dokumen');
     });
 
+    it('menggabungkan beberapa alasan dalam satu baris ringkas', () => {
+        const wrapper = mountSelect([], {
+            candidates: page([
+                {
+                    ...base,
+                    id: 4,
+                    name: 'Dewi',
+                    nisn: '0000000004',
+                    eligible: false,
+                    reasons: [
+                        'Kartu Keluarga belum diunggah.',
+                        'Akta kelahiran belum diunggah.',
+                    ],
+                },
+            ]),
+        });
+        expect(wrapper.text()).toContain(
+            'Belum memenuhi: Kartu Keluarga belum diunggah. · Akta kelahiran belum diunggah.',
+        );
+        expect(wrapper.findAll('li li')).toHaveLength(0);
+    });
+
     it('"Pilih semua yang eligible di halaman ini" menambah yang eligible ke pilihan yang ada', async () => {
         const wrapper = mountSelect([9]);
         const button = wrapper

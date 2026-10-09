@@ -143,14 +143,12 @@ function selectAllEligible() {
                             · NISN {{ c.nisn }} · {{ c.age }} th
                         </span>
                     </label>
-                    <ul
+                    <p
                         v-if="!c.eligible"
-                        class="text-muted-foreground mt-1 list-disc pl-4 text-xs leading-4"
+                        class="text-muted-foreground mt-1 text-xs leading-4"
                     >
-                        <li v-for="reason in c.reasons" :key="reason">
-                            {{ reason }}
-                        </li>
-                    </ul>
+                        Belum memenuhi: {{ c.reasons.join(' · ') }}
+                    </p>
                     <Link
                         v-if="c.missing_docs"
                         :href="route('siswa.show', c.id)"
