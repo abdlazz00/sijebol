@@ -24,9 +24,12 @@ export type StudentDocumentRow = {
     url: string;
 };
 
-export type ImportResult = {
+export type ImportStatus = {
+    id: number;
+    status: 'antri' | 'berjalan' | 'selesai' | 'gagal';
     imported: number;
     failed: { row: number; reason: string }[];
+    error: string | null;
 };
 
 export type StudentRegistrationRef = {

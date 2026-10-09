@@ -1,6 +1,5 @@
 import type { MenuGroup } from './access';
 import type { NotificationSummary } from './notification';
-import type { ImportResult } from './student';
 
 export interface User {
     id: number;
@@ -20,7 +19,7 @@ export type PageProps<
     flash: {
         success?: string | null;
         error?: string | null;
-        import_result?: ImportResult | null;
+        import?: { id: number } | null;
     };
     menu: MenuGroup[];
     notifications: NotificationSummary | null;

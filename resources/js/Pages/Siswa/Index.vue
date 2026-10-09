@@ -16,7 +16,7 @@ import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { Paginator } from '@/types/access';
-import type { StudentRow } from '@/types/student';
+import type { ImportStatus, StudentRow } from '@/types/student';
 import { Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -34,6 +34,7 @@ import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     students: Paginator<StudentRow>;
+    recent_import: ImportStatus | null;
     filters: Record<string, string | undefined>;
     schools: { id: number; name: string }[] | null;
 }>();
@@ -72,7 +73,7 @@ const columns = computed(() => [
 ]);
 
 const confirmOpen = ref(false);
-const importOpen = ref(false);
+const importOpen = ref(props.recent_import !== null);
 const target = ref<StudentRow | null>(null);
 
 function askDelete(student: StudentRow) {
@@ -317,7 +318,11 @@ function destroy() {
             </div>
         </div>
 
-        <ImportStudentsDialog v-model:open="importOpen" :schools="schools" />
+        <ImportStudentsDialog
+            v-model:open="importOpen"
+            :schools="schools"
+            :recent-import="recent_import"
+        />
 
         <ConfirmDialog
             v-model:open="confirmOpen"

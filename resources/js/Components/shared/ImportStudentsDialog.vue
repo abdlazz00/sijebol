@@ -13,12 +13,16 @@ import {
 } from '@/Components/ui/dialog';
 import { formatBytes } from '@/lib/files';
 import type { PageProps } from '@/types';
-import type { ImportResult } from '@/types/student';
+import { useImportStatus } from '@/composables/useImportStatus';
+import type { ImportStatus } from '@/types/student';
 import { useForm, usePage } from '@inertiajs/vue3';
 import { Download, LoaderCircle } from '@lucide/vue';
-import { computed, ref, useId } from 'vue';
+import { computed, ref, useId, watch } from 'vue';
 
-const props = defineProps<{ schools: { id: number; name: string }[] | null }>();
+const props = defineProps<{
+    schools: { id: number; name: string }[] | null;
+    recentImport?: ImportStatus | null;
+}>();
 const open = defineModel<boolean>('open', { required: true });
 
 const MAX_BYTES = 2 * 1024 * 1024;
@@ -28,8 +32,23 @@ const form = useForm<{ file: File | null; school_id: number | '' }>({
     file: null,
     school_id: '',
 });
-const result = ref<ImportResult | null>(null);
+const { status, stalled, start, show, stop } = useImportStatus();
 const clientError = ref('');
+
+const finished = computed(
+    () =>
+        status.value?.status === 'selesai' || status.value?.status === 'gagal',
+);
+const processing = computed(() => status.value !== null && !finished.value);
+
+// Hasil dari tautan notifikasi (?impor=ID) dibuka langsung.
+watch(
+    () => props.recentImport,
+    (value) => {
+        if (value) show(value);
+    },
+    { immediate: true },
+);
 
 const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
@@ -57,13 +76,15 @@ function submit() {
         forceFormData: true,
         preserveScroll: true,
         onSuccess: () => {
-            result.value = page.props.flash.import_result ?? null;
+            const id = page.props.flash.import?.id;
+            if (id) start(id);
         },
     });
 }
 
 function again() {
-    result.value = null;
+    stop();
+    status.value = null;
     form.reset();
     form.clearErrors();
 }
@@ -85,15 +106,45 @@ function close() {
                 </DialogDescription>
             </DialogHeader>
 
-            <div v-if="result" class="flex flex-col gap-3 text-sm">
-                <InlineAlert
-                    :variant="result.failed.length ? 'warning' : 'success'"
+            <div v-if="processing" class="flex flex-col gap-3 text-sm">
+                <InlineAlert variant="warning">
+                    <span class="inline-flex items-center gap-2">
+                        <LoaderCircle
+                            class="size-4 animate-spin"
+                            aria-hidden="true"
+                        />
+                        Impor sedang diproses. Anda boleh menutup dialog ini;
+                        notifikasi dikirim saat selesai.
+                    </span>
+                </InlineAlert>
+                <p
+                    v-if="stalled"
+                    class="text-muted-foreground text-xs leading-4"
                 >
-                    {{ result.imported }} siswa berhasil ditambahkan,
-                    {{ result.failed.length }} baris gagal.
+                    Menunggu proses latar belakang; pastikan queue worker
+                    berjalan.
+                </p>
+                <DialogFooter>
+                    <Button @click="close">Tutup</Button>
+                </DialogFooter>
+            </div>
+
+            <div
+                v-else-if="finished && status"
+                class="flex flex-col gap-3 text-sm"
+            >
+                <InlineAlert v-if="status.status === 'gagal'">
+                    {{ status.error ?? 'Impor gagal diproses.' }}
+                </InlineAlert>
+                <InlineAlert
+                    v-else
+                    :variant="status.failed.length ? 'warning' : 'success'"
+                >
+                    {{ status.imported }} siswa berhasil ditambahkan,
+                    {{ status.failed.length }} baris gagal.
                 </InlineAlert>
                 <div
-                    v-if="result.failed.length > 0"
+                    v-if="status.failed.length > 0"
                     class="max-h-[320px] overflow-auto rounded-lg border"
                 >
                     <table class="w-full text-left text-sm">
@@ -114,7 +165,7 @@ function close() {
                         </thead>
                         <tbody>
                             <tr
-                                v-for="f in result.failed"
+                                v-for="f in status.failed"
                                 :key="f.row"
                                 class="border-t align-top"
                             >
