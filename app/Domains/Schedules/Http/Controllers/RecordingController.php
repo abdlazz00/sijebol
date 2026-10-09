@@ -5,6 +5,7 @@ namespace App\Domains\Schedules\Http\Controllers;
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schedules\Http\Requests\RecordingRequest;
+use App\Domains\Schedules\Http\Requests\UndoMarkingRequest;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Services\RecordingService;
 use App\Http\Controllers\Controller;
@@ -29,6 +30,13 @@ class RecordingController extends Controller
                 ->map(fn (RegistrationStudent $e) => ScheduleController::participant($e))->values(),
             'can_mark' => $schedule->isOpenForMarking(),
         ]);
+    }
+
+    public function undo(UndoMarkingRequest $request, Schedule $schedule, RegistrationStudent $entry): RedirectResponse
+    {
+        $this->recording->undo($entry, $request->validated('note'), $request->user());
+
+        return redirect()->route('jadwal.rekaman.show', $schedule)->with('success', 'Penandaan dibatalkan.');
     }
 
     public function store(RecordingRequest $request, Schedule $schedule): RedirectResponse

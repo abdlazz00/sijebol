@@ -60,6 +60,9 @@ class ScheduleController extends Controller
             'candidates' => $canAssign
                 ? $this->schedules->candidates($schedule)->map(fn (RegistrationStudent $e) => self::checklistItem($e))->values()
                 : [],
+            'targets' => $request->user()->can('jadwal.ubah')
+                ? $this->schedules->targets($schedule)->map(fn (Schedule $s) => ['id' => $s->id, 'date' => $s->date->toDateString(), 'location' => $s->location])->values()
+                : [],
         ]);
     }
 
@@ -74,6 +77,13 @@ class ScheduleController extends Controller
             ],
             'schools' => null,
         ]);
+    }
+
+    public function destroy(Request $request, Schedule $schedule): RedirectResponse
+    {
+        $this->schedules->delete($schedule, $request->user());
+
+        return redirect()->route('jadwal.index')->with('success', 'Jadwal dihapus.');
     }
 
     public function update(ScheduleRequest $request, Schedule $schedule): RedirectResponse

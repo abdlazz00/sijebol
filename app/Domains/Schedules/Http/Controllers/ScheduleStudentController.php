@@ -4,6 +4,7 @@ namespace App\Domains\Schedules\Http\Controllers;
 
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schedules\Http\Requests\AssignRequest;
+use App\Domains\Schedules\Http\Requests\MoveRequest;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Services\ScheduleService;
 use App\Http\Controllers\Controller;
@@ -19,6 +20,14 @@ class ScheduleStudentController extends Controller
         $this->schedules->assign($schedule, $request->validated('entry_ids'), $request->user());
 
         return redirect()->route('jadwal.show', $schedule)->with('success', 'Siswa dijadwalkan.');
+    }
+
+    public function move(MoveRequest $request, Schedule $schedule, RegistrationStudent $entry): RedirectResponse
+    {
+        $target = Schedule::query()->findOrFail($request->validated('target_schedule_id'));
+        $this->schedules->move($entry, $target, $request->user());
+
+        return redirect()->route('jadwal.show', $schedule)->with('success', 'Siswa dipindahkan.');
     }
 
     public function destroy(Request $request, Schedule $schedule, RegistrationStudent $entry): RedirectResponse
