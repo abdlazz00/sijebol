@@ -172,6 +172,8 @@ Acuan: `specs/2026-10-07-sijebol-v1-design.md` (spec sistem), `specs/2026-10-07-
 
 ## Fase 6 — Beranda, laporan dasar, hardening, rilis
 
+**Status Fase 6a (2026-10-09): SELESAI** (spec: `specs/2026-10-09-fase-6a-beranda-laporan-design.md`, rencana: `plans/2026-10-09-fase-6a-beranda-laporan.md`). Fase 6 dipecah: **6a** beranda riil dan laporan rekap (selesai: domain `Reports`, kartu ringkasan dan Perlu tindakan per permission, halaman `/laporan` dengan filter tanggal pengajuan dan ekspor Excel, role terikat sekolah dilarang `laporan.lihat`); **6b** alur lapangan (koreksi status akhir, hapus jadwal, pindah siswa antar-jadwal, notifikasi penandaan, penggabungan notifikasi, jadwal terdekat-dulu, verifikasi massal) dan **6c** hardening, ketahanan, dan polesan belum dimulai; **rilis ditahan** sampai 6a-6c selesai dan item tertunda dibahas ulang.
+
 ### Track BE
 1. Data blok beranda sesuai permission (ringkasan angka, perlu tindakan, jadwal terdekat).
 2. Laporan dasar: rekap per sekolah dan per status; ekspor Excel.

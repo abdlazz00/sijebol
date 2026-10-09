@@ -114,8 +114,8 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 ### 5.6 Beranda `/`
 - Header: "Selamat datang, {nama}"; sub-judul role (dan nama sekolah untuk operator).
 - Blok tampil sesuai permission, urutan tetap; blok tanpa izin tidak menyisakan ruang kosong:
-  1. **Kartu ringkasan** (3–4 kartu angka dalam satu baris; 2 kolom di mobile).
-  2. **Perlu tindakan**: kartu daftar pendek, tiap baris berupa tautan (contoh: "12 siswa menunggu verifikasi").
+  1. **Kartu ringkasan** (3–4 kartu angka dalam satu baris; 2 kolom di mobile). Data nyata sejak Fase 6a: staf kecamatan melihat Menunggu verifikasi, Terjadwal, dan Sudah rekaman (se-kecamatan); operator sekolah melihat Draf, Perlu perbaikan, dan Sudah rekaman (sekolahnya). Tiap kartu butuh permission modulnya.
+  2. **Perlu tindakan**: kartu daftar pendek, tiap baris berupa tautan (contoh: "12 entri menunggu verifikasi"). Data nyata sejak Fase 6a; aksi dengan hitungan 0 tidak ditampilkan.
   3. **Jadwal terdekat**: kartu dengan tanggal besar di kiri, lalu sekolah dan lokasi; berisi maksimal 3 jadwal hari ini atau setelahnya, dibatasi sekolah pengguna (data nyata sejak Fase 5; hanya untuk pemegang `jadwal.lihat`).
   4. **Notifikasi terbaru**: 5 item dengan tautan "Lihat semua".
 - Empty state per blok (satu kalimat). Modul pemicu blok belum dirancang; gambar dengan data contoh dan beri catatan permission pemicu di anotasi.
@@ -221,6 +221,11 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 
 ### 5.27 Penandaan rekaman `/jadwal/{id}/rekaman` (`rekaman.lihat`)
 - Header jadwal. Sebelum hari kegiatan tampil banner "Penandaan dibuka pada {tanggal}." dan kontrol dinonaktifkan. Daftar peserta Terjadwal memakai ceklis massal (5.26), lalu pilihan status radio berteks **Sudah rekaman / Tidak hadir / Belum rekaman** dengan keterangan singkat, kolom Catatan opsional, dan tombol **Simpan penandaan** (konfirmasi menyebut jumlah dan status; hanya `rekaman.tandai`). Bagian **Sudah ditandai** menampilkan status akhir (hanya baca). Status akhir tidak dapat diubah.
+
+### 5.28 Laporan: rekap pendaftaran `/laporan` (`laporan.lihat`)
+- Header "Rekap pendaftaran" dengan sub-judul "Jumlah entri per sekolah dan status, menurut tanggal pengajuan pendaftaran." dan tombol **Ekspor Excel** (tautan unduh; mengikuti filter yang sedang diterapkan, bukan isian yang belum disimpan).
+- Filter: **Dari tanggal** dan **Sampai tanggal** (input tanggal native, salah satu boleh kosong), tombol **Terapkan**, dan **Reset** (hanya bila ada isian). Galat validasi tampil di bawah field ("Tanggal akhir tidak boleh sebelum tanggal awal.").
+- Tabel: kolom Sekolah, delapan status (Diajukan sampai Ditolak), dan Total; angka rata kanan; satu baris per sekolah (sekolah tanpa entri tampil 0) dan baris **Total** bercetak tebal. Draf tidak dihitung. Petunjuk "Geser tabel untuk melihat kolom lainnya" di mobile. Empty state "Belum ada sekolah" bila tidak ada sekolah.
 
 ## 6. Pola lintas halaman
 
