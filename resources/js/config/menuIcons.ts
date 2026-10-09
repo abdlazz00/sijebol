@@ -3,6 +3,7 @@ import {
     CalendarDays,
     Circle,
     ClipboardList,
+    FileSpreadsheet,
     GraduationCap,
     Home,
     School,
@@ -22,6 +23,7 @@ const icons: Record<string, Component> = {
     'clipboard-list': ClipboardList,
     'badge-check': BadgeCheck,
     'calendar-days': CalendarDays,
+    'file-spreadsheet': FileSpreadsheet,
 };
 
 /** Kunci ikon datang dari server (`MenuService`); kunci tak dikenal tidak boleh merusak sidebar. */

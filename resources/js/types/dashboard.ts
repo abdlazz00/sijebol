@@ -1,4 +1,4 @@
-/** Props opsional Beranda; belum disuplai backend (menunggu modul pendaftaran, jadwal, notifikasi). */
+/** Props Beranda; disuplai `DashboardService` dan `DashboardController`. */
 export interface SummaryCard {
     label: string;
     value: number;

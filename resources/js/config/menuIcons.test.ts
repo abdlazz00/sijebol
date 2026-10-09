@@ -3,6 +3,7 @@ import {
     CalendarDays,
     Circle,
     ClipboardList,
+    FileSpreadsheet,
     GraduationCap,
     Home,
     ScrollText,
@@ -20,6 +21,7 @@ describe('menuIcon', () => {
         expect(menuIcon('clipboard-list')).toBe(ClipboardList);
         expect(menuIcon('badge-check')).toBe(BadgeCheck);
         expect(menuIcon('calendar-days')).toBe(CalendarDays);
+        expect(menuIcon('file-spreadsheet')).toBe(FileSpreadsheet);
     });
 
     it('kunci tak dikenal jatuh ke ikon default', () => {
