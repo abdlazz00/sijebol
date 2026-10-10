@@ -26,9 +26,10 @@ class RegistrationStatusHistory extends Model
         return ['from_status' => RegistrationStatus::class, 'to_status' => RegistrationStatus::class];
     }
 
+    /** Tanpa scope sekolah: operator sekolah harus tetap melihat nama staf kecamatan yang memutuskan. */
     /** @return BelongsTo<User, $this> */
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'by_user_id');
+        return $this->belongsTo(User::class, 'by_user_id')->withoutGlobalScopes();
     }
 }

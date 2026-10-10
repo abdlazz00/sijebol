@@ -124,3 +124,15 @@ test('daftar dapat difilter menurut status', function () {
         ->has('registrations.data', 1)->where('registrations.data.0.id', $diajukan->registration_id)
         ->where('registrations.data.0.counts.diajukan', 1));
 });
+
+test('operator sekolah tetap dapat membuka detail yang riwayatnya dibuat staf kecamatan', function () {
+    $staf = makeUserWith(['verifikasi.putuskan'], roleName: 'staf-kec');
+    $entry = makeEntry(S::Terverifikasi, $this->school);
+    $entry->histories()->create(['from_status' => S::Diajukan, 'to_status' => S::Terverifikasi, 'by_user_id' => $staf->id]);
+
+    $this->actingAs($this->op)->get("/pendaftaran/{$entry->registration_id}")
+        ->assertOk()
+        ->assertInertia(fn (Assert $p) => $p
+            ->component('Pendaftaran/Show')
+            ->where('entries.0.history.0.by', $staf->name));
+});
