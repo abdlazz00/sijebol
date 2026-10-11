@@ -12,6 +12,12 @@ mkdir -p /var/www/html/storage/framework/sessions \
 chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
 chmod -R 775 /var/www/html/storage /var/www/html/bootstrap/cache
 
+# Pastikan APP_KEY tersedia sebelum migrasi atau caching
+if [ -z "$APP_KEY" ]; then
+    echo "Application key is missing. Generating APP_KEY..."
+    php /var/www/html/artisan key:generate --force || true
+fi
+
 # Jalankan database migrations jika diaktifkan via environment variable
 if [ "$AUTO_MIGRATE" = "true" ]; then
     echo "Running database migrations..."

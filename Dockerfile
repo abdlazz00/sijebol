@@ -20,7 +20,7 @@ COPY --from=vendor /app/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
 RUN npm run build
 
 # Stage 3: Production PHP-FPM + Nginx + Supervisor
-FROM php:8.3-fpm-bookworm AS production
+FROM php:8.4-fpm-bookworm AS production
 
 WORKDIR /var/www/html
 
