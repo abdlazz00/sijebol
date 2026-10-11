@@ -94,3 +94,20 @@ test('permintaan berulang untuk email terdaftar tetap tidak menampilkan error th
         ->assertSessionHasNoErrors()
         ->assertSessionHas('status');
 });
+
+test('notifikasi reset password menggunakan bahasa Indonesia dan identitas SIJEBOL', function () {
+    Notification::fake();
+
+    $user = User::factory()->create(['name' => 'Budi Santoso', 'email' => 'budi@example.com']);
+
+    $this->post('/forgot-password', ['email' => 'budi@example.com']);
+
+    Notification::assertSentTo($user, ResetPassword::class, function ($notification) use ($user) {
+        $mail = $notification->toMail($user);
+
+        return $mail->subject === 'Atur Ulang Password Akun SIJEBOL'
+            && str_contains($mail->greeting ?? '', 'Budi Santoso')
+            && str_contains($mail->actionUrl, url('/reset-password/'))
+            && str_contains($mail->actionText, 'Atur Ulang Password');
+    });
+});

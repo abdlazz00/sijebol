@@ -1,0 +1,19 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sijebol-uat
+    restart: unless-stopped
+    env_file:
+      - .env
+    volumes:
+      - ./storage:/var/www/html/storage
+    environment:
+      - AUTO_MIGRATE=true
+    networks:
+      - sijebol-network
+
+networks:
+  sijebol-network:
+    external: true
