@@ -1,12 +1,25 @@
-# Stage 1: Build frontend assets
+# Stage 1: Install Composer dependencies
+FROM composer:2.8 AS vendor
+WORKDIR /app
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --no-interaction \
+    --prefer-dist \
+    --ignore-platform-reqs \
+    --no-scripts
+
+# Stage 2: Build frontend assets
 FROM node:20-alpine AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 COPY . .
+# Copy Ziggy files from vendor stage so vue-tsc and vite can resolve it
+COPY --from=vendor /app/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
 RUN npm run build
 
-# Stage 2: Production PHP-FPM + Nginx + Supervisor
+# Stage 3: Production PHP-FPM + Nginx + Supervisor
 FROM php:8.3-fpm-bookworm AS production
 
 WORKDIR /var/www/html
@@ -36,17 +49,20 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         opcache \
         pcntl
 
-# Install Composer
+# Install Composer CLI in production container
 COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
 
-# Copy application files
+# Copy application source files
 COPY . /var/www/html
+
+# Copy vendor dependencies from vendor stage
+COPY --from=vendor /app/vendor /var/www/html/vendor
 
 # Copy compiled frontend assets from frontend stage
 COPY --from=frontend /app/public/build /var/www/html/public/build
 
-# Install PHP dependencies without dev packages
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
+# Generate optimized autoloader for production
+RUN composer dump-autoload --optimize --no-dev --no-scripts
 
 # Copy container configurations
 COPY docker/nginx.conf /etc/nginx/sites-available/default
