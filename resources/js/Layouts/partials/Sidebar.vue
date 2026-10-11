@@ -55,7 +55,9 @@ function isActive(href: string) {
                 </div>
             </div>
 
-            <div class="flex-1 space-y-6 overflow-y-auto px-4 pt-6">
+            <div
+                class="flex-1 [scrollbar-width:none] space-y-4 overflow-y-auto px-4 pt-4 [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+            >
                 <div
                     v-for="group in groups"
                     :key="group.group"

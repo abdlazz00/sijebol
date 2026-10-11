@@ -81,11 +81,11 @@ Angka di tabel memakai tabular figures.
 
 ## 4. Layout shell (semua halaman setelah login)
 
-- **Sidebar** 264 px, latar `sidebar`. Atas (tinggi 64): logo SIJEBOL dan "Kec. Sungai Beduk". Tengah: menu dikelompokkan dengan judul grup 11/16 huruf kapital `sidebar-text-muted` (contoh: "Utama", "Manajemen Akses", "Master Data"). Item: tinggi 40, ikon 20 + teks 14/500, radius 8. Aktif: latar `primary`, teks putih. Hover: `sidebar-hover`. Dapat dilipat ke 72 px (ikon saja, tooltip nama). Item tanpa izin tidak ditampilkan.
-- **Topbar** 64 px, putih, garis bawah `border`. Kiri: tombol lipat sidebar (mobile: hamburger) dan breadcrumb. Kanan: lonceng notifikasi (badge angka merah) dan menu pengguna (avatar, nama, role; berisi Profil dan Keluar).
-- **Konten:** latar `canvas`, padding 24, lebar maks 1280 terpusat. Header halaman: judul (24/32) dan sub-judul opsional di kiri, tombol aksi utama di kanan.
+- **Sidebar** 264 px, latar `sidebar`. Atas (tinggi 64): logo SIJEBOL dan "Kec. Sungai Beduk". Tengah: menu dikelompokkan dalam 4 kategori ("Utama", "Pelayanan", "Laporan", "Sistem & Akses") dengan judul grup 11/16 huruf kapital `sidebar-text-muted`. Item: tinggi 40, ikon 20 + teks 14/500, radius 8. Aktif: latar `primary`, teks putih. Hover: `sidebar-hover`. Dapat dilipat ke 72 px (ikon saja, tooltip nama). Area navigasi vertikal menggunakan seamless invisible scrollbar tanpa bilah native abu-abu. Item tanpa izin tidak ditampilkan.
+- **Topbar** 64 px, putih (latar card), sticky di bagian atas (tidak ikut tergulung saat konten di-scroll), z-index aman di bawah modal (z-20), garis bawah `border`. Kiri: tombol lipat sidebar (mobile: hamburger) dan breadcrumb. Kanan: lonceng notifikasi (badge angka merah) dan menu pengguna (avatar, nama, role; berisi Profil dan Keluar).
+- **Konten:** latar `canvas`, padding 24 (mobile: 16), lebar penuh rata-kiri (fluid) mengikuti sidebar tanpa terpusat, dengan batas maksimal longgar 1600 px pada monitor lebar. Halaman formulir input tetap dibatasi lebar maks 720 px agar ergonomis diisi, sedangkan tabel data, matriks permission, dan kartu metrik memanfaatkan lebar area secara optimal. Header halaman: judul (24/32) dan sub-judul opsional di kiri, tombol aksi utama di kanan.
 - **Mobile (<768 px):** sidebar menjadi drawer dari kiri dengan overlay; padding konten 16; tabel menjadi scroll horizontal; tombol aksi utama penuh lebar di bawah judul.
-- **Menu awal:** Utama (Beranda), Manajemen Akses (Pengguna, Role & Permission), Master Data (Sekolah). Menu modul lain ditambahkan putaran berikutnya.
+- **Kelompok menu:** Utama (Beranda), Pelayanan (Siswa, Pendaftaran, Antrean verifikasi, Jadwal), Laporan (Rekap pendaftaran), Sistem & Akses (Sekolah, Pengguna, Role & Permission, Log Aktivitas). Item disaring otomatis menurut permission pengguna; grup kosong dibuang.
 
 ## 5. Halaman
 

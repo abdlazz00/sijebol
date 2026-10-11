@@ -68,7 +68,7 @@ watch(
             <main
                 id="konten"
                 tabindex="-1"
-                class="mx-auto w-full max-w-[1280px] flex-1 p-4 focus:outline-none sm:p-6"
+                class="w-full max-w-[1600px] flex-1 p-4 focus:outline-none sm:p-6"
             >
                 <LoadFailedBanner />
                 <slot />

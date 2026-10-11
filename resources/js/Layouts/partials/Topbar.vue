@@ -30,7 +30,7 @@ const user = computed(() => page.props.auth.user);
 
 <template>
     <header
-        class="bg-card flex h-16 items-center justify-between border-b px-4 md:px-6"
+        class="bg-card sticky top-0 z-20 flex h-16 items-center justify-between border-b px-4 md:px-6"
     >
         <div class="flex min-w-0 items-center gap-2 md:gap-4">
             <Button
