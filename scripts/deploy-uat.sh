@@ -16,7 +16,7 @@ echo "📥 Menarik pembaruan dari branch staging..."
 git pull origin staging
 
 echo "🐳 Membangun dan menjalankan ulang container UAT..."
-docker compose -f docker-compose.uat.yml up -d --build
+docker compose -p sijebol-uat -f docker-compose.uat.yml up -d --build
 
 echo "🔄 Me-restart worker antrean (queue)..."
 docker exec sijebol-uat php artisan queue:restart
