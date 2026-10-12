@@ -22,6 +22,8 @@ export type StudentDocumentRow = {
     name: string;
     size: number;
     url: string;
+    preview_url?: string;
+    mime?: string | null;
 };
 
 export type ImportStatus = {

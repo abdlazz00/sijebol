@@ -36,6 +36,11 @@ class StudentDocumentController extends Controller
         return $this->documents->download($student, $type, $request->user());
     }
 
+    public function preview(Request $request, Student $student, string $type): StreamedResponse
+    {
+        return $this->documents->preview($student, $type, $request->user());
+    }
+
     public function destroy(Request $request, Student $student, string $type): RedirectResponse
     {
         $this->documents->delete($student, $type, $request->user());

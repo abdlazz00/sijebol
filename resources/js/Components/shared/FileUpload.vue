@@ -4,7 +4,7 @@ import { Button } from '@/Components/ui/button';
 import { formatBytes, validateFile } from '@/lib/files';
 import type { StudentDocumentRow } from '@/types/student';
 import { router, useForm } from '@inertiajs/vue3';
-import { Download, FileText, LoaderCircle, Upload } from '@lucide/vue';
+import { Download, Eye, FileText, LoaderCircle, Upload } from '@lucide/vue';
 import { computed, ref, useId } from 'vue';
 
 const props = defineProps<{
@@ -14,6 +14,10 @@ const props = defineProps<{
     canDelete: boolean;
     uploadUrl: string;
     deleteUrl: string;
+}>();
+
+const emit = defineEmits<{
+    (e: 'preview'): void;
 }>();
 
 const inputId = useId();
@@ -99,6 +103,15 @@ function remove() {
                 </p>
             </div>
             <div class="flex items-center gap-1">
+                <Button
+                    type="button"
+                    variant="ghost"
+                    class="h-10 px-3"
+                    @click="emit('preview')"
+                >
+                    <Eye class="size-4" aria-hidden="true" />
+                    Lihat
+                </Button>
                 <Button as-child variant="ghost" class="h-10 px-3">
                     <a :href="existing.url">
                         <Download class="size-4" aria-hidden="true" />
@@ -221,7 +234,7 @@ function remove() {
         <ConfirmDialog
             v-model:open="confirmOpen"
             :title="`Hapus ${label}?`"
-            description="Berkas akan dihapus permanen dan siswa dapat menjadi belum eligible."
+            description="Berkas akan dihapus permanen dan siswa dapat menjadi belum memenuhi syarat."
             confirm-label="Hapus"
             destructive
             @confirm="remove"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
+import DocumentPreviewDialog from '@/Components/shared/DocumentPreviewDialog.vue';
 import FileUpload from '@/Components/shared/FileUpload.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
@@ -33,6 +34,13 @@ const props = defineProps<{
 
 const { can } = usePermission();
 const confirmOpen = ref(false);
+const previewOpen = ref(false);
+const selectedDocType = ref<DocumentType>('kk');
+
+function openPreview(type: DocumentType) {
+    selectedDocType.value = type;
+    previewOpen.value = true;
+}
 
 const info = computed(() => [
     { label: 'NIK', value: props.student.nik },
@@ -100,7 +108,7 @@ const crumbs = [
                             NISN {{ student.nisn }}
                         </p>
                         <span
-                            class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium"
+                            class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap"
                             :class="
                                 eligibility.eligible
                                     ? 'bg-success-soft text-success'
@@ -109,8 +117,8 @@ const crumbs = [
                         >
                             {{
                                 eligibility.eligible
-                                    ? 'Eligible'
-                                    : 'Belum eligible'
+                                    ? 'Memenuhi syarat'
+                                    : 'Belum memenuhi syarat'
                             }}
                         </span>
                         <ul
@@ -169,7 +177,7 @@ const crumbs = [
                     <h2 class="text-base leading-6 font-semibold">Dokumen</h2>
                     <p class="text-muted-foreground text-xs leading-4">
                         Kartu Keluarga dan Akta Kelahiran wajib diunggah agar
-                        siswa eligible.
+                        siswa memenuhi syarat.
                     </p>
                 </div>
                 <div class="grid gap-6 md:grid-cols-2">
@@ -189,6 +197,7 @@ const crumbs = [
                                 doc.type,
                             ])
                         "
+                        @preview="openPreview(doc.type)"
                     />
                 </div>
             </section>
@@ -225,6 +234,13 @@ const crumbs = [
             confirm-label="Hapus"
             destructive
             @confirm="destroy"
+        />
+
+        <DocumentPreviewDialog
+            v-model:open="previewOpen"
+            :title="`Dokumen ${student.name}`"
+            :documents="documents"
+            :initial-type="selectedDocType"
         />
     </AppLayout>
 </template>

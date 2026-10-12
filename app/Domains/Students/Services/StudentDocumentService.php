@@ -75,14 +75,33 @@ class StudentDocumentService
         return Storage::disk(self::DISK)->download($document->path, $this->fileName($student, $document));
     }
 
-    /** @return list<array{type: string, name: string, size: int, url: string}> */
+    public function preview(Student $student, string $type, User $actor): StreamedResponse
+    {
+        $document = $student->documents()->where('type', $type)->firstOrFail();
+        abort_unless(Storage::disk(self::DISK)->exists($document->path), 404);
+
+        activity('siswa')->performedOn($student)->causedBy($actor)->withProperties(['jenis' => $type])->log('dokumen.dilihat');
+
+        return Storage::disk(self::DISK)->response(
+            $document->path,
+            $this->fileName($student, $document),
+            [
+                'Content-Type' => $document->mime ?: 'application/octet-stream',
+            ],
+            'inline',
+        );
+    }
+
+    /** @return list<array{type: string, name: string, size: int, mime: string|null, url: string, preview_url: string}> */
     public function rows(Student $student): array
     {
         return $student->documents->map(fn (StudentDocument $d) => [
             'type' => $d->type,
             'name' => $this->fileName($student, $d),
             'size' => $d->size,
+            'mime' => $d->mime,
             'url' => route('siswa.dokumen.download', [$student, $d->type]),
+            'preview_url' => route('siswa.dokumen.preview', [$student, $d->type]),
         ])->values()->all();
     }
 

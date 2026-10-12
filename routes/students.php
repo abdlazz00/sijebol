@@ -24,6 +24,7 @@ Route::middleware('auth')->group(function () {
     Route::prefix('siswa/{student}/dokumen/{type}')->whereIn('type', StudentRules::DOCUMENT_TYPES)->group(function () {
         Route::post('/', [StudentDocumentController::class, 'store'])->middleware(['can:dokumen.unggah', 'throttle:60,1'])->name('siswa.dokumen.store');
         Route::get('/', [StudentDocumentController::class, 'download'])->middleware('can:dokumen.lihat')->name('siswa.dokumen.download');
+        Route::get('/preview', [StudentDocumentController::class, 'preview'])->middleware('can:dokumen.lihat')->name('siswa.dokumen.preview');
         Route::delete('/', [StudentDocumentController::class, 'destroy'])->middleware('can:dokumen.hapus')->name('siswa.dokumen.destroy');
     });
 });

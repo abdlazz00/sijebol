@@ -145,3 +145,20 @@ test('disk dokumen privat tanpa penyaji publik', function () {
     expect(config('filesystems.disks.local.serve'))->toBeFalse()
         ->and(config('filesystems.disks.local.root'))->toBe(storage_path('app/private'));
 });
+
+test('pratinjau dokumen menyajikan berkas inline, mencatat log, dan memeriksa otorisasi', function () {
+    $this->actingAs($this->op);
+    $this->post("/siswa/{$this->student->id}/dokumen/kk", ['file' => pdf('kk.pdf')]);
+
+    $res = $this->get("/siswa/{$this->student->id}/dokumen/kk/preview")->assertOk();
+    expect($res->headers->get('content-disposition'))->toContain('inline')
+        ->and($res->headers->get('content-type'))->toBe('application/pdf')
+        ->and(Activity::where('description', 'dokumen.dilihat')->count())->toBe(1);
+
+    $tanpaIzin = makeUserWith(['siswa.lihat'], $this->school, true, 'tanpa-dok-lihat');
+    $this->actingAs($tanpaIzin)->get("/siswa/{$this->student->id}/dokumen/kk/preview")->assertForbidden();
+
+    $sekolahLain = School::factory()->create();
+    $this->actingAs(makeUserWith(['siswa.lihat', 'dokumen.lihat'], $sekolahLain, true, 'op-lain'))
+        ->get("/siswa/{$this->student->id}/dokumen/kk/preview")->assertNotFound();
+});

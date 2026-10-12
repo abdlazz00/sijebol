@@ -62,7 +62,7 @@ describe('StudentMultiSelect', () => {
     beforeEach(() => vi.clearAllMocks());
     afterEach(() => vi.useRealTimers());
 
-    it('menampilkan alasan sebagai teks untuk siswa belum eligible', () => {
+    it('menampilkan alasan sebagai teks untuk siswa belum memenuhi syarat', () => {
         const text = mountSelect().text();
         expect(text).toContain('Kartu Keluarga belum diunggah.');
         expect(text).toContain('Lengkapi dokumen');
@@ -90,7 +90,7 @@ describe('StudentMultiSelect', () => {
         expect(wrapper.findAll('li li')).toHaveLength(0);
     });
 
-    it('"Pilih semua yang eligible di halaman ini" menambah yang eligible ke pilihan yang ada', async () => {
+    it('"Pilih semua yang memenuhi syarat di halaman ini" menambah yang memenuhi syarat ke pilihan yang ada', async () => {
         const wrapper = mountSelect([9]);
         const button = wrapper
             .findAll('button')

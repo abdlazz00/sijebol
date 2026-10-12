@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
+import DocumentPreviewDialog from '@/Components/shared/DocumentPreviewDialog.vue';
 import FormField from '@/Components/shared/FormField.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
@@ -14,9 +15,9 @@ import { formatBytes } from '@/lib/files';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { EntryRow } from '@/types/registration';
-import type { StudentDocumentRow } from '@/types/student';
+import type { DocumentType, StudentDocumentRow } from '@/types/student';
 import { Link, useForm } from '@inertiajs/vue3';
-import { Download, LoaderCircle } from '@lucide/vue';
+import { Download, Eye, LoaderCircle } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -34,6 +35,14 @@ const props = defineProps<{
     documents: StudentDocumentRow[];
     eligibility: { eligible: boolean; reasons: string[] };
 }>();
+
+const previewOpen = ref(false);
+const selectedDocType = ref<DocumentType>('kk');
+
+function openPreview(type: DocumentType) {
+    selectedDocType.value = type;
+    previewOpen.value = true;
+}
 
 const { can } = usePermission();
 const canDecide = computed(
@@ -152,13 +161,24 @@ const crumbs = computed(() => [
                                 >· {{ formatBytes(doc.size) }}</span
                             ></span
                         >
-                        <Button as-child variant="outline" class="h-9 px-3">
-                            <a :href="doc.url">
-                                <Download class="size-4" aria-hidden="true" />
-                                Unduh
-                                <span class="sr-only">{{ doc.name }}</span>
-                            </a>
-                        </Button>
+                        <div class="flex items-center gap-2">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                class="h-9 px-3 gap-1.5"
+                                @click="openPreview(doc.type)"
+                            >
+                                <Eye class="size-4" aria-hidden="true" />
+                                Lihat
+                            </Button>
+                            <Button as-child variant="outline" class="h-9 px-3">
+                                <a :href="doc.url">
+                                    <Download class="size-4" aria-hidden="true" />
+                                    Unduh
+                                    <span class="sr-only">{{ doc.name }}</span>
+                                </a>
+                            </Button>
+                        </div>
                     </li>
                 </ul>
                 <p v-else class="text-muted-foreground text-sm">
@@ -272,6 +292,13 @@ const crumbs = computed(() => [
             confirm-label="Tolak"
             destructive
             @confirm="send"
+        />
+
+        <DocumentPreviewDialog
+            v-model:open="previewOpen"
+            :title="`Dokumen ${student.name}`"
+            :documents="documents"
+            :initial-type="selectedDocType"
         />
     </AppLayout>
 </template>

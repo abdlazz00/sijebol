@@ -57,7 +57,7 @@ const docsOptions = [
     { value: 'lengkap', label: 'Lengkap' },
     { value: 'kurang', label: 'Belum lengkap' },
 ];
-const eligibleOptions = [{ value: '1', label: 'Eligible' }];
+const eligibleOptions = [{ value: '1', label: 'Memenuhi syarat' }];
 const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
 );
@@ -68,7 +68,7 @@ const columns = computed(() => [
     { key: 'age', label: 'Umur', class: 'w-[80px]' },
     ...(props.schools ? [{ key: 'school', label: 'Sekolah' }] : []),
     { key: 'docs', label: 'Dokumen', class: 'w-[160px]' },
-    { key: 'eligible', label: 'Status', class: 'w-[144px]' },
+    { key: 'eligible', label: 'Status', class: 'w-[184px]' },
     { key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' },
 ]);
 
@@ -230,7 +230,7 @@ function destroy() {
                     </template>
                     <template #cell-eligible="{ row }">
                         <span
-                            class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium"
+                            class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap"
                             :class="
                                 row.eligible
                                     ? 'bg-success-soft text-success'
@@ -238,7 +238,7 @@ function destroy() {
                             "
                             :title="row.reasons.join(' ')"
                         >
-                            {{ row.eligible ? 'Eligible' : 'Belum eligible' }}
+                            {{ row.eligible ? 'Memenuhi syarat' : 'Belum memenuhi syarat' }}
                             <span v-if="!row.eligible" class="sr-only">{{
                                 row.reasons.join(' ')
                             }}</span>

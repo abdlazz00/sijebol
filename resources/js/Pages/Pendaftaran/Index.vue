@@ -82,7 +82,7 @@ function destroy() {
     <AppLayout title="Pendaftaran">
         <PageHeader
             title="Pendaftaran"
-            description="Kelompokkan siswa eligible untuk diajukan ke verifikasi."
+            description="Kelompokkan siswa yang memenuhi syarat untuk diajukan ke verifikasi."
         >
             <template #actions>
                 <Button
@@ -261,7 +261,7 @@ function destroy() {
                             v-else
                             :icon="ClipboardList"
                             title="Belum ada pendaftaran"
-                            description="Buat pendaftaran untuk mengelompokkan siswa eligible dan mengajukannya ke verifikasi."
+                            description="Buat pendaftaran untuk mengelompokkan siswa yang memenuhi syarat dan mengajukannya ke verifikasi."
                         >
                             <template
                                 v-if="can(PERMISSIONS.PendaftaranBuat)"

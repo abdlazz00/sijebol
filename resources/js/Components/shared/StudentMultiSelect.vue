@@ -90,7 +90,7 @@ function selectAllEligible() {
                 class="h-10 px-4"
                 @click="selectAllEligible"
             >
-                Pilih semua yang eligible di halaman ini
+                Pilih semua yang memenuhi syarat di halaman ini
             </Button>
         </div>
 

@@ -203,7 +203,7 @@ const crumbs = computed(() => [
                         Pilih siswa
                     </h2>
                     <p class="text-muted-foreground text-xs leading-4">
-                        Hanya siswa eligible yang dapat dipilih.
+                        Hanya siswa yang memenuhi syarat yang dapat dipilih.
                     </p>
                 </div>
                 <p
