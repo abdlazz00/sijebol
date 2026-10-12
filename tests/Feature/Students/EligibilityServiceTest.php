@@ -19,7 +19,7 @@ function hariAcuan(): Carbon
     return Carbon::parse('2026-10-08', 'Asia/Jakarta');
 }
 
-test('batas umur 16 sampai 17 tahun', function (string $lahir, bool $eligible) {
+test('batas umur minimal 16 tahun tanpa batas atas', function (string $lahir, bool $eligible) {
     $s = lengkap(Student::factory()->create(['birth_date' => $lahir]));
 
     expect(app(EligibilityService::class)->check($s, hariAcuan())['eligible'])->toBe($eligible);
@@ -27,26 +27,27 @@ test('batas umur 16 sampai 17 tahun', function (string $lahir, bool $eligible) {
     'sehari sebelum ulang tahun ke-16' => ['2010-10-09', false],
     'tepat ulang tahun ke-16' => ['2010-10-08', true],
     'sehari sebelum ulang tahun ke-18' => ['2008-10-09', true],
-    'tepat ulang tahun ke-18' => ['2008-10-08', false],
+    'tepat ulang tahun ke-18' => ['2008-10-08', true],
+    'umur 19 tahun' => ['2007-10-08', true],
 ]);
 
-test('alasan jelas bila dokumen belum lengkap atau umur salah', function () {
-    $s = Student::factory()->create(['birth_date' => '2000-01-01']);
+test('alasan jelas bila dokumen belum lengkap atau umur di bawah 16 tahun', function () {
+    $s = Student::factory()->create(['birth_date' => '2015-01-01']);
     $s->documents()->create(['type' => 'kk', 'path' => 'kk', 'mime' => 'application/pdf', 'size' => 1]);
 
     $hasil = app(EligibilityService::class)->check($s->load('documents'), hariAcuan());
 
     expect($hasil['eligible'])->toBeFalse()
         ->and($hasil['reasons'])->toBe([
-            'Umur harus 16 atau 17 tahun (umur sekarang 26).',
+            'Umur minimal 16 tahun (umur sekarang 11).',
             'Akta kelahiran belum diunggah.',
         ]);
 });
 
-test('birthDateBounds konsisten dengan check', function () {
-    [$awal, $akhir] = app(EligibilityService::class)->birthDateBounds(hariAcuan());
+test('latestBirthDate konsisten dengan check', function () {
+    $latest = app(EligibilityService::class)->latestBirthDate(hariAcuan());
 
-    expect($awal)->toBe('2008-10-09')->and($akhir)->toBe('2010-10-08');
+    expect($latest)->toBe('2010-10-08');
 });
 
 test('entri aktif membuat siswa tidak eligible, draf dan ditolak tidak', function (S $status, bool $eligible) {

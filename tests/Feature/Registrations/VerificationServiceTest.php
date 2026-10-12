@@ -91,7 +91,7 @@ test('satu entri tidak layak menggagalkan seluruh persetujuan massal tanpa notif
     $baik = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));
     $siswa = match ($kasus) {
         'tanpa dokumen' => Student::factory()->for($this->school)->create(['name' => 'Tanpa Dokumen']),
-        'umur di luar 16-17' => tap(eligibleStudent($this->school), fn (Student $s) => $s->update(['name' => 'Terlalu Tua', 'birth_date' => now()->subYears(25)->toDateString()])),
+        'umur di bawah 16' => tap(eligibleStudent($this->school), fn (Student $s) => $s->update(['name' => 'Terlalu Muda', 'birth_date' => now()->subYears(15)->toDateString()])),
     };
     $buruk = makeEntry(S::Diajukan, $this->school, $siswa);
 
@@ -104,7 +104,7 @@ test('satu entri tidak layak menggagalkan seluruh persetujuan massal tanpa notif
 
     expect($baik->fresh()->status)->toBe(S::Diajukan)->and($buruk->fresh()->status)->toBe(S::Diajukan)->and($baik->histories()->count())->toBe(0);
     Notification::assertNothingSent();
-})->with(['tanpa dokumen', 'umur di luar 16-17']);
+})->with(['tanpa dokumen', 'umur di bawah 16']);
 
 test('persetujuan massal ditolak seluruhnya untuk id tidak ada, entri yang sudah diputuskan, dan bukan Diajukan', function (string $kasus) {
     $baik = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));

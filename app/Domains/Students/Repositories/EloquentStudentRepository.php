@@ -42,7 +42,7 @@ class EloquentStudentRepository implements StudentRepositoryInterface
                     if ((string) $v !== '1') {
                         return;
                     }
-                    $q->whereBetween('birth_date', $this->eligibility->birthDateBounds())
+                    $q->where('birth_date', '<=', $this->eligibility->latestBirthDate())
                         ->whereHas('documents', $this->ofType('kk'))
                         ->whereHas('documents', $this->ofType('akta_lahir'))
                         ->whereDoesntHave('registrationEntries', fn ($entries) => $entries->whereIn('status', RegistrationStatus::values(RegistrationStatus::active())));

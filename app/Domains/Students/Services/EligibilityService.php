@@ -10,8 +10,6 @@ class EligibilityService
 {
     public const MIN_AGE = 16;
 
-    public const MAX_AGE = 17;
-
     private const ZONE = 'Asia/Jakarta';
 
     /** @return array{eligible: bool, reasons: list<string>} */
@@ -20,8 +18,8 @@ class EligibilityService
         $reasons = [];
         $age = $this->age($student, $on);
 
-        if ($age < self::MIN_AGE || $age > self::MAX_AGE) {
-            $reasons[] = "Umur harus 16 atau 17 tahun (umur sekarang {$age}).";
+        if ($age < self::MIN_AGE) {
+            $reasons[] = "Umur minimal 16 tahun (umur sekarang {$age}).";
         }
 
         $types = $student->documents->pluck('type')->all();
@@ -48,17 +46,23 @@ class EligibilityService
     }
 
     /**
-     * Rentang tanggal lahir (inklusif) untuk umur 16–17 pada tanggal acuan.
+     * Tanggal lahir paling lambat (inklusif) agar berumur minimal 16 tahun pada tanggal acuan.
+     */
+    public function latestBirthDate(?CarbonInterface $on = null): string
+    {
+        return $this->day($on)->startOfDay()->subYears(self::MIN_AGE)->toDateString();
+    }
+
+    /**
+     * Rentang tanggal lahir (inklusif) untuk umur minimal 16 pada tanggal acuan.
      *
      * @return array{0: string, 1: string}
      */
     public function birthDateBounds(?CarbonInterface $on = null): array
     {
-        $day = $this->day($on)->startOfDay();
-
         return [
-            $day->copy()->subYears(self::MAX_AGE + 1)->addDay()->toDateString(),
-            $day->copy()->subYears(self::MIN_AGE)->toDateString(),
+            '1900-01-01',
+            $this->latestBirthDate($on),
         ];
     }
 
