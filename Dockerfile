@@ -17,6 +17,7 @@ RUN npm ci
 COPY . .
 # Copy Ziggy files from vendor stage so vue-tsc and vite can resolve it
 COPY --from=vendor /app/vendor/tightenco/ziggy ./vendor/tightenco/ziggy
+ENV VITE_APP_NAME="SIJEBOL"
 RUN npm run build
 
 # Stage 3: Production PHP-FPM + Nginx + Supervisor
