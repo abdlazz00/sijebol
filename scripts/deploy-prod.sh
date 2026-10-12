@@ -16,7 +16,7 @@ echo "📥 Menarik pembaruan dari branch main..."
 git pull origin main
 
 echo "🐳 Membangun dan menjalankan ulang container production..."
-docker compose -f docker-compose.prod.yml up -d --build
+docker compose -p sijebol-prod -f docker-compose.prod.yml up -d --build
 
 echo "🔄 Me-restart worker antrean (queue)..."
 docker exec sijebol-prod php artisan queue:restart
