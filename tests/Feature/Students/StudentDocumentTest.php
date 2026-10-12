@@ -153,6 +153,7 @@ test('pratinjau dokumen menyajikan berkas inline, mencatat log, dan memeriksa ot
     $res = $this->get("/siswa/{$this->student->id}/dokumen/kk/preview")->assertOk();
     expect($res->headers->get('content-disposition'))->toContain('inline')
         ->and($res->headers->get('content-type'))->toBe('application/pdf')
+        ->and($res->headers->get('X-Frame-Options'))->toBe('SAMEORIGIN')
         ->and(Activity::where('description', 'dokumen.dilihat')->count())->toBe(1);
 
     $tanpaIzin = makeUserWith(['siswa.lihat'], $this->school, true, 'tanpa-dok-lihat');

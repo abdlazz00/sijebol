@@ -22,8 +22,10 @@ class SecurityHeaders
 
         $response = $next($request);
 
+        $allowSameOriginFrame = $this->allowsSameOriginFraming($request);
+
         $response->headers->set('X-Content-Type-Options', 'nosniff');
-        $response->headers->set('X-Frame-Options', 'DENY');
+        $response->headers->set('X-Frame-Options', $allowSameOriginFrame ? 'SAMEORIGIN' : 'DENY');
         $response->headers->set('Referrer-Policy', 'strict-origin-when-cross-origin');
         $response->headers->set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
         // Sistem internal: tidak untuk diindeks (mencakup halaman error dan berkas).
@@ -33,10 +35,15 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         if ($nonce !== null) {
-            $response->headers->set('Content-Security-Policy', $this->csp($nonce));
+            $response->headers->set('Content-Security-Policy', $this->csp($nonce, $allowSameOriginFrame));
         }
 
         return $response;
+    }
+
+    private function allowsSameOriginFraming(Request $request): bool
+    {
+        return $request->routeIs('siswa.dokumen.preview');
     }
 
     private function cspEnabled(): bool
@@ -44,8 +51,10 @@ class SecurityHeaders
         return (bool) config('security.csp') && ! app()->isLocal();
     }
 
-    private function csp(string $nonce): string
+    private function csp(string $nonce, bool $allowSameOriginFrame = false): string
     {
+        $frameAncestors = $allowSameOriginFrame ? "frame-ancestors 'self'" : "frame-ancestors 'none'";
+
         return implode('; ', [
             "default-src 'self'",
             "script-src 'self' 'nonce-{$nonce}'",
@@ -54,7 +63,7 @@ class SecurityHeaders
             "font-src 'self' https://fonts.bunny.net data:",
             "img-src 'self' data:",
             "connect-src 'self'",
-            "frame-ancestors 'none'",
+            $frameAncestors,
             "base-uri 'self'",
             "form-action 'self'",
             "object-src 'none'",

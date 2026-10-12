@@ -1,5 +1,9 @@
 <?php
 
+use App\Domains\Schools\Models\School;
+use App\Domains\Students\Models\Student;
+use Illuminate\Support\Facades\Storage;
+
 /** Mengambil nonce dari header CSP. */
 function cspNonceOf(string $header): string
 {
@@ -67,4 +71,26 @@ test('mesin pencari dilarang mengindeks: meta robots dan robots.txt', function (
     expect($robots)->toBe('User-agent: *
 Disallow: /
 ');
+});
+
+test('rute pratinjau dokumen mengizinkan same-origin framing (X-Frame-Options SAMEORIGIN dan CSP frame-ancestors self)', function () {
+    $sekolah = School::factory()->create();
+    $siswa = Student::factory()->for($sekolah)->create();
+    $op = makeUserWith(['siswa.lihat', 'dokumen.lihat'], $sekolah, true, 'op-preview-sec');
+
+    Storage::fake('local');
+    $siswa->documents()->create([
+        'type' => 'kk',
+        'path' => "students/{$siswa->id}/kk.pdf",
+        'size' => 1024,
+        'mime' => 'application/pdf',
+    ]);
+    Storage::disk('local')->put("students/{$siswa->id}/kk.pdf", '%PDF-1.4 dummy');
+
+    $res = $this->actingAs($op)->get("/siswa/{$siswa->id}/dokumen/kk/preview")->assertOk();
+    $res->assertHeader('X-Frame-Options', 'SAMEORIGIN');
+
+    $csp = (string) $res->headers->get('Content-Security-Policy');
+    expect($csp)->toContain("frame-ancestors 'self'")
+        ->and($csp)->not->toContain("frame-ancestors 'none'");
 });
