@@ -14,6 +14,7 @@ Arsitektur ini menerapkan prinsip **Zero Public Database Exposure**, **Multi-Env
 flowchart TD
     subgraph Public_Internet [Internet Publik]
         User[Pengguna / Browser]
+        Dev_PC[Developer PC / DataGrip]
     end
 
     subgraph Cloudflare_Edge [Cloudflare Edge Network]
@@ -21,24 +22,25 @@ flowchart TD
         CF_SSL[SSL Termination / Edge Cert]
     end
 
-    subgraph VPS_Host [VPS Server Host - Ubuntu]
+    subgraph VPS_Host [VPS Server Host - Ubuntu 2 vCPU 4GB RAM]
+        SWAP[(Swap File 4 GB - Anti OOM)]
         UFW[Firewall UFW: 22, 80, 443, 81]
 
         subgraph Docker_Network [Docker Network: bridge - sijebol-network]
             NPM[Nginx Proxy Manager Container]
 
-            subgraph Environment_Prod [Environment: Production]
+            subgraph Environment_Prod [Project: sijebol-prod]
                 Prod_App[Container: sijebol-prod\nPHP 8.4-FPM + Nginx + Supervisor]
                 Prod_Vol[(Volume: ./prod/storage)]
             end
 
-            subgraph Environment_UAT [Environment: UAT / Staging]
+            subgraph Environment_UAT [Project: sijebol-uat]
                 UAT_App[Container: sijebol-uat\nPHP 8.4-FPM + Nginx + Supervisor]
                 UAT_Vol[(Volume: ./uat/storage)]
             end
 
             subgraph Database_Cluster [Database Service]
-                MySQL[Container: sijebol-mysql\nMySQL 8.0 - Port 3306 Internal Only]
+                MySQL[Container: sijebol-mysql\nMySQL 8.0 - Port 3306 Localhost Only]
                 DB_Prod[(DB: sijebol_prod)]
                 DB_UAT[(DB: sijebol_uat)]
                 DB_Vol[(Volume: ./database/data)]
@@ -50,6 +52,9 @@ flowchart TD
     CF_DNS --> CF_SSL
     CF_SSL -->|Proxied via A Record| UFW
     UFW --> NPM
+
+    Dev_PC -->|SSH Tunnel Port 22| VPS_Host
+    VPS_Host -->|127.0.0.1:3306| MySQL
 
     NPM -->|sungaibeduk.sijebol.online| Prod_App
     NPM -->|uat-seibeduk.sijebol.online| UAT_App
@@ -71,14 +76,19 @@ flowchart TD
 
 Sebagai acuan standar untuk VPS skala UKM / Pemerintahan (contoh: **2 vCPU, 4 GB RAM, 80 GB SSD**):
 
-| Service / Container | Alokasi RAM Rata-Rata | Catatan Konfigurasi |
+| Service / Komponen | Alokasi RAM Rata-Rata | Catatan Konfigurasi |
 |---|---|---|
 | **OS Ubuntu + Docker Daemon** | ~400 – 500 MB | Base system overhead |
 | **Nginx Proxy Manager (NPM)** | ~100 – 150 MB | Reverse proxy, Let's Encrypt SSL manager |
 | **MySQL 8.0 (`sijebol-mysql`)** | ~600 – 750 MB | Di-tuning: `--innodb-buffer-pool-size=512M` |
 | **Aplikasi Production (`sijebol-prod`)** | ~350 – 450 MB | PHP 8.4-FPM + Nginx + Worker (`queue:work`) |
 | **Aplikasi UAT (`sijebol-uat`)** | ~250 – 350 MB | PHP 8.4-FPM + Nginx + Worker (`queue:work`) |
-| **Total Estimasi Terpakai** | **~1.8 – 2.2 GB** | **Sisa ~1.8 GB aman untuk OS page cache & burst traffic** |
+| **Swap File Linux** | **4.0 GiB (Wajib)** | **Pencegah OOM Killer saat `npm run build` (Vite) berjalan** |
+| **Total RAM Terpakai (Idle)** | **~1.8 – 2.2 GB** | **Sisa ~1.8 GB aman untuk OS page cache & burst traffic** |
+
+> [!CRITICAL]
+> **Wajib Membuat Swap 4 GB**:
+> Saat deploy, proses kompilasi aset frontend (`npm run build` / `vue-tsc`) membutuhkan lonjakan RAM 1.5–2 GB. Tanpa Swap, Linux OOM (Out Of Memory) Killer akan membunuh container Production atau MySQL (`Exit Code 137`), menyebabkan 503 Bad Gateway.
 
 ---
 
@@ -94,7 +104,7 @@ Seluruh komponen aplikasi dipusatkan di direktori `/opt/<nama_project>` untuk ke
 │   └── letsencrypt/             # Sertifikat SSL Let's Encrypt
 │
 ├── database/                    # Database MySQL 8.0 Terpadu
-│   ├── docker-compose.yml       # Tanpa port binding publik (internal network only)
+│   ├── docker-compose.yml       # Port 127.0.0.1:3306:3306 (Localhost only untuk DataGrip)
 │   ├── init/
 │   │   └── 01-init.sql          # Inisialisasi DB prod & uat + GRANT privileges
 │   └── data/                    # Persistent storage database MySQL
@@ -102,20 +112,26 @@ Seluruh komponen aplikasi dipusatkan di direktori `/opt/<nama_project>` untuk ke
 ├── prod/                        # Lingkungan Production
 │   ├── storage/                 # Persistent storage (KK, Akta, logs)
 │   └── app/                     # Git clone dari branch `main`
-│       ├── .env                 # Konfigurasi production
+│       ├── .env                 # COMPOSE_PROJECT_NAME=sijebol-prod
 │       ├── Dockerfile
 │       └── docker-compose.prod.yml
 │
-├── uat/                         # Lingkungan UAT / Staging
-│   ├── storage/                 # Persistent storage UAT
-│   └── app/                     # Git clone dari branch `staging`
-│       ├── .env                 # Konfigurasi UAT
-│       ├── Dockerfile
-│       └── docker-compose.uat.yml
-│
-├── deploy-prod.sh               # Shortcut deploy prod -> /usr/local/bin/deploy-prod
-└── deploy-uat.sh                # Shortcut deploy uat -> /usr/local/bin/deploy-uat
+└── uat/                         # Lingkungan UAT / Staging
+    ├── storage/                 # Persistent storage UAT
+    └── app/                     # Git clone dari branch `staging`
+        ├── .env                 # COMPOSE_PROJECT_NAME=sijebol-uat
+        ├── Dockerfile
+        └── docker-compose.uat.yml
 ```
+
+> [!IMPORTANT]
+> **Isolasi Project Namespace (Pencegah Container Saling Timpa)**:
+> Karena folder aplikasi Prod dan UAT sama-sama bernama `app` (`/opt/sijebol/prod/app` dan `/opt/sijebol/uat/app`), Docker Compose secara default akan menamai project keduanya sebagai `app`. 
+> Jika tidak diisolasi, menjalankan deploy di UAT akan **mematikan dan menghapus kontainer Production**, dan sebaliknya!
+> **Solusi mutlak**:
+> 1. Set `COMPOSE_PROJECT_NAME=sijebol-prod` di file `.env` Production.
+> 2. Set `COMPOSE_PROJECT_NAME=sijebol-uat` di file `.env` UAT.
+> 3. Gunakan flag `-p sijebol-prod` dan `-p sijebol-uat` pada setiap perintah Docker Compose.
 
 ---
 
@@ -124,7 +140,7 @@ Seluruh komponen aplikasi dipusatkan di direktori `/opt/<nama_project>` untuk ke
 * **Branch `main`**: Digunakan untuk **Production** (`sungaibeduk.sijebol.online`).
 * **Branch `staging`**: Digunakan untuk **UAT** (`uat-seibeduk.sijebol.online`).
 
-```
+```text
 [Laptop Dev] feature/xxx ──► merge ke `staging` ──► push origin staging
                                                           │
                                                     (Deploy ke UAT)
@@ -152,25 +168,34 @@ Seluruh komponen aplikasi dipusatkan di direktori `/opt/<nama_project>` untuk ke
 
 ---
 
-### Langkah 2: Setup Awal VPS (Ubuntu)
+### Langkah 2: Setup Awal VPS (Ubuntu) & Swap Memory
 Masuk via SSH ke VPS:
 ```bash
 # 1. Update paket sistem
 apt update && apt upgrade -y
 apt install -y curl git ufw htop
 
-# 2. Pasang Docker Engine resmi
+# 2. Pasang Swap Memory 4 GB (Wajib anti-crash OOM)
+fallocate -l 4G /swapfile
+chmod 600 /swapfile
+mkswap /swapfile
+swapon /swapfile
+echo '/swapfile none swap sw 0 0' >> /etc/fstab
+sysctl vm.swappiness=20
+echo 'vm.swappiness=20' >> /etc/sysctl.conf
+
+# 3. Pasang Docker Engine resmi
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
 
-# 3. Setup Firewall UFW (PENTING: izinkan SSH dulu!)
+# 4. Setup Firewall UFW (PENTING: izinkan SSH dulu!)
 ufw allow 22/tcp
 ufw allow 80/tcp
 ufw allow 443/tcp
 ufw allow 81/tcp
 ufw enable
 
-# 4. Buat Docker Network bersama
+# 5. Buat Docker Network bersama
 docker network create sijebol-network
 ```
 
@@ -208,7 +233,7 @@ docker compose up -d
 
 ---
 
-### Langkah 4: Menjalankan Database MySQL 8.0
+### Langkah 4: Menjalankan Database MySQL 8.0 (Support DataGrip via SSH Tunnel)
 ```bash
 mkdir -p /opt/sijebol/database/init && cd /opt/sijebol/database
 
@@ -222,12 +247,16 @@ FLUSH PRIVILEGES;
 EOF
 
 # Buat docker-compose.yml
+# Catatan: port 127.0.0.1:3306:3306 di-bind ke localhost host saja,
+# aman dari internet publik tapi bisa diakses DataGrip / DBeaver lewat SSH Tunnel.
 cat << 'EOF' > docker-compose.yml
 services:
   mysql:
     image: 'mysql:8.0'
     container_name: sijebol-mysql
     restart: unless-stopped
+    ports:
+      - '127.0.0.1:3306:3306'
     environment:
       MYSQL_ROOT_PASSWORD: 'PasswordRootKuat123!'
       MYSQL_USER: 'sijebol'
@@ -260,18 +289,25 @@ docker compose up -d
 mkdir -p /opt/sijebol/prod && cd /opt/sijebol/prod
 git clone -b main https://github.com/abdlazz00/sijebol.git app
 cd app
+
+# Abaikan tracking perubahan chmod di repo server
+git config core.filemode false
+
 cp .env.production.example .env
 
-# Edit .env (isi DB_PASSWORD dan RESEND_API_KEY)
+# Tambahkan nama project unik agar tidak bentrok dengan UAT
+echo "COMPOSE_PROJECT_NAME=sijebol-prod" >> .env
+
+# Edit .env (isi DB_PASSWORD, RESEND_API_KEY, dll)
 nano .env
 
-# Jalankan build container
-docker compose -f docker-compose.prod.yml up -d --build
+# Jalankan build container dengan project namespace spesifik
+docker compose -p sijebol-prod -f docker-compose.prod.yml up -d --build
 
 # Generate APP_KEY dan simpan ke file .env host
 KEY=$(docker exec sijebol-prod php artisan key:generate --show)
 sed -i "s|^APP_KEY=.*|APP_KEY=$KEY|" .env
-docker compose -f docker-compose.prod.yml up -d
+docker compose -p sijebol-prod -f docker-compose.prod.yml up -d
 
 # Seeding & buat Super Admin pertama
 docker exec -it sijebol-prod php artisan db:seed
@@ -306,79 +342,178 @@ docker exec -it sijebol-prod php artisan sijebol:create-super-admin admin@sungai
 ---
 
 ### Langkah 7: Deploy Environment UAT
+
 Ulangi alur di atas untuk folder `/opt/sijebol/uat`:
-* Clone dari branch `staging`.
-* Gunakan `.env.uat.example` (database: `sijebol_uat`).
-* Jalankan `docker compose -f docker-compose.uat.yml up -d --build`.
-* Di NPM arahkan `uat-seibeduk.sijebol.online` ➔ `sijebol-uat:80` dengan tab gerigi ⚙️ buffer yang sama.
+```bash
+mkdir -p /opt/sijebol/uat && cd /opt/sijebol/uat
+git clone -b staging https://github.com/abdlazz00/sijebol.git app
+cd app
+
+git config core.filemode false
+cp .env.uat.example .env
+
+# Tambahkan nama project unik untuk UAT
+echo "COMPOSE_PROJECT_NAME=sijebol-uat" >> .env
+nano .env
+
+# Jalankan build dengan project namespace sijebol-uat
+docker compose -p sijebol-uat -f docker-compose.uat.yml up -d --build
+
+KEY=$(docker exec sijebol-uat php artisan key:generate --show)
+sed -i "s|^APP_KEY=.*|APP_KEY=$KEY|" .env
+docker compose -p sijebol-uat -f docker-compose.uat.yml up -d
+
+docker exec -it sijebol-uat php artisan db:seed
+docker exec -it sijebol-uat php artisan sijebol:create-super-admin admin@uat-sungaibeduk.go.id "Super Admin UAT"
+```
+Di NPM arahkan `uat-seibeduk.sijebol.online` ➔ `sijebol-uat:80` dengan tab gerigi ⚙️ buffer yang sama.
 
 ---
 
 ## 6. Otomasi Deployment Harian (Daily Deploy Commands)
 
-Pasang shortcut di VPS (cukup sekali):
+Beri izin eksekusi dan hubungkan shortcut global sekali saja di VPS:
 ```bash
+chmod +x /opt/sijebol/prod/app/scripts/deploy-prod.sh
+chmod +x /opt/sijebol/uat/app/scripts/deploy-uat.sh
+
 ln -sf /opt/sijebol/prod/app/scripts/deploy-prod.sh /usr/local/bin/deploy-prod
 ln -sf /opt/sijebol/uat/app/scripts/deploy-uat.sh /usr/local/bin/deploy-uat
 ```
 
-Setiap kali ada fitur baru atau perubahan kolom database:
-* **Update UAT**: cukup jalankan `deploy-uat`
-* **Update Prod**: cukup jalankan `deploy-prod`
+Setiap kali ada fitur baru atau perubahan kode:
+* **Update UAT**: cukup ketik `deploy-uat` dari folder mana saja.
+* **Update Prod**: cukup ketik `deploy-prod` dari folder mana saja.
 
-Isi proses otomatis yang dijalankan oleh script ini:
-1. `git pull origin <branch>`
-2. `docker compose ... up -d --build` (kompilasi Vite & instalasi dependensi)
-3. `php artisan migrate --force` (otomatis lewat entrypoint container)
-4. `php artisan queue:restart` (merestart background worker)
-5. `php artisan config:cache && route:cache && view:cache` (optimasi cache produksi)
+### Struktur Script Standar `deploy-prod.sh`:
+```bash
+#!/bin/bash
+set -e
+
+echo "🚀 [SIJEBOL] Memulai deployment Production (sungaibeduk.sijebol.online)..."
+cd /opt/sijebol/prod/app
+
+echo "📥 Menarik pembaruan dari branch main..."
+git fetch origin main
+git reset --hard origin/main
+
+echo "🔨 Membangun dan merestart kontainer Production..."
+docker compose -p sijebol-prod -f docker-compose.prod.yml up -d --build
+
+echo "⚡ Menjalankan migrasi database..."
+docker compose -p sijebol-prod -f docker-compose.prod.yml exec -T app php artisan migrate --force
+
+echo "🔄 Merestart antrean queue..."
+docker compose -p sijebol-prod -f docker-compose.prod.yml exec -T app php artisan queue:restart
+
+echo "⚡ Mengoptimalkan cache Laravel..."
+docker compose -p sijebol-prod -f docker-compose.prod.yml exec -T app php artisan optimize:clear
+docker compose -p sijebol-prod -f docker-compose.prod.yml exec -T app php artisan config:cache
+docker compose -p sijebol-prod -f docker-compose.prod.yml exec -T app php artisan route:cache
+docker compose -p sijebol-prod -f docker-compose.prod.yml exec -T app php artisan view:cache
+
+echo "✅ [SIJEBOL] Deployment Production selesai dengan sukses!"
+```
 
 ---
 
-## 7. Troubleshooting Playbook (Penyelesaian Masalah Cepat)
+## 7. Koneksi Database ke DataGrip / DBeaver (SSH Tunnel)
 
-### Kasus 1: Port 22 SSH Connection Timed Out setelah UFW aktif
-* **Gejala**: Tidak bisa login via SSH dari terminal laptop.
-* **Solusi**: Masuk ke **VNC / Web Console** di panel hosting VPS (Rumahweb). Jalankan:
+Untuk melihat dan mengelola database `sijebol_prod` dan `sijebol_uat` langsung dari laptop developer menggunakan **DataGrip** atau **DBeaver**:
+
+1. Buka **DataGrip** ➔ New Data Source ➔ **MySQL**.
+2. **Tab SSH/SSL**:
+   - Centang **Use SSH tunnel**.
+   - Host: `IP_PUBLIK_VPS` (port `22`).
+   - Username: `root` (atau user SSH).
+   - Auth: Password / SSH Private Key.
+   - Klik **Test Connection** (Pastikan sukses terhubung).
+3. **Tab General**:
+   - Host: `127.0.0.1` (port `3306`).
+   - User: `sijebol` (atau `root`).
+   - Password: Password database dari `docker-compose.yml`.
+   - Database: Kosongkan.
+4. Klik **Test Connection** ➔ Centang skema `sijebol_prod` dan `sijebol_uat` di daftar schema.
+
+---
+
+## 8. Troubleshooting Playbook (Penyelesaian Masalah Cepat)
+
+### Kasus 1: Web Production Hilang / 503 Bad Gateway setelah Deploy UAT
+* **Gejala**: `sijebol-prod` hilang dari output `docker ps -a` setelah mendeploy UAT.
+* **Penyebab**: Kedua folder bernama `app` (`/opt/sijebol/prod/app` dan `/opt/sijebol/uat/app`), sehingga Docker Compose menganggap UAT dan Prod adalah project `app` yang sama. Deploy UAT menimpa dan memusnahkan kontainer Prod.
+* **Solusi**:
+  1. Hapus bentrok nama lama: `docker rm -f sijebol-uat sijebol-prod` (jika stuck).
+  2. Tambahkan `COMPOSE_PROJECT_NAME=sijebol-prod` di `.env` prod.
+  3. Tambahkan `COMPOSE_PROJECT_NAME=sijebol-uat` di `.env` uat.
+  4. Jalankan masing-masing dengan `-p`:
+     ```bash
+     docker compose -p sijebol-prod -f docker-compose.prod.yml up -d
+     docker compose -p sijebol-uat -f docker-compose.uat.yml up -d
+     ```
+
+### Kasus 2: Kontainer Crash Exit Code 137 (OOM Killer) saat Build
+* **Gejala**: Proses build Docker berhenti tiba-tiba dengan exit code `137` atau kontainer prod mati saat UAT sedang di-build.
+* **Penyebab**: Server kehabisan RAM fisik (4 GB) akibat lonjakan memori Vite (`vue-tsc`), dan server tidak memiliki Swap Memory.
+* **Solusi**: Pasang Swap 4 GB segera:
   ```bash
-  ufw disable
-  ufw allow 22/tcp
-  systemctl restart ssh
+  fallocate -l 4G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+  sysctl vm.swappiness=20
   ```
 
-### Kasus 2: Error "Composer dependencies require PHP >= 8.4.1"
-* **Gejala**: Container crash dengan error platform check saat artisan dijalankan.
-* **Penyebab**: Paket Symfony/Laravel terbaru di `composer.lock` membutuhkan PHP 8.4+.
-* **Solusi**: Gunakan base image `php:8.4-fpm-bookworm` di `Dockerfile`.
+### Kasus 3: Judul Tab Browser Menampilkan "- Laravel" (Masuk - Laravel)
+* **Gejala**: Di browser, judul halaman tetap menampilkan kata *Laravel*, bukan nama aplikasi *SIJEBOL*.
+* **Penyebab**:
+  1. `.dockerignore` mengabaikan file `.env`, sehingga saat `npm run build` dijalankan di dalam container, Vite tidak membaca `VITE_APP_NAME` dan mengambil fallback `'Laravel'`.
+  2. Fallback di `resources/js/app.ts` dan `resources/views/app.blade.php` masih diset ke `'Laravel'`.
+* **Solusi**:
+  1. Di `Dockerfile` stage frontend build, tambahkan: `ENV VITE_APP_NAME="SIJEBOL"`.
+  2. Di `resources/js/app.ts`, ganti fallback: `const appName = import.meta.env.VITE_APP_NAME || 'SIJEBOL';`.
+  3. Di `resources/views/app.blade.php`, ganti: `<title inertia>{{ config('app.name', 'SIJEBOL') }}</title>`.
 
-### Kasus 3: Error "No application encryption key has been specified"
-* **Gejala**: Seeder atau migrasi gagal saat enkripsi dijalankan.
-* **Penyebab**: `APP_KEY` di file `.env` host masih kosong saat docker compose dijalankan.
+### Kasus 4: Error "Your local changes would be overwritten by merge" pada Git Pull
+* **Gejala**: `deploy-prod` atau `git pull` gagal karena file `.gitignore` di `storage/` atau file script dianggap termodifikasi (*modified*).
+* **Penyebab**: Perubahan izin eksekusi (`chmod`) saat Laravel berjalan dianggap Git sebagai perubahan file (`core.filemode=true`).
 * **Solusi**:
   ```bash
-  KEY=$(docker exec <container_name> php artisan key:generate --show)
-  sed -i "s|^APP_KEY=.*|APP_KEY=$KEY|" .env
-  docker compose -f <compose_file> up -d
+  git config core.filemode false
+  git reset --hard origin/<branch>
   ```
+  Dan pastikan script deploy menggunakan `git reset --hard origin/<branch>` alih-alih `git pull`.
 
-### Kasus 4: Error "502 Bad Gateway / upstream sent too big header"
-* **Gejala**: Akses ke `/login` atau route yang mengirim header CSP mengembalikan error 502.
-* **Penyebab**: Header Content-Security-Policy (CSP) + Cookie + Inertia melebihi buffer default FastCGI (4k) dan Proxy buffer NPM.
+### Kasus 5: Error "-bash: /usr/local/bin/deploy-prod: Permission denied"
+* **Gejala**: Menjalankan shortcut global gagal karena izin eksekusi hilang setelah `git reset`.
+* **Solusi**: Beri izin eksekusi ulang di VPS:
+  ```bash
+  chmod +x /opt/sijebol/prod/app/scripts/deploy-prod.sh
+  chmod +x /opt/sijebol/uat/app/scripts/deploy-uat.sh
+  ```
+  *(Di repo lokal, jalankan `git update-index --chmod=+x scripts/deploy-*.sh` lalu commit & push agar Git mengingat atribut executable secara permanen).*
+
+### Kasus 6: Error "502 Bad Gateway / upstream sent too big header"
+* **Gejala**: Akses ke halaman web mengembalikan 502 Bad Gateway dari Nginx Proxy Manager.
+* **Penyebab**: Header keamanan CSP, cookie sesi, dan header Inertia melebihi batas buffer default FastCGI (4k) dan NPM.
 * **Solusi**:
-  1. Di `docker/nginx.conf` tambahkan:
+  1. Di `docker/nginx.conf` pastikan FastCGI buffer diperbesar:
      ```nginx
      fastcgi_buffer_size 64k;
      fastcgi_buffers 8 64k;
      fastcgi_busy_buffers_size 128k;
      ```
-  2. Di NPM (Tab gerigi ⚙️ Advanced) tambahkan:
+  2. Di NPM (Tab gerigi ⚙️ Advanced) tambahkan custom configuration:
      ```nginx
      proxy_buffer_size 128k;
      proxy_buffers 4 256k;
      proxy_busy_buffers_size 256k;
      ```
 
-### Kasus 5: Error "Cannot find module vendor/tightenco/ziggy" saat npm run build
-* **Gejala**: Docker multi-stage build gagal pada tahap `vue-tsc && vite build`.
-* **Penyebab**: Folder `vendor` diabaikan oleh `.dockerignore`.
-* **Solusi**: Jalankan Composer install di stage 1 Dockerfile, lalu salin `vendor/tightenco/ziggy` ke stage frontend sebelum mengeksekusi `npm run build`.
+### Kasus 7: Port 22 SSH Connection Timed Out setelah UFW Aktif
+* **Gejala**: Tidak bisa login SSH ke VPS setelah mengaktifkan firewall.
+* **Solusi**: Masuk ke **Web Console / VNC** di dashboard penyedia VPS (Rumahweb), lalu jalankan:
+  ```bash
+  ufw disable
+  ufw allow 22/tcp
+  systemctl restart ssh
+  ufw enable
+  ```
