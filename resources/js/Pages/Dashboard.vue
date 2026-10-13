@@ -40,6 +40,8 @@ const props = withDefaults(
         charts?: DashboardChartsType;
         schedules_table?: UpcomingScheduleRow[];
         calendar_events?: CalendarEventItem[];
+        is_operator?: boolean;
+        school_name?: string | null;
     }>(),
     {
         summary: () => [],
@@ -54,12 +56,19 @@ const props = withDefaults(
         }),
         schedules_table: () => [],
         calendar_events: () => [],
+        is_operator: false,
+        school_name: null,
     },
 );
 
 const page = usePage<PageProps>();
 const user = computed(() => page.props.auth.user);
-const isOperator = computed(() => !!user.value?.school_id);
+const isOperator = computed(
+    () => props.is_operator || !!user.value?.school_id,
+);
+const schoolName = computed(
+    () => props.school_name || user.value?.school?.name || null,
+);
 const notifications = computed(
     () => page.props.notifications?.latest.slice(0, 5) ?? [],
 );
@@ -102,8 +111,8 @@ const displaySchedulesTable = computed<UpcomingScheduleRow[]>(() => {
                         >
                             {{ humanize(user?.role) }}
                         </span>
-                        <span v-if="user?.school?.name" class="font-medium text-foreground">
-                            • {{ user.school.name }}
+                        <span v-if="schoolName" class="font-medium text-foreground">
+                            • {{ schoolName }}
                         </span>
                         <span>• Kecamatan Sungai Beduk</span>
                     </div>

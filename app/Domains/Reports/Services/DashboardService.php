@@ -26,7 +26,9 @@ class DashboardService
      *         school_recap: array{categories: list<string>, series: list<array{name: string, data: list<int>}>},
      *         recording_status: array{labels: list<string>, series: list<int>, total: int},
      *         monthly_trend: array{categories: list<string>, series: list<array{name: string, data: list<int>}>}
-     *     }
+     *     },
+     *     is_operator: bool,
+     *     school_name: string|null
      * }
      */
     public function forUser(User $user): array
@@ -72,6 +74,8 @@ class DashboardService
             'kpi' => $this->kpiSummary($user, $counts),
             'quick_actions' => $this->quickActions($user),
             'charts' => $this->charts($user, $counts),
+            'is_operator' => $bound,
+            'school_name' => $bound ? $user->school?->name : null,
         ];
     }
 
