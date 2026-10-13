@@ -60,3 +60,32 @@ test('aksi dengan hitungan 0 disembunyikan tetapi kartu tetap tampil dengan angk
     $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
         ->has('actions', 0)->where('summary.0.value', 0)->has('summary', 3));
 });
+
+test('dashboard menyediakan payload kpi 5 kartu, quick actions, dan grafik untuk staf', function () {
+    makeEntries([S::Diajukan, S::Terjadwal, S::SudahRekaman]);
+    $staf = makeUserWith(['verifikasi.lihat', 'jadwal.lihat', 'jadwal.buat', 'pendaftaran.lihat', 'pendaftaran.buat', 'laporan.ekspor'], roleName: 'staf-kpi');
+
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->has('kpi', 5)
+        ->has('quick_actions')
+        ->has('charts.recording_status')
+        ->has('charts.school_recap')
+        ->has('charts.monthly_trend')
+        ->has('schedules_table')
+        ->has('calendar_events')
+    );
+});
+
+test('dashboard menyediakan kpi dan grafik khusus sekolah untuk operator', function () {
+    $sekolah = School::factory()->create();
+    makeEntries([S::Terjadwal, S::SudahRekaman], $sekolah);
+    $op = makeUserWith(['pendaftaran.lihat', 'pendaftaran.buat', 'jadwal.lihat', 'siswa.lihat', 'siswa.buat'], $sekolah, true, 'op-kpi');
+
+    $this->actingAs($op)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->has('kpi', 5)
+        ->has('quick_actions')
+        ->has('charts.recording_status')
+        ->has('charts.school_recap')
+        ->has('charts.monthly_trend')
+    );
+});
