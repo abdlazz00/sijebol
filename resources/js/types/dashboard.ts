@@ -64,17 +64,19 @@ export interface DashboardCharts {
 export interface UpcomingScheduleRow {
     id: number;
     date: string;
-    school: string;
+    school?: string;
+    school_name?: string;
     participants: number;
     location: string;
-    status: 'Hari Ini' | 'Terlaksana' | 'Dijadwalkan';
+    status: 'Hari Ini' | 'Terlaksana' | 'Dijadwalkan' | string;
 }
 
 export interface CalendarEventItem {
     id: number;
     date: string;
-    school: string;
+    school?: string;
+    school_name?: string;
     location: string;
     participants: number;
-    status: 'Hari Ini' | 'Terlaksana' | 'Dijadwalkan';
+    status: 'Hari Ini' | 'Terlaksana' | 'Dijadwalkan' | string;
 }
