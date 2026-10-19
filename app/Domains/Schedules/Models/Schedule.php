@@ -2,6 +2,7 @@
 
 namespace App\Domains\Schedules\Models;
 
+use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schools\Models\School;
 use App\Models\Concerns\ScopedBySchool;
@@ -18,7 +19,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $id
  * @property int $school_id
  * @property Carbon $date
+ * @property string $start_time
+ * @property string $end_time
  * @property string $location
+ * @property int $quota
+ * @property Carbon|null $cancelled_at
+ * @property int $taken_count Hanya ada pada query ber-withCount (kursi tertahan).
  * @property int $created_by
  */
 #[UseFactory(ScheduleFactory::class)]
@@ -29,11 +35,11 @@ class Schedule extends Model
 
     private const ZONE = 'Asia/Jakarta';
 
-    protected $fillable = ['school_id', 'date', 'location', 'created_by'];
+    protected $fillable = ['school_id', 'date', 'start_time', 'end_time', 'location', 'quota', 'cancelled_at', 'created_by'];
 
     protected function casts(): array
     {
-        return ['date' => 'date'];
+        return ['date' => 'date', 'cancelled_at' => 'datetime'];
     }
 
     /** Tanggal hari ini di zona Asia/Jakarta (Y-m-d): satu sumber untuk model, repository, dan validasi. */
@@ -52,6 +58,35 @@ class Schedule extends Model
     public function isOpenForMarking(): bool
     {
         return $this->date->toDateString() <= self::today();
+    }
+
+    public function isCancelled(): bool
+    {
+        return $this->cancelled_at !== null;
+    }
+
+    /** Hari terakhir (inklusif) siswa boleh mendaftar: tanggal sesi dikurangi `sijebol.registration_close_days`. */
+    public function lastRegistrationDay(): string
+    {
+        return $this->date->copy()->subDays((int) config('sijebol.registration_close_days'))->toDateString();
+    }
+
+    public function isOpenForRegistration(): bool
+    {
+        return ! $this->isCancelled() && self::today() <= $this->lastRegistrationDay();
+    }
+
+    /** Siswa boleh membatalkan atau mengajukan ulang sampai hari sebelum sesi. */
+    public function allowsStudentChanges(): bool
+    {
+        return ! $this->isCancelled() && self::today() < $this->date->toDateString();
+    }
+
+    /** Jumlah kursi yang sedang ditahan pendaftaran (lihat RegistrationStatus::holdingSeat). */
+    public function seatsTaken(): int
+    {
+        // Tanpa scope pemilik: siswa yang mendaftar harus ikut melihat kursi yang ditahan siswa lain.
+        return $this->entries()->withoutGlobalScope('owner')->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat()))->count();
     }
 
     /** @return BelongsTo<School, $this> */

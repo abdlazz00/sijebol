@@ -92,6 +92,61 @@ describe('Siswa/Show', () => {
     });
 });
 
+describe('Siswa/Show — pendaftaran sesi', () => {
+    it('kartu pendaftaran menampilkan sesi (hari, jam, lokasi) dan status, tertaut ke sesi bagi pemegang jadwal.lihat', () => {
+        permissions.push('siswa.lihat', 'jadwal.lihat');
+        const w = mount(Show, {
+            props: {
+                ...showProps,
+                registrations: [
+                    {
+                        id: 3,
+                        status: 'terdaftar',
+                        schedule: {
+                            id: 5,
+                            date: '2026-10-20',
+                            start_time: '08:00',
+                            end_time: '12:00',
+                            location: 'Aula SMPN 1',
+                        },
+                    },
+                ],
+            },
+        });
+
+        expect(w.text()).toContain('Selasa, 20 Okt 2026');
+        expect(w.text()).toContain('08.00–12.00');
+        expect(w.text()).toContain('Aula SMPN 1');
+        expect(w.text()).toContain('Terdaftar');
+        expect(w.find('a[href="/jadwal.show/5"]').exists()).toBe(true);
+    });
+
+    it('tanpa izin jadwal.lihat sesi tampil sebagai teks biasa', () => {
+        permissions.push('siswa.lihat');
+        const w = mount(Show, {
+            props: {
+                ...showProps,
+                registrations: [
+                    {
+                        id: 3,
+                        status: 'ditolak',
+                        schedule: {
+                            id: 5,
+                            date: '2026-10-20',
+                            start_time: '08:00',
+                            end_time: '12:00',
+                            location: 'Aula',
+                        },
+                    },
+                ],
+            },
+        });
+
+        expect(w.text()).toContain('Selasa, 20 Okt 2026');
+        expect(w.find('a[href="/jadwal.show/5"]').exists()).toBe(false);
+    });
+});
+
 describe('Siswa/Form', () => {
     const formProps = {
         student: {

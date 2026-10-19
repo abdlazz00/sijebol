@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * @property RegistrationStatus $from_status
+ * @property RegistrationStatus|null $from_status
  * @property RegistrationStatus $to_status
  * @property int $by_user_id
  * @property string|null $note

@@ -84,7 +84,7 @@ test('filter eligible tidak menampilkan siswa dengan entri aktif', function () {
     $sekolah = School::factory()->create();
     $bebas = eligibleStudent($sekolah);
     $sibuk = eligibleStudent($sekolah);
-    makeEntry(RegistrationStatus::Diajukan, student: $sibuk);
+    makeEntry(RegistrationStatus::MenungguVerifikasi, student: $sibuk);
     $user = makeUserWith(['siswa.lihat'], $sekolah, true, 'op-filter');
 
     $this->actingAs($user)->get('/siswa?filter[eligible]=1')->assertInertia(fn (Assert $p) => $p

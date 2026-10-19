@@ -19,14 +19,14 @@ class RecordingController extends Controller
 
     public function show(Schedule $schedule): Response
     {
-        $schedule->load(['school', 'entries.student', 'entries.registration']);
+        $schedule->load(['school', 'entries.student']);
         $entries = $schedule->entries;
 
         return Inertia::render('Jadwal/Rekaman', [
             'schedule' => ScheduleController::detail($schedule),
-            'entries' => $entries->where('status', RegistrationStatus::Terjadwal)
+            'entries' => $entries->where('status', RegistrationStatus::Terdaftar)
                 ->map(fn (RegistrationStudent $e) => ScheduleController::checklistItem($e))->values(),
-            'marked' => $entries->where('status', '!=', RegistrationStatus::Terjadwal)
+            'marked' => $entries->where('status', '!=', RegistrationStatus::Terdaftar)
                 ->map(fn (RegistrationStudent $e) => ScheduleController::participant($e))->values(),
             'can_mark' => $schedule->isOpenForMarking(),
         ]);

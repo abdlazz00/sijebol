@@ -29,7 +29,7 @@ class AccessSeeder extends Seeder
         ]);
 
         $this->role(Role::SISWA, 'Siswa pendaftar', true, [
-            'profil.lihat', 'profil.ubah', 'dokumen.lihat', 'dokumen.unggah', 'dokumen.hapus',
+            'profil.lihat', 'profil.ubah', 'dokumen.lihat', 'dokumen.unggah', 'dokumen.hapus', 'pendaftaran.lihat', 'pendaftaran.buat',
         ]);
     }
 

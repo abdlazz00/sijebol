@@ -2,7 +2,9 @@
 
 namespace App\Domains\Schedules\Http\Controllers;
 
+use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
+use App\Domains\Schedules\Http\Requests\CancelScheduleRequest;
 use App\Domains\Schedules\Http\Requests\ScheduleRequest;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Services\ScheduleService;
@@ -22,13 +24,20 @@ class ScheduleController extends Controller
 
     public function index(Request $request): Response
     {
+        $holding = RegistrationStatus::holdingSeat();
+
         return Inertia::render('Jadwal/Index', [
             'schedules' => $this->schedules->paginate()->through(fn (Schedule $s) => [
                 'id' => $s->id,
                 'date' => $s->date->toDateString(),
+                'start_time' => self::time($s->start_time),
+                'end_time' => self::time($s->end_time),
                 'location' => $s->location,
                 'school' => $s->school?->name,
                 'is_past' => $s->isPast(),
+                'cancelled' => $s->isCancelled(),
+                'quota' => $s->quota,
+                'taken' => $s->entries->filter(fn (RegistrationStudent $e) => in_array($e->status, $holding, true))->count(),
                 'participants_count' => $s->entries->count(),
                 'counts' => $s->entries->countBy(fn (RegistrationStudent $e) => $e->status->value)->all(),
             ]),
@@ -46,23 +55,16 @@ class ScheduleController extends Controller
     {
         $schedule = $this->schedules->create($request->validated(), $request->user());
 
-        return redirect()->route('jadwal.show', $schedule)->with('success', 'Jadwal dibuat.');
+        return redirect()->route('jadwal.show', $schedule)->with('success', 'Sesi dibuat.');
     }
 
-    public function show(Request $request, Schedule $schedule): Response
+    public function show(Schedule $schedule): Response
     {
-        $schedule->load(['school', 'creator', 'entries.student']);
-        $canAssign = $request->user()->can('jadwal.ubah') && ! $schedule->isPast();
+        $schedule->load(['school', 'creator', 'entries' => fn ($q) => $q->orderBy('id'), 'entries.student']);
 
         return Inertia::render('Jadwal/Show', [
             'schedule' => self::detail($schedule) + ['created_by' => $schedule->creator?->name],
             'participants' => $schedule->entries->map(fn (RegistrationStudent $e) => self::participant($e))->values(),
-            'candidates' => $canAssign
-                ? $this->schedules->candidates($schedule)->map(fn (RegistrationStudent $e) => self::checklistItem($e))->values()
-                : [],
-            'targets' => $request->user()->can('jadwal.ubah')
-                ? $this->schedules->targets($schedule)->map(fn (Schedule $s) => ['id' => $s->id, 'date' => $s->date->toDateString(), 'location' => $s->location])->values()
-                : [],
         ]);
     }
 
@@ -72,7 +74,10 @@ class ScheduleController extends Controller
             'schedule' => [
                 'id' => $schedule->id,
                 'date' => $schedule->date->toDateString(),
+                'start_time' => self::time($schedule->start_time),
+                'end_time' => self::time($schedule->end_time),
                 'location' => $schedule->location,
+                'quota' => $schedule->quota,
                 'has_participants' => $schedule->entries()->exists(),
             ],
             'schools' => null,
@@ -83,14 +88,27 @@ class ScheduleController extends Controller
     {
         $this->schedules->delete($schedule, $request->user());
 
-        return redirect()->route('jadwal.index')->with('success', 'Jadwal dihapus.');
+        return redirect()->route('jadwal.index')->with('success', 'Sesi dihapus.');
     }
 
     public function update(ScheduleRequest $request, Schedule $schedule): RedirectResponse
     {
         $this->schedules->update($schedule, $request->validated(), $request->user());
 
-        return redirect()->route('jadwal.show', $schedule)->with('success', 'Jadwal diperbarui.');
+        return redirect()->route('jadwal.show', $schedule)->with('success', 'Sesi diperbarui.');
+    }
+
+    public function cancel(CancelScheduleRequest $request, Schedule $schedule): RedirectResponse
+    {
+        $count = $this->schedules->cancel($schedule, $request->validated('note'), $request->user());
+
+        return redirect()->route('jadwal.show', $schedule)->with('success', "Sesi dibatalkan; {$count} pendaftaran ikut dibatalkan.");
+    }
+
+    /** Jam `HH:MM:SS` dari basis data menjadi `HH:MM`. */
+    public static function time(string $value): string
+    {
+        return substr($value, 0, 5);
     }
 
     /** @return array<string, mixed> */
@@ -99,9 +117,15 @@ class ScheduleController extends Controller
         return [
             'id' => $s->id,
             'date' => $s->date->toDateString(),
+            'start_time' => self::time($s->start_time),
+            'end_time' => self::time($s->end_time),
             'location' => $s->location,
             'school' => $s->school?->name,
+            'quota' => $s->quota,
+            'taken' => $s->seatsTaken(),
+            'cancelled' => $s->isCancelled(),
             'is_past' => $s->isPast(),
+            'last_registration_day' => $s->lastRegistrationDay(),
         ];
     }
 
@@ -115,9 +139,9 @@ class ScheduleController extends Controller
         ];
     }
 
-    /** @return array{id: int, name: string, nisn: string, hint: ?string} */
+    /** @return array{id: int, name: string, nisn: string} */
     public static function checklistItem(RegistrationStudent $e): array
     {
-        return ['id' => $e->id, 'name' => $e->student->name, 'nisn' => $e->student->nisn, 'hint' => $e->registration?->title];
+        return ['id' => $e->id, 'name' => $e->student->name, 'nisn' => $e->student->nisn];
     }
 }

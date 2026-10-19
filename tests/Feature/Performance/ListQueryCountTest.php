@@ -23,8 +23,8 @@ function perfSeedRows(string $halaman, int $n, School $school): void
             'role' => Role::create(['name' => 'role-'.Str::random(8), 'guard_name' => 'web']),
             'sekolah' => School::factory()->create(),
             'siswa' => Student::factory()->for($school)->create(),
-            'pendaftaran', 'verifikasi' => makeEntry(S::Diajukan, $school),
-            'jadwal' => makeScheduledEntry(S::Terjadwal, makeSchedule($school)),
+            'verifikasi' => makeEntry(S::MenungguVerifikasi, $school),
+            'jadwal' => makeEntry(S::Terdaftar, $school),
             'log' => activity('uji')->log("aksi {$i}"),
             'notifikasi' => DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(), 'type' => 'uji', 'notifiable_type' => User::class,
@@ -32,7 +32,7 @@ function perfSeedRows(string $halaman, int $n, School $school): void
                 'data' => json_encode(['title' => 'T', 'body' => 'B', 'url' => '/dashboard']),
                 'created_at' => now(), 'updated_at' => now(),
             ]),
-            'laporan' => makeEntry(S::Diajukan, School::factory()->create()),
+            'laporan' => makeEntry(S::MenungguVerifikasi, School::factory()->create()),
         };
     }
 }
@@ -67,7 +67,6 @@ test('jumlah query halaman daftar tidak tumbuh menurut jumlah baris', function (
     ['role', '/role'],
     ['sekolah', '/sekolah'],
     ['siswa', '/siswa'],
-    ['pendaftaran', '/pendaftaran'],
     ['verifikasi', '/verifikasi'],
     ['jadwal', '/jadwal'],
     ['log', '/log'],

@@ -26,6 +26,7 @@ class SelfStudentController extends Controller
         abort_unless($user->isStudent(), 404);
 
         $student = $user->student()->with(['documents', 'registrationEntries'])->first();
+        $active = $student?->registrationEntries->first(fn ($e) => $e->status->isActive());
 
         return Inertia::render('Saya/Index', [
             'student' => $student ? [
@@ -39,7 +40,7 @@ class SelfStudentController extends Controller
             'school' => $user->school->name,
             'account_name' => $user->name,
             'documents' => $student ? $this->documents->rows($student) : [],
-            'eligibility' => $student ? $this->eligibility->check($student) : ['eligible' => false, 'reasons' => ['Data diri belum disimpan.']],
+            'eligibility' => $student ? $this->eligibility->check($student, null, $active?->id) : ['eligible' => false, 'reasons' => ['Data diri belum disimpan.']],
             'locked' => $student?->isLocked() ?? false,
         ]);
     }

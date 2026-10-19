@@ -2,11 +2,14 @@
 
 namespace App\Domains\Registrations\Http\Controllers;
 
+use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Http\Requests\ApproveManyRequest;
 use App\Domains\Registrations\Http\Requests\DecisionRequest;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Services\VerificationService;
 use App\Domains\Registrations\Support\EntryPresenter;
+use App\Domains\Schedules\Http\Controllers\ScheduleController;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Services\SchoolService;
 use App\Domains\Students\Services\EligibilityService;
 use App\Domains\Students\Services\StudentDocumentService;
@@ -32,34 +35,39 @@ class VerificationController extends Controller
             'queue' => $this->verification->queue()->through(fn (RegistrationStudent $e) => [
                 'id' => $e->id,
                 'student' => ['id' => $e->student->id, 'name' => $e->student->name, 'nisn' => $e->student->nisn],
-                'school' => $e->registration->school?->name,
-                'registration' => $e->registration->title,
+                'school' => $e->schedule->school?->name,
+                'session' => $this->session($e->schedule),
                 'since' => $e->updated_at->toIso8601String(),
             ]),
             'filters' => $request->query('filter', []),
             'schools' => $this->schools->optionsFor($request->user()),
+            // Opsi filter sesi: hanya sesi yang sedang punya antrean.
+            'sessions' => Schedule::query()->with('school')
+                ->whereHas('entries', fn ($q) => $q->where('status', RegistrationStatus::MenungguVerifikasi->value))
+                ->orderBy('date')->orderBy('start_time')->orderBy('id')->get()
+                ->map(fn (Schedule $s) => $this->session($s) + ['school' => $s->school?->name])->values(),
         ]);
     }
 
     public function show(Request $request, RegistrationStudent $entry): Response
     {
-        $entry->load(['student.school', 'student.documents', 'student.registrationEntries', 'registration', 'histories.user']);
+        $entry->load(['student.school', 'student.documents', 'student.registrationEntries', 'schedule', 'histories.user']);
         $student = $entry->student;
 
         return Inertia::render('Verifikasi/Show', [
-            'entry' => EntryPresenter::row($entry) + ['registration' => ['id' => $entry->registration->id, 'title' => $entry->registration->title]],
+            'entry' => EntryPresenter::row($entry) + ['session' => $this->session($entry->schedule)],
             'student' => [
                 'id' => $student->id,
                 'name' => $student->name,
                 'nisn' => $student->nisn,
                 'nik' => Nik::mask($student->nik),
                 'birth_date' => $student->birth_date->toDateString(),
-                'age' => $this->eligibility->age($student),
+                'age' => $this->eligibility->age($student, $entry->schedule->date),
                 'gender' => $student->gender,
                 'school' => $student->school?->name,
             ],
             'documents' => $request->user()->can('dokumen.lihat') ? $this->documents->rows($student) : [],
-            'eligibility' => $this->eligibility->check($student, null, $entry->registration_id),
+            'eligibility' => $this->eligibility->check($student, $entry->schedule->date, $entry->id),
         ]);
     }
 
@@ -75,5 +83,17 @@ class VerificationController extends Controller
         $this->verification->decide($entry, $request->validated('decision'), $request->validated('note'), $request->user());
 
         return redirect()->route('verifikasi.index')->with('success', 'Keputusan disimpan.');
+    }
+
+    /** @return array{id: int, date: string, start_time: string, end_time: string, location: string} */
+    private function session(Schedule $schedule): array
+    {
+        return [
+            'id' => $schedule->id,
+            'date' => $schedule->date->toDateString(),
+            'start_time' => ScheduleController::time($schedule->start_time),
+            'end_time' => ScheduleController::time($schedule->end_time),
+            'location' => $schedule->location,
+        ];
     }
 }

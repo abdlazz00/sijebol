@@ -18,15 +18,15 @@ export function userStatus(status: string): StatusMeta {
 }
 
 const REGISTRATION_STATUS: Record<string, StatusMeta> = {
-    draf: { label: 'Draf', variant: 'neutral' },
-    diajukan: { label: 'Diajukan', variant: 'info' },
+    menunggu_verifikasi: { label: 'Menunggu verifikasi', variant: 'info' },
     perlu_perbaikan: { label: 'Perlu perbaikan', variant: 'warning' },
-    terverifikasi: { label: 'Terverifikasi', variant: 'success' },
-    terjadwal: { label: 'Terjadwal', variant: 'info' },
+    terdaftar: { label: 'Terdaftar', variant: 'success' },
     sudah_rekaman: { label: 'Sudah rekaman', variant: 'success' },
     tidak_hadir: { label: 'Tidak hadir', variant: 'danger' },
     belum_rekaman: { label: 'Belum rekaman', variant: 'warning' },
     ditolak: { label: 'Ditolak', variant: 'danger' },
+    dibatalkan: { label: 'Dibatalkan', variant: 'neutral' },
+    kedaluwarsa: { label: 'Kedaluwarsa', variant: 'neutral' },
 };
 
 export function registrationStatus(status: string): StatusMeta {

@@ -41,15 +41,10 @@ dataset('rute', [
     ['POST', '/siswa/{student}/dokumen/kk', 'dokumen.unggah'],
     ['GET', '/siswa/{student}/dokumen/kk', 'dokumen.lihat'],
     ['DELETE', '/siswa/{student}/dokumen/kk', 'dokumen.hapus'],
-    ['GET', '/pendaftaran', 'pendaftaran.lihat'],
-    ['GET', '/pendaftaran/buat', 'pendaftaran.buat'],
-    ['POST', '/pendaftaran', 'pendaftaran.buat'],
-    ['GET', '/pendaftaran/{registration}', 'pendaftaran.lihat'],
-    ['GET', '/pendaftaran/{registration}/ubah', 'pendaftaran.buat'],
-    ['PUT', '/pendaftaran/{registration}', 'pendaftaran.buat'],
-    ['DELETE', '/pendaftaran/{registration}', 'pendaftaran.buat'],
-    ['POST', '/pendaftaran/{registration}/ajukan', 'pendaftaran.ajukan'],
-    ['POST', '/pendaftaran/{registration}/entri/{entry}/ajukan-ulang', 'pendaftaran.ajukan'],
+    ['GET', '/saya/sesi', 'pendaftaran.lihat'],
+    ['POST', '/saya/sesi/{schedule}/daftar', 'pendaftaran.buat'],
+    ['POST', '/saya/pendaftaran/{entry}/batal', 'pendaftaran.buat'],
+    ['POST', '/saya/pendaftaran/{entry}/ajukan-ulang', 'pendaftaran.buat'],
     ['GET', '/verifikasi', 'verifikasi.lihat'],
     ['GET', '/verifikasi/{entry}', 'verifikasi.lihat'],
     ['POST', '/verifikasi/{entry}/putuskan', 'verifikasi.putuskan'],
@@ -59,14 +54,12 @@ dataset('rute', [
     ['GET', '/jadwal/{schedule}', 'jadwal.lihat'],
     ['GET', '/jadwal/{schedule}/ubah', 'jadwal.ubah'],
     ['PUT', '/jadwal/{schedule}', 'jadwal.ubah'],
-    ['POST', '/jadwal/{schedule}/siswa', 'jadwal.ubah'],
-    ['DELETE', '/jadwal/{schedule}/siswa/{slot}', 'jadwal.ubah'],
+    ['POST', '/jadwal/{schedule}/batalkan', 'jadwal.ubah'],
     ['GET', '/jadwal/{schedule}/rekaman', 'rekaman.lihat'],
     ['POST', '/jadwal/{schedule}/rekaman', 'rekaman.tandai'],
     ['GET', '/laporan', 'laporan.lihat'],
     ['GET', '/laporan/ekspor', 'laporan.lihat'],
     ['DELETE', '/jadwal/{schedule}', 'jadwal.ubah'],
-    ['POST', '/jadwal/{schedule}/siswa/{slot}/pindah', 'jadwal.ubah'],
     ['POST', '/jadwal/{schedule}/rekaman/{slot}/batalkan', 'rekaman.tandai'],
     ['POST', '/verifikasi/setujui', 'verifikasi.putuskan'],
 ]);
@@ -79,11 +72,10 @@ function resolveUri(string $uri): string
 
     $student = Student::factory()->create();
     $entry = makeEntry();
-    $slot = makeScheduledEntry();
 
     return str_replace(
-        ['{user}', '{school}', '{role}', '{student}', '{registration}', '{entry}', '{schedule}', '{slot}'],
-        [$target->id, $school->id, $role->id, $student->id, $entry->registration_id, $entry->id, $slot->schedule_id, $slot->id],
+        ['{user}', '{school}', '{role}', '{student}', '{entry}', '{schedule}', '{slot}'],
+        [$target->id, $school->id, $role->id, $student->id, $entry->id, $entry->schedule_id, $entry->id],
         $uri,
     );
 }

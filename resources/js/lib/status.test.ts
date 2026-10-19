@@ -30,26 +30,24 @@ describe('userStatus', () => {
 });
 
 describe('registrationStatus', () => {
-    it('memetakan status entri ke label dan varian', () => {
-        expect(registrationStatus('draf')).toEqual({
-            label: 'Draf',
-            variant: 'neutral',
-        });
+    it.each([
+        ['menunggu_verifikasi', 'Menunggu verifikasi', 'info'],
+        ['perlu_perbaikan', 'Perlu perbaikan', 'warning'],
+        ['terdaftar', 'Terdaftar', 'success'],
+        ['sudah_rekaman', 'Sudah rekaman', 'success'],
+        ['tidak_hadir', 'Tidak hadir', 'danger'],
+        ['belum_rekaman', 'Belum rekaman', 'warning'],
+        ['ditolak', 'Ditolak', 'danger'],
+        ['dibatalkan', 'Dibatalkan', 'neutral'],
+        ['kedaluwarsa', 'Kedaluwarsa', 'neutral'],
+    ])('memetakan %s ke label dan varian', (status, label, variant) => {
+        expect(registrationStatus(status)).toEqual({ label, variant });
+    });
+
+    it('status lama yang sudah dihapus jatuh ke netral dengan label apa adanya', () => {
         expect(registrationStatus('diajukan')).toEqual({
-            label: 'Diajukan',
-            variant: 'info',
-        });
-        expect(registrationStatus('perlu_perbaikan')).toEqual({
-            label: 'Perlu perbaikan',
-            variant: 'warning',
-        });
-        expect(registrationStatus('terverifikasi')).toEqual({
-            label: 'Terverifikasi',
-            variant: 'success',
-        });
-        expect(registrationStatus('ditolak')).toEqual({
-            label: 'Ditolak',
-            variant: 'danger',
+            label: 'diajukan',
+            variant: 'neutral',
         });
     });
 

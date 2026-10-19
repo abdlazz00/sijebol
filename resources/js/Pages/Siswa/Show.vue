@@ -11,7 +11,7 @@ import { Button } from '@/Components/ui/button';
 import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate } from '@/lib/date';
+import { formatDate, formatDateWithDay, formatTimeRange } from '@/lib/date';
 import { initials } from '@/lib/format';
 import { PERMISSIONS } from '@/lib/permissions';
 import type {
@@ -218,14 +218,29 @@ const crumbs = [
                         :key="r.id"
                         class="flex flex-wrap items-center justify-between gap-2 text-sm"
                     >
-                        <Link
-                            v-if="can(PERMISSIONS.PendaftaranLihat)"
-                            :href="route('pendaftaran.show', r.id)"
-                            class="font-medium hover:underline"
+                        <component
+                            :is="can(PERMISSIONS.JadwalLihat) ? Link : 'span'"
+                            :href="
+                                can(PERMISSIONS.JadwalLihat)
+                                    ? route('jadwal.show', r.schedule.id)
+                                    : undefined
+                            "
+                            class="font-medium"
+                            :class="
+                                can(PERMISSIONS.JadwalLihat)
+                                    ? 'hover:underline'
+                                    : ''
+                            "
                         >
-                            {{ r.title }}
-                        </Link>
-                        <span v-else class="font-medium">{{ r.title }}</span>
+                            {{ formatDateWithDay(r.schedule.date) }} ·
+                            {{
+                                formatTimeRange(
+                                    r.schedule.start_time,
+                                    r.schedule.end_time,
+                                )
+                            }}
+                            · {{ r.schedule.location }}
+                        </component>
                         <StatusBadge :status="r.status" kind="registration" />
                     </li>
                 </ul>

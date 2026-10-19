@@ -104,7 +104,7 @@ test('ubah, unggah, dan hapus dokumen ditolak saat entri diproses', function (S 
         ->and($siswa->documents()->count())->toBe(1);
 
     $this->get('/saya')->assertInertia(fn (Assert $p) => $p->where('locked', true));
-})->with([[S::Diajukan], [S::Terverifikasi]]);
+})->with([[S::MenungguVerifikasi], [S::Terdaftar]]);
 
 test('ubah dan dokumen diizinkan saat draf atau perlu perbaikan', function (S $status) {
     $this->actingAs($this->akun)->put('/saya', dataDiri());
@@ -117,7 +117,7 @@ test('ubah dan dokumen diizinkan saat draf atau perlu perbaikan', function (S $s
 
     expect($siswa->fresh()->name)->toBe('Nama Baru')
         ->and($siswa->documents()->count())->toBe(0);
-})->with([[S::Draf], [S::PerluPerbaikan]]);
+})->with([[S::PerluPerbaikan], [S::Ditolak]]);
 
 test('akun yang bukan siswa mendapat 404 pada /saya', function () {
     $staf = makeUserWith(['profil.lihat', 'profil.ubah'], roleName: 'bukan-siswa');
@@ -135,4 +135,12 @@ test('siswa yang membuka dashboard dialihkan ke /saya, toast aktivasi tetap terb
         ->assertRedirect('/dashboard');
     $this->get('/dashboard')->assertRedirect('/saya');
     $this->get('/saya')->assertInertia(fn (Assert $p) => $p->where('flash.success', 'Akun aktif. Selamat datang.'));
+});
+
+test('kartu kelayakan /saya tidak menyebut pendaftaran aktif sebagai alasan', function () {
+    [$akun, $siswa] = siswaLengkap(School::factory()->create());
+    makeEntry(S::Terdaftar, student: $siswa);
+
+    $this->actingAs($akun)->get('/saya')->assertInertia(fn (Assert $p) => $p
+        ->where('eligibility.eligible', true)->where('eligibility.reasons', []));
 });

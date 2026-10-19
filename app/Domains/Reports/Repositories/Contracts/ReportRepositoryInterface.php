@@ -11,7 +11,7 @@ interface ReportRepositoryInterface
     public function schoolNames(): array;
 
     /**
-     * Jumlah entri bukan-draf per sekolah dan status; `$from`/`$to` (Y-m-d) inklusif pada tanggal pengajuan pendaftaran.
+     * Jumlah pendaftaran sesi per sekolah dan status; `$from`/`$to` (Y-m-d) inklusif pada tanggal pendaftaran.
      *
      * @return array<int, array<string, int>>
      */

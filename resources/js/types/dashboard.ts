@@ -29,13 +29,26 @@ export interface KpiCardItem {
     percentage?: number | null;
     unit?: string;
     variant: 'blue' | 'green' | 'amber' | 'rose' | 'slate';
-    icon: 'users' | 'calendar-check' | 'id-card' | 'clock' | 'file-text' | 'shield-check' | 'alert-circle';
+    icon:
+        | 'users'
+        | 'calendar-check'
+        | 'id-card'
+        | 'clock'
+        | 'file-text'
+        | 'shield-check'
+        | 'alert-circle';
 }
 
 export interface QuickActionItem {
     label: string;
     href: string;
-    icon: 'plus' | 'calendar-plus' | 'id-card' | 'download' | 'user-plus' | 'clipboard-check';
+    icon:
+        | 'plus'
+        | 'calendar-plus'
+        | 'id-card'
+        | 'download'
+        | 'user-plus'
+        | 'clipboard-check';
     variant: 'blue' | 'green' | 'amber' | 'rose';
 }
 

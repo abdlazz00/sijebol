@@ -554,3 +554,26 @@ php artisan db:seed --class=AccessSeeder --force
 ```
 
 Seeder menyetel ulang izin tiga role bawaan (`admin-kecamatan`, `operator-sekolah`, `siswa`); perubahan izin yang pernah dibuat lewat UI pada role-role itu ikut tertimpa.
+
+## 10. Catatan Sesi Rekaman Berkuota (Fase 7b)
+
+### Urutan wajib saat memasang fase 7b
+
+Migrasi fase 7b mengubah `schedules` menjadi sesi (jam, kuota) dan `registration_students` menjadi pendaftaran sesi per siswa, serta **menghapus** tabel `registrations`. Migrasi ini satu arah dan menolak berjalan bila `schedules` atau `registration_students` masih berisi data lama.
+
+```bash
+# 0. Cadangkan database lebih dulu.
+php artisan sijebol:bersihkan-data-siswa      # data siswa, pendaftaran, jadwal lama dihapus
+php artisan migrate --force
+php artisan db:seed --class=AccessSeeder --force   # izin pendaftaran.lihat/buat untuk role siswa; pendaftaran.ajukan dicabut
+```
+
+Bila `migrate` berhenti dengan pesan "Data lama masih ada", jalankan perintah pembersihan di atas lalu ulangi migrasi.
+
+### Konfigurasi
+
+`config/sijebol.php` memuat `registration_close_days` (nilai awal `2`): pendaftaran sesi ditutup sekian hari sebelum tanggal sesi (hari terakhir mendaftar = tanggal sesi dikurangi nilai ini, inklusif). Siswa dapat membatalkan atau mengajukan ulang sampai sehari sebelum sesi.
+
+### Belum tersedia sampai fase 7c
+
+Notifikasi ke siswa (disetujui, perlu perbaikan, ditolak, sesi diubah atau dibatalkan), tiket dan QR, serta batas waktu perbaikan belum ada. Selama itu siswa hanya melihat status di halaman **Sesi rekaman**. Jangan dirilis ke siswa sungguhan sebelum fase 7c.

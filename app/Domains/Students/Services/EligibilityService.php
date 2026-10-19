@@ -13,13 +13,13 @@ class EligibilityService
     private const ZONE = 'Asia/Jakarta';
 
     /** @return array{eligible: bool, reasons: list<string>} */
-    public function check(Student $student, ?CarbonInterface $on = null, ?int $exceptRegistrationId = null): array
+    public function check(Student $student, ?CarbonInterface $on = null, ?int $exceptEntryId = null): array
     {
         $reasons = [];
         $age = $this->age($student, $on);
 
         if ($age < self::MIN_AGE) {
-            $reasons[] = "Umur minimal 16 tahun (umur sekarang {$age}).";
+            $reasons[] = "Umur minimal 16 tahun (umur {$age}).";
         }
 
         $types = $student->documents->pluck('type')->all();
@@ -31,10 +31,10 @@ class EligibilityService
         }
 
         $busy = $student->registrationEntries->contains(
-            fn ($entry) => $entry->status->isActive() && $entry->registration_id !== $exceptRegistrationId
+            fn ($entry) => $entry->status->isActive() && $entry->id !== $exceptEntryId
         );
         if ($busy) {
-            $reasons[] = 'Sudah terdaftar di pendaftaran lain.';
+            $reasons[] = 'Sudah memiliki pendaftaran sesi yang aktif.';
         }
 
         return ['eligible' => $reasons === [], 'reasons' => $reasons];

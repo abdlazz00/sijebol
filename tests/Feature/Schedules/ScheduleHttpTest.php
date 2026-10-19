@@ -14,24 +14,36 @@ beforeEach(function () {
     $this->besok = now('Asia/Jakarta')->addDay()->toDateString();
 });
 
-test('admin membuat jadwal lalu melihat detailnya', function () {
+function formSesi(array $override = []): array
+{
+    return [...['date' => now('Asia/Jakarta')->addDay()->toDateString(), 'start_time' => '08:00', 'end_time' => '11:30', 'location' => 'Aula SMPN 1', 'quota' => 25], ...$override];
+}
+
+test('admin membuat sesi lalu melihat detailnya dengan jam dan kuota', function () {
     $this->actingAs($this->admin)
-        ->post('/jadwal', ['school_id' => $this->school->id, 'date' => $this->besok, 'location' => 'Aula SMPN 1'])
+        ->post('/jadwal', formSesi(['school_id' => $this->school->id]))
         ->assertRedirect();
 
     $s = Schedule::firstOrFail();
     $this->get("/jadwal/{$s->id}")->assertInertia(fn (Assert $p) => $p
         ->component('Jadwal/Show')
         ->where('schedule.location', 'Aula SMPN 1')->where('schedule.is_past', false)
-        ->has('participants', 0)->has('candidates', 0));
+        ->where('schedule.start_time', '08:00')->where('schedule.end_time', '11:30')
+        ->where('schedule.quota', 25)->where('schedule.taken', 0)->where('schedule.cancelled', false)
+        ->where('schedule.last_registration_day', now('Asia/Jakarta')->subDay()->toDateString())
+        ->has('participants', 0));
 });
 
-test('validasi: lokasi wajib, sekolah wajib untuk staf, tanggal tidak boleh lewat', function () {
+test('validasi: lokasi, sekolah, jam, dan kuota; tanggal tidak boleh lewat', function () {
     $this->actingAs($this->admin);
 
-    $this->post('/jadwal', ['date' => $this->besok, 'location' => ''])->assertSessionHasErrors(['location', 'school_id']);
-    $this->post('/jadwal', ['school_id' => $this->school->id, 'date' => now('Asia/Jakarta')->subDay()->toDateString(), 'location' => 'X'])
-        ->assertSessionHasErrors('date');
+    $this->post('/jadwal', formSesi(['location' => '']))->assertSessionHasErrors(['location', 'school_id']);
+    $this->post('/jadwal', formSesi(['school_id' => $this->school->id, 'date' => now('Asia/Jakarta')->subDay()->toDateString()]))->assertSessionHasErrors('date');
+    $this->post('/jadwal', formSesi(['school_id' => $this->school->id, 'start_time' => '10:00', 'end_time' => '09:00']))->assertSessionHasErrors('end_time');
+    $this->post('/jadwal', formSesi(['school_id' => $this->school->id, 'start_time' => '8 pagi']))->assertSessionHasErrors('start_time');
+    foreach ([0, 1001, 'banyak', ''] as $kuota) {
+        $this->post('/jadwal', formSesi(['school_id' => $this->school->id, 'quota' => $kuota]))->assertSessionHasErrors('quota');
+    }
     expect(Schedule::count())->toBe(0);
 });
 
@@ -39,47 +51,61 @@ test('ubah: tanggal lampau yang tidak berubah boleh, memindahkan ke masa lalu ti
     $lewat = makeSchedule($this->school, now('Asia/Jakarta')->subDays(3)->toDateString());
     $this->actingAs($this->admin);
 
-    $this->put("/jadwal/{$lewat->id}", ['date' => $lewat->date->toDateString(), 'location' => 'Lokasi baru'])
+    $this->put("/jadwal/{$lewat->id}", formSesi(['date' => $lewat->date->toDateString(), 'location' => 'Lokasi baru']))
         ->assertRedirect("/jadwal/{$lewat->id}");
     expect($lewat->fresh()->location)->toBe('Lokasi baru');
 
     $depan = makeSchedule($this->school, $this->besok);
-    $this->put("/jadwal/{$depan->id}", ['date' => now('Asia/Jakarta')->subDay()->toDateString(), 'location' => 'X'])->assertSessionHasErrors('date');
+    $this->put("/jadwal/{$depan->id}", formSesi(['date' => now('Asia/Jakarta')->subDay()->toDateString()]))->assertSessionHasErrors('date');
 });
 
-test('kandidat hanya untuk pemegang jadwal.ubah dan operator tidak melihatnya', function () {
+test('ubah sesi berpendaftar: tanggal dan kuota di bawah kursi tertahan memberi galat per kolom', function () {
     $s = makeSchedule($this->school, $this->besok);
-    makeEntry(S::Terverifikasi, $this->school);
-    makeEntry(S::Diajukan, $this->school);
-
-    $this->actingAs($this->admin)->get("/jadwal/{$s->id}")->assertInertia(fn (Assert $p) => $p
-        ->has('candidates', 1)->where('candidates.0.hint', fn ($h) => is_string($h)));
-    $this->actingAs($this->op)->get("/jadwal/{$s->id}")->assertInertia(fn (Assert $p) => $p->has('candidates', 0));
-});
-
-test('masukkan dan keluarkan siswa lewat HTTP, entri milik jadwal lain 404', function () {
-    $s = makeSchedule($this->school, $this->besok);
-    $e = makeEntry(S::Terverifikasi, $this->school);
-    $lain = makeScheduledEntry(S::Terjadwal, makeSchedule($this->school, $this->besok));
+    makeEntry(S::Terdaftar, $this->school, schedule: $s);
+    makeEntry(S::MenungguVerifikasi, $this->school, schedule: $s);
     $this->actingAs($this->admin);
 
-    $this->post("/jadwal/{$s->id}/siswa", ['entry_ids' => []])->assertSessionHasErrors('entry_ids');
-    $this->post("/jadwal/{$s->id}/siswa", ['entry_ids' => [$e->id]])->assertRedirect("/jadwal/{$s->id}")->assertSessionHas('success');
-    expect($e->fresh()->status)->toBe(S::Terjadwal);
+    $this->put("/jadwal/{$s->id}", formSesi(['date' => now('Asia/Jakarta')->addDays(4)->toDateString()]))->assertSessionHasErrors('date');
+    $this->put("/jadwal/{$s->id}", formSesi(['quota' => 1]))->assertSessionHasErrors('quota');
+    $this->put("/jadwal/{$s->id}", formSesi(['quota' => 2, 'location' => 'Ruang baru']))->assertRedirect("/jadwal/{$s->id}");
 
-    $this->delete("/jadwal/{$s->id}/siswa/{$lain->id}")->assertNotFound();
-    $this->delete("/jadwal/{$s->id}/siswa/{$e->id}")->assertSessionHas('success');
-    expect($e->fresh()->status)->toBe(S::Terverifikasi);
+    expect($s->fresh()->location)->toBe('Ruang baru')->and($s->fresh()->quota)->toBe(2);
 });
 
-test('penempatan gagal menghasilkan galat entry_ids', function () {
+test('halaman ubah memuat jam, kuota, dan penanda peserta', function () {
     $s = makeSchedule($this->school, $this->besok);
-    $diajukan = makeEntry(S::Diajukan, $this->school);
+    makeEntry(S::Terdaftar, $this->school, schedule: $s);
 
-    $this->actingAs($this->admin)->post("/jadwal/{$s->id}/siswa", ['entry_ids' => [$diajukan->id]])->assertSessionHasErrors('entry_ids');
+    $this->actingAs($this->admin)->get("/jadwal/{$s->id}/ubah")->assertInertia(fn (Assert $p) => $p
+        ->component('Jadwal/Form')
+        ->where('schedule.start_time', '08:00')->where('schedule.end_time', '12:00')
+        ->where('schedule.quota', 30)->where('schedule.has_participants', true));
 });
 
-test('operator hanya melihat jadwal sekolahnya; sekolah lain 404; tanpa izin ubah ditolak', function () {
+test('detail memuat peserta semua status, urut id', function () {
+    $s = makeSchedule($this->school, $this->besok);
+    $a = makeEntry(S::Terdaftar, $this->school, schedule: $s);
+    $b = makeEntry(S::Ditolak, $this->school, schedule: $s);
+    makeEntry(S::Terdaftar, $this->school);
+
+    $this->actingAs($this->admin)->get("/jadwal/{$s->id}")->assertInertia(fn (Assert $p) => $p
+        ->has('participants', 2)
+        ->where('participants.0.id', $a->id)->where('participants.0.status', 'terdaftar')
+        ->where('participants.1.id', $b->id)->where('participants.1.status', 'ditolak')
+        ->where('schedule.taken', 1));
+});
+
+test('rute penempatan siswa lama sudah tidak ada', function () {
+    $s = makeSchedule($this->school, $this->besok);
+    $e = makeEntry(S::Terdaftar, $this->school, schedule: $s);
+    $this->actingAs($this->admin);
+
+    $this->post("/jadwal/{$s->id}/siswa", ['entry_ids' => [$e->id]])->assertNotFound();
+    $this->delete("/jadwal/{$s->id}/siswa/{$e->id}")->assertNotFound();
+    $this->post("/jadwal/{$s->id}/siswa/{$e->id}/pindah", ['target_schedule_id' => $s->id])->assertNotFound();
+});
+
+test('operator hanya melihat sesi sekolahnya; sekolah lain 404; tanpa izin ubah ditolak', function () {
     $milik = makeSchedule($this->school, $this->besok);
     $asing = makeSchedule(null, $this->besok);
     $this->actingAs($this->op);
@@ -87,21 +113,25 @@ test('operator hanya melihat jadwal sekolahnya; sekolah lain 404; tanpa izin uba
     $this->get('/jadwal')->assertInertia(fn (Assert $p) => $p->has('schedules.data', 1)->where('schedules.data.0.id', $milik->id));
     $this->get("/jadwal/{$asing->id}")->assertNotFound();
     $this->get("/jadwal/{$milik->id}/ubah")->assertForbidden();
-    $this->post('/jadwal', ['date' => $this->besok, 'location' => 'X'])->assertForbidden();
+    $this->post('/jadwal', formSesi())->assertForbidden();
 });
 
-test('daftar menyaring periode dan memuat ringkasan status', function () {
+test('daftar menyaring periode dan memuat ringkasan status, kuota, dan kursi tertahan', function () {
     $depan = makeSchedule($this->school, $this->besok);
     makeSchedule($this->school, now('Asia/Jakarta')->subDays(2)->toDateString());
-    makeScheduledEntry(S::Terjadwal, $depan);
+    makeEntry(S::Terdaftar, $this->school, schedule: $depan);
+    makeEntry(S::Ditolak, $this->school, schedule: $depan);
+    $depan->update(['cancelled_at' => now()]);
     $this->actingAs($this->admin);
 
     $this->get('/jadwal?filter[period]=akan-datang')->assertInertia(fn (Assert $p) => $p
-        ->has('schedules.data', 1)->where('schedules.data.0.participants_count', 1)->where('schedules.data.0.counts.terjadwal', 1));
+        ->has('schedules.data', 1)->where('schedules.data.0.participants_count', 2)
+        ->where('schedules.data.0.counts.terdaftar', 1)->where('schedules.data.0.counts.ditolak', 1)
+        ->where('schedules.data.0.quota', 30)->where('schedules.data.0.taken', 1)->where('schedules.data.0.cancelled', true));
     $this->get('/jadwal?filter[period]=lewat')->assertInertia(fn (Assert $p) => $p->has('schedules.data', 1)->where('schedules.data.0.is_past', true));
 });
 
-test('daftar jadwal: akan datang terdekat dulu, lalu yang lewat terbaru dulu', function () {
+test('daftar sesi: akan datang terdekat dulu, lalu yang lewat terbaru dulu', function () {
     $tanggal = fn (int $hari) => now('Asia/Jakarta')->addDays($hari)->toDateString();
     foreach ([5, -3, 1, -1, 0] as $hari) {
         makeSchedule($this->school, $tanggal($hari));

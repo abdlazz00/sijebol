@@ -1,3 +1,5 @@
+import type { RegistrationStatus, SessionBrief } from './registration';
+
 export type StudentRow = {
     id: number;
     name: string;
@@ -38,6 +40,6 @@ export type StudentDocumentRow = {
 
 export type StudentRegistrationRef = {
     id: number;
-    title: string;
-    status: string;
+    status: RegistrationStatus;
+    schedule: SessionBrief;
 };

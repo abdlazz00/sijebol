@@ -25,7 +25,7 @@ beforeEach(function () {
 });
 
 test('admin mengoreksi data walau terkunci, tercatat dengan catatan, dan siswa diberi tahu', function () {
-    makeEntry(S::Diajukan, student: $this->siswa);
+    makeEntry(S::MenungguVerifikasi, student: $this->siswa);
 
     $this->actingAs($this->admin)->put("/siswa/{$this->siswa->id}", koreksi())
         ->assertRedirect("/siswa/{$this->siswa->id}")
@@ -80,7 +80,7 @@ test('setelah sekolah diganti, siswa tetap dapat membuka data dan melihat sekola
 
 test('sekolah tidak dapat diganti bila siswa masih punya pendaftaran aktif', function () {
     $baru = School::factory()->create();
-    makeEntry(S::Diajukan, student: $this->siswa);
+    makeEntry(S::MenungguVerifikasi, student: $this->siswa);
 
     $this->actingAs($this->admin)->put("/siswa/{$this->siswa->id}", koreksi(['school_id' => $baru->id]))
         ->assertSessionHas('error');

@@ -11,13 +11,13 @@ class ReportService
     public function __construct(private readonly ReportRepositoryInterface $reports) {}
 
     /**
-     * Rekap sekolah × status (tanpa draf), lengkap dengan baris total.
+     * Rekap sekolah × seluruh status pendaftaran sesi, lengkap dengan baris total.
      *
      * @return array{columns: list<array{key: string, label: string}>, rows: list<array{school: string, counts: array<string, int>, total: int}>, totals: array{counts: array<string, int>, total: int}}
      */
     public function recap(?string $from, ?string $to): array
     {
-        $statuses = array_values(array_filter(RegistrationStatus::cases(), fn (RegistrationStatus $s) => $s !== RegistrationStatus::Draf));
+        $statuses = RegistrationStatus::cases();
         $counts = $this->reports->schoolStatusCounts($from, $to);
         $totals = array_fill_keys(array_map(fn (RegistrationStatus $s) => $s->value, $statuses), 0);
         $rows = [];

@@ -1,5 +1,7 @@
 <?php
 
+use App\Domains\Registrations\Enums\RegistrationStatus as S;
+use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use Illuminate\Http\UploadedFile;
@@ -55,4 +57,16 @@ test('operator sekolah tetap melihat semua siswa sekolahnya', function () {
     $operator = makeUserWith(['siswa.lihat'], $this->school, true, 'operator-uji');
 
     $this->actingAs($operator)->get('/siswa')->assertInertia(fn (Assert $p) => $p->has('students.data', 2));
+});
+
+test('akun siswa hanya melihat pendaftaran sesi miliknya, staf tanpa sekolah melihat semua', function () {
+    makeEntry(S::MenungguVerifikasi, $this->school, $this->a);
+    makeEntry(S::MenungguVerifikasi, $this->school, $this->b);
+
+    $this->actingAs($this->akunA);
+    expect(RegistrationStudent::count())->toBe(1)
+        ->and(RegistrationStudent::first()->student_id)->toBe($this->a->id);
+
+    $this->actingAs(makeUserWith([], roleName: 'staf-uji'));
+    expect(RegistrationStudent::count())->toBe(2);
 });

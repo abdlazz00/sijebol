@@ -14,14 +14,6 @@ interface StudentRepositoryInterface
      */
     public function paginate(int $perPage = 20): LengthAwarePaginator;
 
-    /**
-     * Siswa sekolah, dicari menurut nama atau NISN (`$q`, `%` dan `_` literal), urut nama; memuat dokumen dan
-     * entri pendaftaran untuk pemeriksaan kelayakan.
-     *
-     * @return LengthAwarePaginator<int, Student>
-     */
-    public function searchForSchool(int $schoolId, ?string $q, int $perPage = 20): LengthAwarePaginator;
-
     /** @param array<string, mixed> $attributes */
     public function create(array $attributes): Student;
 

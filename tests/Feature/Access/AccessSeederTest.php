@@ -21,13 +21,13 @@ test('seeder membuat seluruh permission dan empat role, dan aman diulang', funct
         ->and(Role::findByName('operator-sekolah')->hasPermissionTo('user.buat'))->toBeFalse();
 });
 
-test('role siswa terikat sekolah dan hanya memegang izin data diri dan dokumen', function () {
+test('role siswa terikat sekolah dan hanya memegang izin data diri, dokumen, dan pendaftaran sesi', function () {
     $this->seed(AccessSeeder::class);
     $role = Role::findByName('siswa');
 
     expect($role->is_school_scoped)->toBeTrue()
         ->and($role->permissions->pluck('name')->sort()->values()->all())
-        ->toBe(['dokumen.hapus', 'dokumen.lihat', 'dokumen.unggah', 'profil.lihat', 'profil.ubah']);
+        ->toBe(['dokumen.hapus', 'dokumen.lihat', 'dokumen.unggah', 'pendaftaran.buat', 'pendaftaran.lihat', 'profil.lihat', 'profil.ubah']);
 });
 
 test('operator sekolah hanya memantau: lihat siswa, lihat jadwal, dan salin link pendaftaran', function () {
@@ -37,7 +37,8 @@ test('operator sekolah hanya memantau: lihat siswa, lihat jadwal, dan salin link
     expect($operator->permissions->pluck('name')->sort()->values()->all())
         ->toBe(['jadwal.lihat', 'sekolah.tautan', 'siswa.lihat'])
         ->and($operator->hasPermissionTo('dokumen.lihat'))->toBeFalse()
-        ->and($operator->hasPermissionTo('siswa.ubah'))->toBeFalse();
+        ->and($operator->hasPermissionTo('siswa.ubah'))->toBeFalse()
+        ->and($operator->hasPermissionTo('pendaftaran.buat'))->toBeFalse();
 });
 
 test('admin kecamatan memegang semua permission, termasuk yang baru', function () {

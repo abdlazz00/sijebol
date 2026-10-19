@@ -25,8 +25,8 @@ beforeEach(function () {
 });
 
 test('penandaan massal mengubah status, mencatat riwayat, catatan, dan satu log', function (S $status) {
-    $a = makeScheduledEntry(S::Terjadwal, $this->hariIni);
-    $b = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $a = makeEntry(S::Terdaftar, schedule: $this->hariIni);
+    $b = makeEntry(S::Terdaftar, schedule: $this->hariIni);
 
     $this->service->mark($this->hariIni, [$a->id, $b->id], $status, 'catatan bersama', $this->admin);
 
@@ -40,16 +40,16 @@ test('penandaan massal mengubah status, mencatat riwayat, catatan, dan satu log'
 
 test('penandaan sebelum hari kegiatan ditolak', function () {
     $besok = makeSchedule($this->school, now('Asia/Jakarta')->addDay()->toDateString());
-    $e = makeScheduledEntry(S::Terjadwal, $besok);
+    $e = makeEntry(S::Terdaftar, schedule: $besok);
 
     expect(fn () => $this->service->mark($besok, [$e->id], S::SudahRekaman, null, $this->admin))->toThrow(AccessRuleException::class);
-    expect($e->fresh()->status)->toBe(S::Terjadwal);
+    expect($e->fresh()->status)->toBe(S::Terdaftar);
 });
 
 test('pukul 03.00 WIB sudah dihitung hari kegiatan walau tanggal UTC masih kemarin', function () {
     Carbon::setTestNow(Carbon::parse('2026-10-08 20:00:00', 'UTC'));
     $jadwal = makeSchedule($this->school, '2026-10-09');
-    $e = makeScheduledEntry(S::Terjadwal, $jadwal);
+    $e = makeEntry(S::Terdaftar, schedule: $jadwal);
 
     $this->service->mark($jadwal, [$e->id], S::SudahRekaman, null, $this->admin);
 
@@ -57,55 +57,52 @@ test('pukul 03.00 WIB sudah dihitung hari kegiatan walau tanggal UTC masih kemar
 });
 
 test('satu entri tidak sah menggagalkan seluruh penandaan', function (string $kasus) {
-    $ok = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $ok = makeEntry(S::Terdaftar, schedule: $this->hariIni);
     $buruk = match ($kasus) {
-        'sudah berstatus akhir' => makeScheduledEntry(S::SudahRekaman, $this->hariIni),
-        'milik jadwal lain' => makeScheduledEntry(S::Terjadwal, makeSchedule($this->school, now('Asia/Jakarta')->toDateString())),
+        'sudah berstatus akhir' => makeEntry(S::SudahRekaman, schedule: $this->hariIni),
+        'milik jadwal lain' => makeEntry(S::Terdaftar, schedule: makeSchedule($this->school, now('Asia/Jakarta')->toDateString())),
     };
 
     expect(fn () => $this->service->mark($this->hariIni, [$ok->id, $buruk->id], S::SudahRekaman, null, $this->admin))
         ->toThrow(ValidationException::class);
 
-    expect($ok->fresh()->status)->toBe(S::Terjadwal)->and($ok->histories()->count())->toBe(0);
+    expect($ok->fresh()->status)->toBe(S::Terdaftar)->and($ok->histories()->count())->toBe(0);
 })->with(['sudah berstatus akhir', 'milik jadwal lain']);
 
 test('status penandaan harus salah satu dari tiga status akhir', function () {
-    $e = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $e = makeEntry(S::Terdaftar, schedule: $this->hariIni);
 
-    expect(fn () => $this->service->mark($this->hariIni, [$e->id], S::Diajukan, null, $this->admin))->toThrow(AccessRuleException::class);
-    expect(fn () => $this->service->mark($this->hariIni, [$e->id], S::Terverifikasi, null, $this->admin))->toThrow(AccessRuleException::class);
+    expect(fn () => $this->service->mark($this->hariIni, [$e->id], S::MenungguVerifikasi, null, $this->admin))->toThrow(AccessRuleException::class);
+    expect(fn () => $this->service->mark($this->hariIni, [$e->id], S::Dibatalkan, null, $this->admin))->toThrow(AccessRuleException::class);
     expect($e->fresh()->schedule_id)->toBe($this->hariIni->id);
 });
 
-test('Tidak hadir dapat didaftarkan lagi, Sudah rekaman tidak; kunci data ikut terbuka', function () {
-    makeUserWith(['verifikasi.putuskan'], roleName: 'petugas-rek');
-    $op = makeUserWith(['pendaftaran.buat', 'pendaftaran.ajukan'], $this->school, true, 'op-rek');
-    $absen = eligibleStudent($this->school);
-    $hadir = eligibleStudent($this->school);
-    $e1 = makeEntry(S::Terjadwal, $this->school, $absen);
-    $e2 = makeEntry(S::Terjadwal, $this->school, $hadir);
-    $e1->update(['schedule_id' => $this->hariIni->id]);
-    $e2->update(['schedule_id' => $this->hariIni->id]);
+test('Tidak hadir dapat mendaftar sesi lain, Sudah rekaman tidak; kunci data ikut terbuka', function () {
+    [$akunAbsen, $absen] = siswaLengkap($this->school);
+    [$akunHadir, $hadir] = siswaLengkap($this->school);
+    $e1 = makeEntry(S::Terdaftar, $this->school, $absen, $this->hariIni);
+    $e2 = makeEntry(S::Terdaftar, $this->school, $hadir, $this->hariIni);
     expect($absen->isLocked())->toBeTrue();
 
     $this->service->mark($this->hariIni, [$e1->id], S::TidakHadir, null, $this->admin);
     $this->service->mark($this->hariIni, [$e2->id], S::SudahRekaman, null, $this->admin);
-    expect($absen->isLocked())->toBeFalse();
+    expect($absen->isLocked())->toBeFalse()->and($hadir->isLocked())->toBeTrue();
 
+    $berikut = makeSchedule($this->school, now('Asia/Jakarta')->addDays(10)->toDateString());
     $registrations = app(RegistrationService::class);
-    $baru = $registrations->createDraft(['title' => 'Gelombang 2', 'student_ids' => [$absen->id]], $op);
-    $registrations->submit($baru, $op);
-    expect($baru->entries()->first()->status)->toBe(S::Diajukan);
 
-    $ditolak = $registrations->createDraft(['title' => 'Gelombang 3', 'student_ids' => [$hadir->id]], $op);
-    expect(fn () => $registrations->submit($ditolak, $op))->toThrow(ValidationException::class);
+    $this->actingAs($akunAbsen);
+    expect($registrations->register($akunAbsen, $berikut)->status)->toBe(S::MenungguVerifikasi);
+
+    $this->actingAs($akunHadir);
+    expect(fn () => $registrations->register($akunHadir, $berikut))->toThrow(AccessRuleException::class);
 });
 
 test('penandaan massal memberi tahu operator sekolah itu satu kali', function () {
     $op = makeUserWith(['jadwal.lihat'], $this->school, true, 'op-mark');
     $lain = makeUserWith(['jadwal.lihat'], School::factory()->create(), true, 'op-mark');
-    $a = makeScheduledEntry(S::Terjadwal, $this->hariIni);
-    $b = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $a = makeEntry(S::Terdaftar, schedule: $this->hariIni);
+    $b = makeEntry(S::Terdaftar, schedule: $this->hariIni);
 
     $this->service->mark($this->hariIni, [$a->id, $b->id], S::TidakHadir, null, $this->admin);
 
@@ -114,14 +111,14 @@ test('penandaan massal memberi tahu operator sekolah itu satu kali', function ()
     Notification::assertNotSentTo($lain, ScheduleNotification::class);
 });
 
-test('batalkan penandaan mengembalikan ke Terjadwal dengan jadwal utuh, riwayat, log, dan notifikasi', function (S $status) {
+test('batalkan penandaan mengembalikan ke Terdaftar dengan sesi utuh, riwayat, log, dan notifikasi', function (S $status) {
     $op = makeUserWith(['jadwal.lihat'], $this->school, true, 'op-undo');
-    $e = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $e = makeEntry(S::Terdaftar, schedule: $this->hariIni);
     $this->service->mark($this->hariIni, [$e->id], $status, null, $this->admin);
 
     $this->service->undo($e->fresh(), 'Salah tandai', $this->admin);
 
-    expect($e->fresh()->status)->toBe(S::Terjadwal)
+    expect($e->fresh()->status)->toBe(S::Terdaftar)
         ->and($e->fresh()->schedule_id)->toBe($this->hariIni->id)
         ->and($e->fresh()->note)->toBe('Salah tandai')
         ->and($e->histories()->count())->toBe(2)
@@ -130,20 +127,48 @@ test('batalkan penandaan mengembalikan ke Terjadwal dengan jadwal utuh, riwayat,
 })->with([[S::SudahRekaman], [S::TidakHadir], [S::BelumRekaman]]);
 
 test('batalkan hanya untuk entri yang sudah ditandai', function () {
-    $e = makeScheduledEntry(S::Terjadwal, $this->hariIni);
+    $e = makeEntry(S::Terdaftar, schedule: $this->hariIni);
 
     expect(fn () => $this->service->undo($e, 'x', $this->admin))->toThrow(AccessRuleException::class);
-    expect($e->fresh()->status)->toBe(S::Terjadwal)->and($e->histories()->count())->toBe(0);
+    expect($e->fresh()->status)->toBe(S::Terdaftar)->and($e->histories()->count())->toBe(0);
 });
 
 test('batalkan ditolak bila siswa sudah punya pendaftaran aktif lain', function () {
     $student = eligibleStudent($this->school);
-    $lama = makeEntry(S::Terjadwal, $this->school, $student);
+    $lama = makeEntry(S::Terdaftar, $this->school, $student);
     $lama->update(['schedule_id' => $this->hariIni->id]);
     $this->service->mark($this->hariIni, [$lama->id], S::TidakHadir, null, $this->admin);
-    makeEntry(S::Diajukan, $this->school, $student);
+    makeEntry(S::MenungguVerifikasi, $this->school, $student);
 
     expect(fn () => $this->service->undo($lama->fresh(), 'x', $this->admin))->toThrow(AccessRuleException::class);
 
     expect($lama->fresh()->status)->toBe(S::TidakHadir)->and(Activity::where('description', 'rekaman.dibatalkan')->count())->toBe(0);
+});
+
+test('batalkan Tidak hadir ditolak bila kursinya sudah terpakai sampai kuota penuh', function () {
+    $this->hariIni->update(['quota' => 2]);
+    $absen = makeEntry(S::TidakHadir, $this->school, schedule: $this->hariIni);
+    makeEntry(S::Terdaftar, $this->school, schedule: $this->hariIni);
+    makeEntry(S::Terdaftar, $this->school, schedule: $this->hariIni);
+
+    expect(fn () => $this->service->undo($absen, 'Salah tandai', $this->admin))
+        ->toThrow(AccessRuleException::class, 'Kuota sesi sudah penuh');
+
+    expect($absen->fresh()->status)->toBe(S::TidakHadir)->and($this->hariIni->seatsTaken())->toBe(2);
+});
+
+test('batalkan Tidak hadir diterima selama kuota masih longgar, Sudah rekaman tidak terkena batas kuota', function () {
+    $this->hariIni->update(['quota' => 2]);
+    $absen = makeEntry(S::TidakHadir, $this->school, schedule: $this->hariIni);
+    $hadir = makeEntry(S::SudahRekaman, $this->school, schedule: $this->hariIni);
+    makeEntry(S::Terdaftar, $this->school, schedule: $this->hariIni);
+
+    // Kursi penuh (2 dari 2) tetapi Sudah rekaman sudah memegang kursinya sendiri.
+    $this->service->undo($hadir, 'Salah tandai', $this->admin);
+    expect($hadir->fresh()->status)->toBe(S::Terdaftar);
+
+    expect(fn () => $this->service->undo($absen, 'Salah tandai', $this->admin))->toThrow(AccessRuleException::class);
+    $this->hariIni->update(['quota' => 3]);
+    $this->service->undo($absen, 'Salah tandai', $this->admin);
+    expect($absen->fresh()->status)->toBe(S::Terdaftar);
 });

@@ -2,7 +2,6 @@
 
 namespace App\Domains\Reports\Repositories;
 
-use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Reports\Repositories\Contracts\ReportRepositoryInterface;
 use App\Domains\Schools\Models\School;
@@ -26,10 +25,8 @@ class EloquentReportRepository implements ReportRepositoryInterface
     {
         // app.timezone = Asia/Jakarta dan kolom timestamp disimpan dalam zona itu, jadi batas hari cukup string.
         return RegistrationStudent::query()
-            ->join('registrations', 'registrations.id', '=', 'registration_students.registration_id')
-            ->where('registration_students.status', '!=', RegistrationStatus::Draf->value)
-            ->when($from !== null, fn (Builder $q) => $q->where('registrations.submitted_at', '>=', "{$from} 00:00:00"))
-            ->when($to !== null, fn (Builder $q) => $q->where('registrations.submitted_at', '<=', "{$to} 23:59:59"))
+            ->when($from !== null, fn (Builder $q) => $q->where('registration_students.created_at', '>=', "{$from} 00:00:00"))
+            ->when($to !== null, fn (Builder $q) => $q->where('registration_students.created_at', '<=', "{$to} 23:59:59"))
             ->selectRaw('registration_students.school_id, registration_students.status, count(*) as total')
             ->groupBy('registration_students.school_id', 'registration_students.status')
             ->toBase()->get()

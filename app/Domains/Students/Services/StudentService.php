@@ -22,12 +22,6 @@ class StudentService
         return $this->students->paginate();
     }
 
-    /** @return LengthAwarePaginator<int, Student> */
-    public function candidatesPage(int $schoolId, ?string $q): LengthAwarePaginator
-    {
-        return $this->students->searchForSchool($schoolId, $q);
-    }
-
     /**
      * Data diri milik akun siswa: dibuat saat disimpan pertama kali (sekolah mengikuti akun), selanjutnya diperbarui.
      *

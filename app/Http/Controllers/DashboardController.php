@@ -29,7 +29,7 @@ class DashboardController extends Controller
                     'date' => $s->date->toDateString(),
                     'school' => $s->school?->name,
                     'location' => $s->location,
-                    'participants' => $s->entries_count,
+                    'participants' => $s->taken_count,
                 ])->values()
                 : [],
             'schedules_table' => $canJadwal ? $schedules->upcomingTable(8) : [],

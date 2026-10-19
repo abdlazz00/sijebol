@@ -26,7 +26,6 @@ export const PERMISSIONS = {
 
     PendaftaranLihat: 'pendaftaran.lihat',
     PendaftaranBuat: 'pendaftaran.buat',
-    PendaftaranAjukan: 'pendaftaran.ajukan',
 
     VerifikasiLihat: 'verifikasi.lihat',
     VerifikasiPutuskan: 'verifikasi.putuskan',

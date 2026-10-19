@@ -4,8 +4,8 @@ import { describe, expect, it } from 'vitest';
 import EntryChecklist from './EntryChecklist.vue';
 
 const items: ChecklistItem[] = [
-    { id: 1, name: 'Ani', nisn: '0000000001', hint: 'Gelombang 1' },
-    { id: 2, name: 'Budi', nisn: '0000000002', hint: null },
+    { id: 1, name: 'Ani', nisn: '0000000001' },
+    { id: 2, name: 'Budi', nisn: '0000000002' },
     { id: 3, name: 'Citra', nisn: '0000000003' },
 ];
 
@@ -24,11 +24,10 @@ function mountList(
 }
 
 describe('EntryChecklist', () => {
-    it('menampilkan nama, NISN, dan petunjuk', () => {
+    it('menampilkan nama dan NISN', () => {
         const text = mountList().text();
         expect(text).toContain('Ani');
         expect(text).toContain('0000000002');
-        expect(text).toContain('Gelombang 1');
     });
 
     it('"Pilih semua" memilih semua item', async () => {

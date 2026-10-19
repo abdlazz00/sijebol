@@ -3,147 +3,156 @@
 namespace App\Domains\Registrations\Services;
 
 use App\Domains\Access\Exceptions\AccessRuleException;
-use App\Domains\Notifications\Notifications\RegistrationSubmittedNotification;
-use App\Domains\Notifications\Services\NotificationService;
 use App\Domains\Registrations\Enums\RegistrationStatus;
-use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Repositories\Contracts\RegistrationRepositoryInterface;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
 use App\Models\User;
-use Illuminate\Database\Eloquent\Collection;
+use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
-use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\ValidationException;
 
 class RegistrationService
 {
+    /** Pendaftaran yang masih dapat dibatalkan siswa sendiri. */
+    private const CANCELLABLE = [RegistrationStatus::MenungguVerifikasi, RegistrationStatus::PerluPerbaikan, RegistrationStatus::Terdaftar];
+
     public function __construct(
         private readonly RegistrationRepositoryInterface $registrations,
         private readonly StatusTransitioner $transitions,
         private readonly EligibilityService $eligibility,
-        private readonly NotificationService $notifications,
     ) {}
 
-    /** @return LengthAwarePaginator<int, Registration> */
-    public function paginate(): LengthAwarePaginator
+    /**
+     * Siswa mendaftar ke sesi sekolahnya. Sesi dikunci (urut: sesi lalu siswa) selama pemeriksaan
+     * kuota agar pendaftaran serentak tidak melebihi kuota; indeks unik `active_student_id` menjaga satu pendaftaran aktif.
+     */
+    public function register(User $actor, Schedule $schedule): RegistrationStudent
     {
-        return $this->registrations->paginate();
-    }
-
-    /** @param array{title: string, expected_count?: ?int, school_id?: ?int, student_ids: list<int>} $data */
-    public function createDraft(array $data, User $actor): Registration
-    {
-        return DB::transaction(function () use ($data, $actor) {
-            $registration = $this->registrations->create([
-                // Operator sekolah dikunci ke sekolahnya; staf kecamatan memilih sekolah.
-                'school_id' => $actor->school_id ?? $data['school_id'],
-                'title' => $data['title'],
-                'expected_count' => $data['expected_count'] ?? null,
-                'created_by' => $actor->id,
-            ]);
-            $this->registrations->syncDraftEntries($registration, $data['student_ids']);
-
-            return $registration;
-        });
-    }
-
-    /** @param array{title: string, expected_count?: ?int, student_ids: list<int>} $data */
-    public function updateDraft(Registration $registration, array $data): Registration
-    {
-        $this->assertDraft($registration);
-
-        return DB::transaction(function () use ($registration, $data) {
-            $this->registrations->update($registration, [
-                'title' => $data['title'],
-                'expected_count' => $data['expected_count'] ?? null,
-            ]);
-            $this->registrations->syncDraftEntries($registration, $data['student_ids']);
-
-            return $registration;
-        });
-    }
-
-    public function deleteDraft(Registration $registration): void
-    {
-        $this->assertDraft($registration);
-        $this->registrations->delete($registration);
-    }
-
-    public function submit(Registration $registration, User $actor): void
-    {
-        $this->assertDraft($registration);
-
-        try {
-            $count = DB::transaction(function () use ($registration, $actor) {
-                $ids = $registration->entries()->pluck('student_id')->all();
-                if ($ids === []) {
-                    throw ValidationException::withMessages(['student_ids' => 'Pilih minimal satu siswa.']);
-                }
-
-                // Kunci baris siswa (urut id) agar dua pengajuan bersamaan tidak saling menyalip;
-                // bila tetap lolos, indeks unik active_student_id yang menghentikan.
-                Student::query()->whereIn('id', $ids)->orderBy('id')->lockForUpdate()->get();
-                $entries = $registration->entries()->with(['student.documents', 'student.registrationEntries'])->get();
-                $this->assertEligible($entries, $registration->id);
-
-                foreach ($entries as $entry) {
-                    $this->transitions->move($entry, RegistrationStatus::Diajukan, $actor);
-                }
-                $registration->update(['submitted_at' => now()]);
-                activity('pendaftaran')->performedOn($registration)->causedBy($actor)
-                    ->withProperties(['jumlah' => $entries->count()])->log('pendaftaran.diajukan');
-
-                return $entries->count();
-            });
-        } catch (UniqueConstraintViolationException) {
-            throw new AccessRuleException('Sebagian siswa sudah terdaftar di pendaftaran lain.');
+        // Query langsung, bukan relasi ter-cache, agar tidak basi bila objek user dipakai ulang.
+        $student = $actor->student()->first();
+        if ($student === null) {
+            throw new AccessRuleException('Lengkapi data diri dan dokumen terlebih dahulu.');
         }
 
-        $this->notifications->toPermission('verifikasi.putuskan', new RegistrationSubmittedNotification($registration->school->name, $count));
+        try {
+            return DB::transaction(function () use ($actor, $schedule, $student) {
+                $locked = Schedule::query()->whereKey($schedule->id)->lockForUpdate()->firstOrFail();
+                Student::query()->whereKey($student->id)->lockForUpdate()->first();
+
+                if (! $locked->isOpenForRegistration()) {
+                    throw new AccessRuleException('Pendaftaran untuk sesi ini sudah ditutup.');
+                }
+                $check = $this->eligibility->check($student->load(['documents', 'registrationEntries']), $locked->date);
+                if (! $check['eligible']) {
+                    throw new AccessRuleException(implode(' ', $check['reasons']));
+                }
+                if ($locked->seatsTaken() >= $locked->quota) {
+                    throw new AccessRuleException('Kuota sesi ini sudah penuh.');
+                }
+
+                $entry = $this->registrations->create([
+                    'school_id' => $student->school_id,
+                    'student_id' => $student->id,
+                    'schedule_id' => $locked->id,
+                    'status' => RegistrationStatus::MenungguVerifikasi,
+                ]);
+                $entry->histories()->create([
+                    'from_status' => null,
+                    'to_status' => RegistrationStatus::MenungguVerifikasi,
+                    'by_user_id' => $actor->id,
+                ]);
+                activity('pendaftaran')->performedOn($entry)->causedBy($actor)
+                    ->withProperties(['sesi_id' => $locked->id])->log('pendaftaran.dibuat');
+
+                return $entry;
+            });
+        } catch (UniqueConstraintViolationException) {
+            throw new AccessRuleException('Anda sudah memiliki pendaftaran aktif.');
+        }
+    }
+
+    public function cancel(RegistrationStudent $entry, User $actor): void
+    {
+        if (! in_array($entry->status, self::CANCELLABLE, true)) {
+            throw new AccessRuleException('Pendaftaran dengan status ini tidak dapat dibatalkan.');
+        }
+        $this->assertStudentMayChange($entry, 'Pembatalan');
+
+        DB::transaction(function () use ($entry, $actor) {
+            $this->transitions->move($entry, RegistrationStatus::Dibatalkan, $actor, 'Dibatalkan oleh siswa');
+            activity('pendaftaran')->performedOn($entry)->causedBy($actor)->log('pendaftaran.dibatalkan');
+        });
     }
 
     public function resubmit(RegistrationStudent $entry, User $actor): void
     {
         if ($entry->status !== RegistrationStatus::PerluPerbaikan) {
-            throw new AccessRuleException('Hanya siswa berstatus Perlu perbaikan yang dapat diajukan ulang.');
+            throw new AccessRuleException('Hanya pendaftaran berstatus Perlu perbaikan yang dapat diajukan ulang.');
         }
+        $this->assertStudentMayChange($entry, 'Pengajuan ulang');
 
         DB::transaction(function () use ($entry, $actor) {
             Student::query()->whereKey($entry->student_id)->lockForUpdate()->first();
-            $entry->load(['student.documents', 'student.registrationEntries']);
-            $this->assertEligible(new Collection([$entry]), $entry->registration_id);
+            $student = $entry->student()->with(['documents', 'registrationEntries'])->firstOrFail();
 
-            $this->transitions->move($entry, RegistrationStatus::Diajukan, $actor);
-            activity('pendaftaran')->performedOn($entry->registration)->causedBy($actor)
-                ->withProperties(['siswa_id' => $entry->student_id])->log('pendaftaran.diajukan-ulang');
-        });
-
-        $this->notifications->toPermission('verifikasi.putuskan', new RegistrationSubmittedNotification($entry->registration->school->name, 1, again: true));
-    }
-
-    private function assertDraft(Registration $registration): void
-    {
-        if (! $registration->isDraft()) {
-            throw new AccessRuleException('Pendaftaran yang sudah diajukan tidak dapat diubah.');
-        }
-    }
-
-    /** @param Collection<int, RegistrationStudent> $entries */
-    private function assertEligible(Collection $entries, int $registrationId): void
-    {
-        $errors = [];
-        foreach ($entries as $entry) {
-            $check = $this->eligibility->check($entry->student, null, $registrationId);
+            $check = $this->eligibility->check($student, $entry->schedule->date, $entry->id);
             if (! $check['eligible']) {
-                $errors["student_ids.{$entry->student_id}"] = $entry->student->name.': '.implode(' ', $check['reasons']);
+                throw new AccessRuleException(implode(' ', $check['reasons']));
             }
-        }
 
-        if ($errors !== []) {
-            throw ValidationException::withMessages(['student_ids' => 'Beberapa siswa belum memenuhi syarat.'] + $errors);
+            $this->transitions->move($entry, RegistrationStatus::MenungguVerifikasi, $actor);
+            activity('pendaftaran')->performedOn($entry)->causedBy($actor)->log('pendaftaran.diajukan-ulang');
+        });
+    }
+
+    /** Pendaftaran yang ditampilkan ke siswa: yang aktif bila ada, selain itu yang terbaru. */
+    public function currentEntry(Student $student): ?RegistrationStudent
+    {
+        $entries = $student->registrationEntries()->with('schedule')->orderByDesc('id')->get();
+
+        return $entries->first(fn (RegistrationStudent $e) => $e->status->isActive()) ?? $entries->first();
+    }
+
+    /**
+     * Sesi sekolah siswa yang pendaftarannya masih dibuka, terdekat dulu, lengkap dengan kursi dan kelayakan
+     * (umur dihitung pada tanggal sesi itu). Sesi penuh tetap dikembalikan agar dapat ditampilkan nonaktif.
+     *
+     * @return list<array{id: int, date: string, start_time: string, end_time: string, location: string, quota: int, taken: int, full: bool, eligible: bool, reasons: list<string>}>
+     */
+    public function openSchedules(Student $student): array
+    {
+        $student->load(['documents', 'registrationEntries']);
+        $firstOpenDate = Carbon::parse(Schedule::today())->addDays((int) config('sijebol.registration_close_days'))->toDateString();
+
+        return Schedule::query()
+            ->whereNull('cancelled_at')->where('date', '>=', $firstOpenDate)
+            ->withCount(['entries as taken_count' => fn ($q) => $q->withoutGlobalScope('owner')->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat()))])
+            ->orderBy('date')->orderBy('start_time')->orderBy('id')->get()
+            ->map(function (Schedule $s) use ($student) {
+                $check = $this->eligibility->check($student, $s->date);
+
+                return [
+                    'id' => $s->id,
+                    'date' => $s->date->toDateString(),
+                    'start_time' => substr($s->start_time, 0, 5),
+                    'end_time' => substr($s->end_time, 0, 5),
+                    'location' => $s->location,
+                    'quota' => $s->quota,
+                    'taken' => $s->taken_count,
+                    'full' => $s->taken_count >= $s->quota,
+                    'eligible' => $check['eligible'],
+                    'reasons' => $check['reasons'],
+                ];
+            })->values()->all();
+    }
+
+    private function assertStudentMayChange(RegistrationStudent $entry, string $action): void
+    {
+        if (! $entry->schedule->allowsStudentChanges()) {
+            throw new AccessRuleException("{$action} hanya dapat dilakukan sampai sehari sebelum sesi.");
         }
     }
 }

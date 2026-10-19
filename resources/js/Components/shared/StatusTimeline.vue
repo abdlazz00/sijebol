@@ -15,8 +15,11 @@ defineProps<{ items: HistoryRow[] }>();
             />
             <div class="min-w-0 text-sm leading-5">
                 <p class="font-medium">
-                    {{ registrationStatus(item.from).label }}
-                    →
+                    <template v-if="item.from">
+                        {{ registrationStatus(item.from).label }}
+                        →
+                    </template>
+                    <template v-else>Mendaftar ·</template>
                     {{ registrationStatus(item.to).label }}
                 </p>
                 <p class="text-muted-foreground text-xs leading-4">

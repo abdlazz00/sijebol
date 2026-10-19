@@ -12,9 +12,9 @@ class MenuService
         ['group' => 'Pelayanan', 'label' => 'Siswa', 'href' => '/siswa', 'icon' => 'graduation-cap', 'permission' => 'siswa.lihat'],
         ['group' => 'Pelayanan', 'label' => 'Data saya', 'href' => '/saya', 'icon' => 'graduation-cap', 'permission' => 'profil.lihat'],
         ['group' => 'Pelayanan', 'label' => 'Link pendaftaran', 'href' => '/tautan-pendaftaran', 'icon' => 'link', 'permission' => 'sekolah.tautan'],
-        ['group' => 'Pelayanan', 'label' => 'Pendaftaran', 'href' => '/pendaftaran', 'icon' => 'clipboard-list', 'permission' => 'pendaftaran.lihat'],
+        ['group' => 'Pelayanan', 'label' => 'Sesi rekaman', 'href' => '/saya/sesi', 'icon' => 'calendar-days', 'permission' => 'pendaftaran.lihat'],
         ['group' => 'Pelayanan', 'label' => 'Antrean verifikasi', 'href' => '/verifikasi', 'icon' => 'badge-check', 'permission' => 'verifikasi.lihat'],
-        ['group' => 'Pelayanan', 'label' => 'Jadwal', 'href' => '/jadwal', 'icon' => 'calendar-days', 'permission' => 'jadwal.lihat'],
+        ['group' => 'Pelayanan', 'label' => 'Sesi rekaman', 'href' => '/jadwal', 'icon' => 'calendar-days', 'permission' => 'jadwal.lihat'],
         ['group' => 'Laporan', 'label' => 'Rekap pendaftaran', 'href' => '/laporan', 'icon' => 'file-spreadsheet', 'permission' => 'laporan.lihat'],
         ['group' => 'Sistem & Akses', 'label' => 'Sekolah', 'href' => '/sekolah', 'icon' => 'school', 'permission' => 'sekolah.lihat'],
         ['group' => 'Sistem & Akses', 'label' => 'Pengguna', 'href' => '/pengguna', 'icon' => 'users', 'permission' => 'user.lihat'],
@@ -36,8 +36,8 @@ class MenuService
             if ($item['permission'] !== null && ! in_array($item['permission'], $owned, true)) {
                 continue;
             }
-            // Halaman data diri hanya untuk akun siswa; admin memegang izin profil.* (anti eskalasi) tetapi rutenya 404.
-            if ($item['href'] === '/saya' && ! $user->isStudent()) {
+            // Halaman /saya/* hanya untuk akun siswa; admin memegang izin profil.* dan pendaftaran.* (anti eskalasi) tetapi rutenya 404.
+            if (str_starts_with($item['href'], '/saya') && ! $user->isStudent()) {
                 continue;
             }
             $groups[$item['group']][] = ['label' => $item['label'], 'href' => $item['href'], 'icon' => $item['icon']];

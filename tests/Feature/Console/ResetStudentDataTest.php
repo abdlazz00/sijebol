@@ -1,7 +1,6 @@
 <?php
 
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
-use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStatusHistory;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Services\StatusTransitioner;
@@ -20,10 +19,10 @@ function isiDataSiswa(): User
 {
     Storage::fake('local');
     $user = User::factory()->create();
-    $entry = makeScheduledEntry();
+    $entry = makeEntry();
     $entry->student->documents()->create(['type' => 'kk', 'path' => "students/{$entry->student_id}/kk.pdf", 'mime' => 'application/pdf', 'size' => 1]);
     Storage::disk('local')->put("students/{$entry->student_id}/kk.pdf", 'isi');
-    app(StatusTransitioner::class)->move($entry, S::Terverifikasi, $user);
+    app(StatusTransitioner::class)->move($entry, S::Terdaftar, $user);
     activity('uji')->log('sebelum');
 
     return $user;
@@ -57,7 +56,6 @@ test('dengan --force data siswa, pendaftaran, jadwal, dan berkas dihapus, tetapi
 
     expect(Student::withoutGlobalScopes()->count())->toBe(0)
         ->and(StudentDocument::count())->toBe(0)
-        ->and(Registration::withoutGlobalScopes()->count())->toBe(0)
         ->and(RegistrationStudent::withoutGlobalScopes()->count())->toBe(0)
         ->and(RegistrationStatusHistory::count())->toBe(0)
         ->and(Schedule::withoutGlobalScopes()->count())->toBe(0)

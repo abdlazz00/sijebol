@@ -1,21 +1,14 @@
 <?php
 
-use App\Domains\Registrations\Http\Controllers\RegistrationController;
+use App\Domains\Registrations\Http\Controllers\SelfRegistrationController;
 use App\Domains\Registrations\Http\Controllers\VerificationController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
-    Route::get('pendaftaran', [RegistrationController::class, 'index'])->middleware('can:pendaftaran.lihat')->name('pendaftaran.index');
-    Route::get('pendaftaran/buat', [RegistrationController::class, 'create'])->middleware('can:pendaftaran.buat')->name('pendaftaran.create');
-    Route::post('pendaftaran', [RegistrationController::class, 'store'])->middleware(['can:pendaftaran.buat', 'throttle:60,1'])->name('pendaftaran.store');
-    Route::get('pendaftaran/{registration}', [RegistrationController::class, 'show'])->middleware('can:pendaftaran.lihat')->name('pendaftaran.show');
-    Route::get('pendaftaran/{registration}/ubah', [RegistrationController::class, 'edit'])->middleware('can:pendaftaran.buat')->name('pendaftaran.edit');
-    Route::put('pendaftaran/{registration}', [RegistrationController::class, 'update'])->middleware('can:pendaftaran.buat')->name('pendaftaran.update');
-    Route::delete('pendaftaran/{registration}', [RegistrationController::class, 'destroy'])->middleware('can:pendaftaran.buat')->name('pendaftaran.destroy');
-    Route::post('pendaftaran/{registration}/ajukan', [RegistrationController::class, 'submit'])->middleware(['can:pendaftaran.ajukan', 'throttle:60,1'])->name('pendaftaran.submit');
-    // scopeBindings: entri harus milik pendaftaran pada URL, selain itu 404.
-    Route::post('pendaftaran/{registration}/entri/{entry}/ajukan-ulang', [RegistrationController::class, 'resubmit'])
-        ->middleware(['can:pendaftaran.ajukan', 'throttle:60,1'])->scopeBindings()->name('pendaftaran.resubmit');
+    Route::get('saya/sesi', [SelfRegistrationController::class, 'index'])->middleware('can:pendaftaran.lihat')->name('saya.sesi');
+    Route::post('saya/sesi/{schedule}/daftar', [SelfRegistrationController::class, 'register'])->middleware(['can:pendaftaran.buat', 'throttle:10,1'])->name('saya.sesi.daftar');
+    Route::post('saya/pendaftaran/{entry}/batal', [SelfRegistrationController::class, 'cancel'])->middleware(['can:pendaftaran.buat', 'throttle:30,1'])->name('saya.pendaftaran.batal');
+    Route::post('saya/pendaftaran/{entry}/ajukan-ulang', [SelfRegistrationController::class, 'resubmit'])->middleware(['can:pendaftaran.buat', 'throttle:30,1'])->name('saya.pendaftaran.ajukan-ulang');
 
     Route::get('verifikasi', [VerificationController::class, 'index'])->middleware('can:verifikasi.lihat')->name('verifikasi.index');
     Route::post('verifikasi/setujui', [VerificationController::class, 'approveMany'])->middleware(['can:verifikasi.putuskan', 'throttle:30,1'])->name('verifikasi.setujui');

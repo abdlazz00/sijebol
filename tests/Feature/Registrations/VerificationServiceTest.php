@@ -1,9 +1,7 @@
 <?php
 
 use App\Domains\Access\Exceptions\AccessRuleException;
-use App\Domains\Notifications\Notifications\EntryDecidedNotification;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
-use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Services\VerificationService;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
@@ -14,86 +12,77 @@ use Spatie\Activitylog\Models\Activity;
 beforeEach(function () {
     Notification::fake();
     $this->school = School::factory()->create();
-    $this->op = makeUserWith(['pendaftaran.lihat'], $this->school, true, 'op-ver');
+    $this->op = makeUserWith(['jadwal.lihat', 'siswa.lihat'], $this->school, true, 'op-ver');
     $this->petugas = makeUserWith(['verifikasi.putuskan'], roleName: 'petugas-ver');
     $this->service = app(VerificationService::class);
 });
 
-test('keputusan dipetakan ke status, mencatat riwayat, log, dan memberi tahu operator sekolah', function (string $keputusan, S $status) {
-    $entry = makeEntry(S::Diajukan, $this->school);
+test('keputusan dipetakan ke status, mencatat riwayat dan log, tanpa notifikasi (menyusul di 7c)', function (string $keputusan, S $status) {
+    $entry = makeEntry(S::MenungguVerifikasi, $this->school);
 
     $this->service->decide($entry, $keputusan, 'catatan', $this->petugas);
 
     expect($entry->fresh()->status)->toBe($status)
         ->and($entry->fresh()->decided_by)->toBe($this->petugas->id)
+        ->and($entry->fresh()->note)->toBe('catatan')
         ->and($entry->histories()->count())->toBe(1)
         ->and(Activity::where('description', 'pendaftaran.diputuskan')->count())->toBe(1);
-    Notification::assertSentTo($this->op, EntryDecidedNotification::class);
-    Notification::assertNotSentTo($this->petugas, EntryDecidedNotification::class);
-})->with([['approve', S::Terverifikasi], ['fix', S::PerluPerbaikan], ['reject', S::Ditolak]]);
+    Notification::assertNothingSent();
+})->with([['approve', S::Terdaftar], ['fix', S::PerluPerbaikan], ['reject', S::Ditolak]]);
 
-test('operator sekolah lain tidak diberi tahu', function () {
-    $lain = makeUserWith(['pendaftaran.lihat'], School::factory()->create(), true, 'op-ver');
-    $this->service->decide(makeEntry(S::Diajukan, $this->school), 'approve', null, $this->petugas);
+test('menolak atau meminta perbaikan melepas kursi di sesi', function (string $keputusan) {
+    $entry = makeEntry(S::MenungguVerifikasi, $this->school);
+    expect($entry->schedule->seatsTaken())->toBe(1);
 
-    Notification::assertNotSentTo($lain, EntryDecidedNotification::class);
-});
+    $this->service->decide($entry, $keputusan, 'catatan', $this->petugas);
 
-test('entri yang bukan berstatus diajukan tidak dapat diputuskan, dan keputusan kedua ditolak', function () {
-    $draf = makeEntry(S::Draf, $this->school);
-    expect(fn () => $this->service->decide($draf, 'approve', null, $this->petugas))->toThrow(AccessRuleException::class);
+    expect($entry->schedule->seatsTaken())->toBe($keputusan === 'reject' ? 0 : 1);
+})->with(['reject', 'fix']);
 
-    $entry = makeEntry(S::Diajukan, $this->school);
+test('entri yang bukan menunggu verifikasi tidak dapat diputuskan, dan keputusan kedua ditolak', function () {
+    $terdaftar = makeEntry(S::Terdaftar, $this->school);
+    expect(fn () => $this->service->decide($terdaftar, 'approve', null, $this->petugas))->toThrow(AccessRuleException::class);
+
+    $entry = makeEntry(S::MenungguVerifikasi, $this->school);
     $this->service->decide($entry, 'approve', null, $this->petugas);
     expect(fn () => $this->service->decide($entry, 'reject', 'x', $this->petugas))->toThrow(AccessRuleException::class);
     expect($entry->histories()->count())->toBe(1);
 });
 
-test('antrean hanya memuat entri diajukan', function () {
-    makeEntry(S::Diajukan, $this->school);
-    makeEntry(S::Draf, $this->school);
-    makeEntry(S::Terverifikasi, $this->school);
+test('antrean hanya memuat pendaftaran menunggu verifikasi dan dapat disaring per sesi', function () {
+    $sesi = makeSchedule($this->school);
+    makeEntry(S::MenungguVerifikasi, $this->school, schedule: $sesi);
+    makeEntry(S::MenungguVerifikasi, $this->school);
+    makeEntry(S::PerluPerbaikan, $this->school);
+    makeEntry(S::Terdaftar, $this->school);
 
+    expect($this->service->queue()->total())->toBe(2);
+
+    request()->query->set('filter', ['schedule_id' => $sesi->id]);
     expect($this->service->queue()->total())->toBe(1);
 });
 
-/** Entri Diajukan baru di pendaftaran yang sama dengan `$entry`, untuk siswa yang layak. */
-function makeSiblingEntryDiajukan(RegistrationStudent $entry, string $name): RegistrationStudent
-{
-    $student = eligibleStudent($entry->registration->school);
-    $student->update(['name' => $name]);
+test('setujui massal: semua Terdaftar, riwayat per entri, log per entri, tanpa notifikasi', function () {
+    $sesi = makeSchedule($this->school);
+    $entries = collect(range(1, 3))->map(fn () => makeEntry(S::MenungguVerifikasi, $this->school, eligibleStudent($this->school), $sesi));
 
-    return RegistrationStudent::factory()->create([
-        'registration_id' => $entry->registration_id, 'school_id' => $entry->school_id, 'student_id' => $student->id, 'status' => S::Diajukan,
-    ]);
-}
-
-test('setujui massal: semua Terverifikasi, riwayat per entri, satu notifikasi per pendaftaran dengan ringkasan', function () {
-    $a1 = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));
-    $a1->student->update(['name' => 'Ani']);
-    $a2 = makeSiblingEntryDiajukan($a1, 'Budi');
-    $b1 = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));
-    $b1->student->update(['name' => 'Cici']);
-
-    $jumlah = $this->service->approveMany([$a1->id, $a2->id, $b1->id], $this->petugas);
+    $jumlah = $this->service->approveMany($entries->pluck('id')->all(), $this->petugas);
 
     expect($jumlah)->toBe(3);
-    foreach ([$a1, $a2, $b1] as $e) {
-        expect($e->fresh()->status)->toBe(S::Terverifikasi)->and($e->fresh()->decided_by)->toBe($this->petugas->id)->and($e->histories()->count())->toBe(1);
+    foreach ($entries as $e) {
+        expect($e->fresh()->status)->toBe(S::Terdaftar)->and($e->fresh()->decided_by)->toBe($this->petugas->id)->and($e->histories()->count())->toBe(1);
     }
     expect(Activity::where('description', 'pendaftaran.diputuskan')->count())->toBe(3);
-    Notification::assertSentToTimes($this->op, EntryDecidedNotification::class, 2);
-    $bodies = Notification::sent($this->op, EntryDecidedNotification::class)->map(fn ($n) => $n->body())->all();
-    expect($bodies)->toContain('2 siswa: Ani, Budi.')->and($bodies)->toContain('Cici');
+    Notification::assertNothingSent();
 });
 
-test('satu entri tidak layak menggagalkan seluruh persetujuan massal tanpa notifikasi', function (string $kasus) {
-    $baik = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));
+test('satu entri tidak layak pada tanggal sesinya menggagalkan seluruh persetujuan massal', function (string $kasus) {
+    $baik = makeEntry(S::MenungguVerifikasi, $this->school, eligibleStudent($this->school));
     $siswa = match ($kasus) {
         'tanpa dokumen' => Student::factory()->for($this->school)->create(['name' => 'Tanpa Dokumen']),
         'umur di bawah 16' => tap(eligibleStudent($this->school), fn (Student $s) => $s->update(['name' => 'Terlalu Muda', 'birth_date' => now()->subYears(15)->toDateString()])),
     };
-    $buruk = makeEntry(S::Diajukan, $this->school, $siswa);
+    $buruk = makeEntry(S::MenungguVerifikasi, $this->school, $siswa);
 
     try {
         $this->service->approveMany([$baik->id, $buruk->id], $this->petugas);
@@ -102,29 +91,36 @@ test('satu entri tidak layak menggagalkan seluruh persetujuan massal tanpa notif
         expect($e->errors()['entry_ids'][0])->toContain($siswa->name);
     }
 
-    expect($baik->fresh()->status)->toBe(S::Diajukan)->and($buruk->fresh()->status)->toBe(S::Diajukan)->and($baik->histories()->count())->toBe(0);
-    Notification::assertNothingSent();
+    expect($baik->fresh()->status)->toBe(S::MenungguVerifikasi)->and($buruk->fresh()->status)->toBe(S::MenungguVerifikasi)->and($baik->histories()->count())->toBe(0);
 })->with(['tanpa dokumen', 'umur di bawah 16']);
 
-test('persetujuan massal ditolak seluruhnya untuk id tidak ada, entri yang sudah diputuskan, dan bukan Diajukan', function (string $kasus) {
-    $baik = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));
+test('umur dinilai pada tanggal sesi: siswa yang genap 16 sebelum sesi boleh disetujui', function () {
+    $sesi = makeSchedule($this->school, now('Asia/Jakarta')->addDays(10)->toDateString());
+    $siswa = eligibleStudent($this->school);
+    $siswa->update(['birth_date' => now('Asia/Jakarta')->subYears(16)->addDays(5)->toDateString()]);
+    $entry = makeEntry(S::MenungguVerifikasi, $this->school, $siswa, $sesi);
+
+    expect($this->service->approveMany([$entry->id], $this->petugas))->toBe(1);
+});
+
+test('persetujuan massal ditolak seluruhnya untuk id tidak ada dan status bukan menunggu verifikasi', function (string $kasus) {
+    $baik = makeEntry(S::MenungguVerifikasi, $this->school, eligibleStudent($this->school));
     $buruk = match ($kasus) {
         'id tidak ada' => 999999,
-        'sudah diputuskan' => makeEntry(S::Terverifikasi, $this->school)->id,
-        'bukan Diajukan' => makeEntry(S::Draf, $this->school)->id,
+        'sudah diputuskan' => makeEntry(S::Terdaftar, $this->school)->id,
+        'perlu perbaikan' => makeEntry(S::PerluPerbaikan, $this->school)->id,
     };
 
     expect(fn () => $this->service->approveMany([$baik->id, $buruk], $this->petugas))->toThrow(ValidationException::class);
 
-    expect($baik->fresh()->status)->toBe(S::Diajukan);
-    Notification::assertNothingSent();
-})->with(['id tidak ada', 'sudah diputuskan', 'bukan Diajukan']);
+    expect($baik->fresh()->status)->toBe(S::MenungguVerifikasi);
+})->with(['id tidak ada', 'sudah diputuskan', 'perlu perbaikan']);
 
 test('operator terikat sekolah lain tidak dapat menyetujui entri sekolah ini (entri tak terlihat)', function () {
-    $entri = makeEntry(S::Diajukan, $this->school, eligibleStudent($this->school));
+    $entri = makeEntry(S::MenungguVerifikasi, $this->school, eligibleStudent($this->school));
     $terikat = makeUserWith(['verifikasi.putuskan'], School::factory()->create(), true, 'terikat-lain');
     $this->actingAs($terikat);
 
     expect(fn () => $this->service->approveMany([$entri->id], $terikat))->toThrow(ValidationException::class);
-    expect($entri->fresh()->status)->toBe(S::Diajukan);
+    expect($entri->fresh()->status)->toBe(S::MenungguVerifikasi);
 });

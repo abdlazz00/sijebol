@@ -18,7 +18,7 @@ import type {
     SelfStudent,
     StudentDocumentRow,
 } from '@/types/student';
-import { useForm } from '@inertiajs/vue3';
+import { Link, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from '@lucide/vue';
 import { computed, nextTick, ref, watch } from 'vue';
 
@@ -361,6 +361,29 @@ function openPreview(type: DocumentType) {
                         @preview="openPreview(doc.type)"
                     />
                 </div>
+            </section>
+
+            <section
+                v-if="
+                    student &&
+                    eligibility.eligible &&
+                    can(PERMISSIONS.PendaftaranLihat)
+                "
+                class="bg-card flex flex-col gap-3 rounded-lg border p-6"
+            >
+                <h2 class="text-base leading-6 font-semibold">Sesi rekaman</h2>
+                <p class="text-muted-foreground text-sm leading-5">
+                    {{
+                        locked
+                            ? 'Pendaftaran Anda sedang diproses atau sudah terdaftar. Lihat statusnya di halaman sesi rekaman.'
+                            : 'Data dan dokumen Anda sudah lengkap. Pilih sesi perekaman untuk sekolah Anda.'
+                    }}
+                </p>
+                <Button as-child class="h-10 self-start px-4">
+                    <Link :href="route('saya.sesi')">{{
+                        locked ? 'Lihat pendaftaran saya' : 'Pilih sesi rekaman'
+                    }}</Link>
+                </Button>
             </section>
         </div>
 

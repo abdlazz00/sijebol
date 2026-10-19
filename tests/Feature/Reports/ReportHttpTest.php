@@ -13,12 +13,12 @@ beforeEach(function () {
 });
 
 test('halaman laporan memuat rekap dan filter kosong', function () {
-    makeEntry(S::Diajukan, $this->school);
+    makeEntry(S::MenungguVerifikasi, $this->school);
 
     $this->actingAs($this->viewer)->get('/laporan')->assertInertia(fn (Assert $p) => $p
         ->component('Laporan/Index')
         ->where('recap.rows.0.school', 'SMPN A')
-        ->where('recap.rows.0.counts.diajukan', 1)
+        ->where('recap.rows.0.counts.menunggu_verifikasi', 1)
         ->where('recap.totals.total', 1)
         ->where('filters.dari', null)
         ->where('filters.sampai', null));
@@ -37,26 +37,26 @@ test('filter dipakai halaman; salah satu batas boleh kosong; urutan terbalik dan
 
 test('ekspor berisi data yang sama dengan halaman', function () {
     Excel::fake();
-    makeEntry(S::Diajukan, $this->school);
+    makeEntry(S::MenungguVerifikasi, $this->school);
 
     $this->actingAs($this->viewer)->get('/laporan/ekspor');
 
     Excel::assertDownloaded('rekap-pendaftaran.xlsx', function (RecapExport $export) {
         $rows = $export->array();
 
-        return $export->headings() === ['Sekolah', 'Diajukan', 'Perlu perbaikan', 'Terverifikasi', 'Terjadwal', 'Sudah rekaman', 'Tidak hadir', 'Belum rekaman', 'Ditolak', 'Total']
-            && $rows[0] === ['SMPN A', 1, 0, 0, 0, 0, 0, 0, 0, 1]
-            && $rows[1] === ['Total', 1, 0, 0, 0, 0, 0, 0, 0, 1];
+        return $export->headings() === ['Sekolah', 'Menunggu verifikasi', 'Perlu perbaikan', 'Terdaftar', 'Sudah rekaman', 'Tidak hadir', 'Belum rekaman', 'Ditolak', 'Dibatalkan', 'Kedaluwarsa', 'Total']
+            && $rows[0] === ['SMPN A', 1, 0, 0, 0, 0, 0, 0, 0, 0, 1]
+            && $rows[1] === ['Total', 1, 0, 0, 0, 0, 0, 0, 0, 0, 1];
     });
 });
 
 test('ekspor mengikuti filter tanggal', function () {
     Excel::fake();
-    makeEntry(S::Diajukan, $this->school);
+    makeEntry(S::MenungguVerifikasi, $this->school);
 
     $this->actingAs($this->viewer)->get('/laporan/ekspor?dari=2099-01-01');
 
-    Excel::assertDownloaded('rekap-pendaftaran.xlsx', fn (RecapExport $e) => $e->array()[0] === ['SMPN A', 0, 0, 0, 0, 0, 0, 0, 0, 0]);
+    Excel::assertDownloaded('rekap-pendaftaran.xlsx', fn (RecapExport $e) => $e->array()[0] === ['SMPN A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 test('ekspor menghasilkan berkas xlsx sungguhan dan tercatat di log', function () {

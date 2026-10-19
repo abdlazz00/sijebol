@@ -10,6 +10,9 @@ use Illuminate\Support\Facades\DB;
 
 class StatusTransitioner
 {
+    /** Status tujuan yang berarti keputusan petugas (mengisi decided_by/decided_at). */
+    private const DECISIONS = [RegistrationStatus::Terdaftar, RegistrationStatus::PerluPerbaikan, RegistrationStatus::Ditolak];
+
     /**
      * Satu-satunya pintu perubahan status entri: memeriksa peta transisi di bawah kunci baris
      * (dua petugas tidak bisa sama-sama memutuskan status lama) dan menulis riwayat.
@@ -30,7 +33,7 @@ class StatusTransitioner
             $fresh->update([
                 'status' => $to,
                 'note' => $note,
-                ...($from === RegistrationStatus::Diajukan ? ['decided_by' => $actor->id, 'decided_at' => now()] : []),
+                ...(in_array($to, self::DECISIONS, true) ? ['decided_by' => $actor->id, 'decided_at' => now()] : []),
                 ...$attributes,
             ]);
             $fresh->histories()->create([

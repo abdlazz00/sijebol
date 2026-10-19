@@ -21,7 +21,7 @@ final class EntryPresenter
             'note' => $entry->note,
             'decided_at' => $entry->decided_at?->toIso8601String(),
             'history' => $entry->histories->map(fn (RegistrationStatusHistory $h) => [
-                'from' => $h->from_status->value,
+                'from' => $h->from_status?->value,
                 'to' => $h->to_status->value,
                 'by' => $h->user->name,
                 'note' => $h->note,

@@ -2,6 +2,7 @@
 
 namespace App\Domains\Students\Http\Controllers;
 
+use App\Domains\Schedules\Http\Controllers\ScheduleController;
 use App\Domains\Schools\Services\SchoolService;
 use App\Domains\Students\Http\Requests\StudentCorrectionRequest;
 use App\Domains\Students\Models\Student;
@@ -36,7 +37,7 @@ class StudentController extends Controller
 
     public function show(Request $request, Student $student): Response
     {
-        $student->load(['school', 'documents', 'registrationEntries.registration']);
+        $student->load(['school', 'documents', 'registrationEntries.schedule']);
 
         return Inertia::render('Siswa/Show', [
             'student' => $this->row($student) + [
@@ -47,9 +48,15 @@ class StudentController extends Controller
             'eligibility' => $this->eligibility->check($student),
             'locked' => $student->isLocked(),
             'registrations' => $student->registrationEntries->map(fn ($e) => [
-                'id' => $e->registration_id,
-                'title' => $e->registration->title,
+                'id' => $e->id,
                 'status' => $e->status->value,
+                'schedule' => [
+                    'id' => $e->schedule->id,
+                    'date' => $e->schedule->date->toDateString(),
+                    'start_time' => ScheduleController::time($e->schedule->start_time),
+                    'end_time' => ScheduleController::time($e->schedule->end_time),
+                    'location' => $e->schedule->location,
+                ],
             ])->values(),
         ]);
     }

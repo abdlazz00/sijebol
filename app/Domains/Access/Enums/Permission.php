@@ -29,7 +29,6 @@ enum Permission: string
 
     case PendaftaranLihat = 'pendaftaran.lihat';
     case PendaftaranBuat = 'pendaftaran.buat';
-    case PendaftaranAjukan = 'pendaftaran.ajukan';
 
     case VerifikasiLihat = 'verifikasi.lihat';
     case VerifikasiPutuskan = 'verifikasi.putuskan';

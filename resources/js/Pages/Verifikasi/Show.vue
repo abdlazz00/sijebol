@@ -10,18 +10,18 @@ import { Button } from '@/Components/ui/button';
 import { Textarea } from '@/Components/ui/textarea';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate } from '@/lib/date';
+import { formatDate, formatDateWithDay, formatTimeRange } from '@/lib/date';
 import { formatBytes } from '@/lib/files';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { PERMISSIONS } from '@/lib/permissions';
-import type { EntryRow } from '@/types/registration';
+import type { EntryRow, SessionBrief } from '@/types/registration';
 import type { DocumentType, StudentDocumentRow } from '@/types/student';
 import { Link, useForm } from '@inertiajs/vue3';
 import { Download, Eye, LoaderCircle } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
-    entry: EntryRow & { registration: { id: number; title: string } };
+    entry: EntryRow & { session: SessionBrief };
     student: {
         id: number;
         name: string;
@@ -47,7 +47,7 @@ function openPreview(type: DocumentType) {
 const { can } = usePermission();
 const canDecide = computed(
     () =>
-        props.entry.status === 'diajukan' &&
+        props.entry.status === 'menunggu_verifikasi' &&
         can(PERMISSIONS.VerifikasiPutuskan),
 );
 
@@ -55,17 +55,17 @@ const decisions = [
     {
         value: 'approve',
         label: 'Setujui',
-        hint: 'Siswa lanjut ke penjadwalan.',
+        hint: 'Siswa terdaftar di sesi ini.',
     },
     {
         value: 'fix',
         label: 'Minta perbaikan',
-        hint: 'Operator diminta membetulkan data atau dokumen.',
+        hint: 'Siswa diminta membetulkan data atau dokumen; kursi tetap ditahan.',
     },
     {
         value: 'reject',
         label: 'Tolak',
-        hint: 'Siswa tidak dapat didaftarkan pada pendaftaran ini.',
+        hint: 'Pendaftaran ditolak. Kursi dilepas.',
     },
 ];
 
@@ -109,7 +109,10 @@ const info = computed(() => [
         value: props.student.gender === 'L' ? 'Laki-laki' : 'Perempuan',
     },
     { label: 'Sekolah', value: props.student.school },
-    { label: 'Pendaftaran', value: props.entry.registration.title },
+    {
+        label: 'Sesi',
+        value: `${formatDateWithDay(props.entry.session.date)} · ${formatTimeRange(props.entry.session.start_time, props.entry.session.end_time)} · ${props.entry.session.location}`,
+    },
 ]);
 
 const crumbs = computed(() => [
@@ -165,7 +168,7 @@ const crumbs = computed(() => [
                             <Button
                                 type="button"
                                 variant="outline"
-                                class="h-9 px-3 gap-1.5"
+                                class="h-9 gap-1.5 px-3"
                                 @click="openPreview(doc.type)"
                             >
                                 <Eye class="size-4" aria-hidden="true" />
@@ -173,7 +176,10 @@ const crumbs = computed(() => [
                             </Button>
                             <Button as-child variant="outline" class="h-9 px-3">
                                 <a :href="doc.url">
-                                    <Download class="size-4" aria-hidden="true" />
+                                    <Download
+                                        class="size-4"
+                                        aria-hidden="true"
+                                    />
                                     Unduh
                                     <span class="sr-only">{{ doc.name }}</span>
                                 </a>
@@ -288,7 +294,7 @@ const crumbs = computed(() => [
         <ConfirmDialog
             v-model:open="rejectOpen"
             title="Tolak siswa ini?"
-            description="Siswa tidak dapat didaftarkan pada pendaftaran ini. Operator diberi tahu beserta catatan Anda."
+            description="Pendaftaran siswa ditolak dan kursinya dilepas. Catatan Anda tersimpan di riwayat."
             confirm-label="Tolak"
             destructive
             @confirm="send"

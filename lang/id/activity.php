@@ -2,7 +2,7 @@
 
 return [
     'types' => ['akses' => 'Akses', 'siswa' => 'Siswa', 'pendaftaran' => 'Pendaftaran', 'jadwal' => 'Jadwal', 'laporan' => 'Laporan', 'default' => 'Data'],
-    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa', 'Registration' => 'Pendaftaran', 'Schedule' => 'Jadwal'],
+    'subjects' => ['User' => 'Pengguna', 'Role' => 'Role', 'School' => 'Sekolah', 'Student' => 'Siswa', 'RegistrationStudent' => 'Pendaftaran sesi', 'Schedule' => 'Jadwal'],
     'actions' => [
         'login' => 'Login',
         'logout' => 'Logout',
@@ -20,9 +20,11 @@ return [
         'dokumen.diunggah' => 'Dokumen diunggah',
         'dokumen.dihapus' => 'Dokumen dihapus',
         'dokumen.diunduh' => 'Dokumen diunduh',
-        'pendaftaran.diajukan' => 'Pendaftaran diajukan',
+        'pendaftaran.dibuat' => 'Mendaftar ke sesi',
+        'pendaftaran.dibatalkan' => 'Pendaftaran sesi dibatalkan',
         'pendaftaran.diajukan-ulang' => 'Siswa diajukan ulang',
         'pendaftaran.diputuskan' => 'Siswa diputuskan',
+        'jadwal.dibatalkan' => 'Sesi dibatalkan',
         'jadwal.dibuat' => 'Jadwal dibuat',
         'jadwal.diubah' => 'Jadwal diubah',
         'jadwal.penempatan' => 'Penempatan siswa di jadwal',

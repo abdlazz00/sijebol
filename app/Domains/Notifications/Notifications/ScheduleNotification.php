@@ -12,16 +12,6 @@ class ScheduleNotification extends BaseNotification
         private readonly string $body,
     ) {}
 
-    public static function assigned(int $scheduleId, int $count, string $date, string $location): self
-    {
-        return new self($scheduleId, 'Jadwal ditetapkan', "{$count} siswa dijadwalkan pada ".self::format($date)." di {$location}.");
-    }
-
-    public static function changed(int $scheduleId, string $date, string $location): self
-    {
-        return new self($scheduleId, 'Jadwal diubah', 'Jadwal sekarang pada '.self::format($date)." di {$location}.");
-    }
-
     public static function marked(int $scheduleId, int $count, string $statusLabel, string $date): self
     {
         return new self($scheduleId, 'Rekaman ditandai', "{$count} siswa ditandai {$statusLabel} pada ".self::format($date).'.');
@@ -29,7 +19,7 @@ class ScheduleNotification extends BaseNotification
 
     public static function undone(int $scheduleId, string $statusLabel): self
     {
-        return new self($scheduleId, 'Penandaan dibatalkan', "Penandaan {$statusLabel} dibatalkan; siswa kembali Terjadwal.");
+        return new self($scheduleId, 'Penandaan dibatalkan', "Penandaan {$statusLabel} dibatalkan; siswa kembali Terdaftar.");
     }
 
     public function title(): string

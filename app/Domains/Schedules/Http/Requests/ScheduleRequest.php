@@ -21,7 +21,10 @@ class ScheduleRequest extends FormRequest
                 ? ['required', 'integer', 'exists:schools,id']
                 : ['nullable'],
             'date' => ['required', 'date_format:Y-m-d', ...($dateChanged ? ['after_or_equal:'.Schedule::today()] : [])],
+            'start_time' => ['required', 'date_format:H:i'],
+            'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
             'location' => ['required', 'string', 'max:150'],
+            'quota' => ['required', 'integer', 'between:1,1000'],
         ];
     }
 
@@ -33,7 +36,15 @@ class ScheduleRequest extends FormRequest
             'date.required' => 'Tanggal wajib diisi.',
             'date.date_format' => 'Format tanggal tidak valid.',
             'date.after_or_equal' => 'Tanggal tidak boleh di masa lalu.',
+            'start_time.required' => 'Jam mulai wajib diisi.',
+            'start_time.date_format' => 'Format jam mulai tidak valid.',
+            'end_time.required' => 'Jam selesai wajib diisi.',
+            'end_time.date_format' => 'Format jam selesai tidak valid.',
+            'end_time.after' => 'Jam selesai harus setelah jam mulai.',
             'location.required' => 'Lokasi wajib diisi.',
+            'quota.required' => 'Kuota wajib diisi.',
+            'quota.integer' => 'Kuota harus berupa angka 1–1000.',
+            'quota.between' => 'Kuota harus berupa angka 1–1000.',
         ];
     }
 }

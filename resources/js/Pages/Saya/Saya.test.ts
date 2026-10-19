@@ -11,6 +11,7 @@ const { put, permissions } = vi.hoisted(() => ({
         'dokumen.lihat',
         'dokumen.unggah',
         'dokumen.hapus',
+        'pendaftaran.lihat',
     ],
 }));
 
@@ -18,6 +19,7 @@ vi.mock('@inertiajs/vue3', async () => {
     const { reactive } = await import('vue');
 
     return {
+        Link: { props: ['href'], template: '<a :href="href"><slot /></a>' },
         usePage: () => ({ props: { auth: { permissions } } }),
         useForm: (data: Record<string, string>) =>
             reactive({
@@ -149,5 +151,48 @@ describe('Saya', () => {
         expect(kurang.text()).toContain('Akta kelahiran belum diunggah.');
         const uploads = kurang.findAll('[data-testid="upload"]');
         expect(uploads[0].attributes('data-can-upload')).toBe('true');
+    });
+
+    it('kartu Sesi rekaman hanya muncul setelah data dan dokumen lengkap', () => {
+        const lengkap = mount(Saya, {
+            props: {
+                ...base,
+                student: siswa,
+                eligibility: { eligible: true, reasons: [] },
+            },
+        });
+        expect(lengkap.find('a[href="/saya.sesi"]').text()).toContain(
+            'Pilih sesi rekaman',
+        );
+
+        const belum = mount(Saya, {
+            props: {
+                ...base,
+                student: siswa,
+                eligibility: {
+                    eligible: false,
+                    reasons: ['Akta kelahiran belum diunggah.'],
+                },
+            },
+        });
+        expect(belum.find('a[href="/saya.sesi"]').exists()).toBe(false);
+        expect(
+            mount(Saya, { props: base }).find('a[href="/saya.sesi"]').exists(),
+        ).toBe(false);
+    });
+
+    it('saat data terkunci tautan sesi menjadi Lihat pendaftaran saya', () => {
+        const w = mount(Saya, {
+            props: {
+                ...base,
+                student: siswa,
+                locked: true,
+                eligibility: { eligible: true, reasons: [] },
+            },
+        });
+
+        expect(w.find('a[href="/saya.sesi"]').text()).toContain(
+            'Lihat pendaftaran saya',
+        );
     });
 });

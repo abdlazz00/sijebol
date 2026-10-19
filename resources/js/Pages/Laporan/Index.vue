@@ -63,7 +63,7 @@ function cell(row: RecapTableRow, key: string): string {
     <AppLayout title="Laporan">
         <PageHeader
             title="Rekap pendaftaran"
-            description="Jumlah entri per sekolah dan status, menurut tanggal pengajuan pendaftaran."
+            description="Jumlah pendaftaran sesi per sekolah dan status, menurut tanggal pendaftaran."
         >
             <template #actions>
                 <Button as-child class="h-10 px-4">

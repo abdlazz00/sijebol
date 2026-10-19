@@ -16,7 +16,6 @@ class ResetStudentData extends Command
     private const TABLES = [
         'registration_status_histories',
         'registration_students',
-        'registrations',
         'schedules',
         'student_documents',
         'students',

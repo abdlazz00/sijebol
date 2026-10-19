@@ -17,7 +17,10 @@ class ScheduleFactory extends Factory
         return [
             'school_id' => School::factory(),
             'date' => now()->addDays(7)->toDateString(),
+            'start_time' => '08:00',
+            'end_time' => '12:00',
             'location' => 'Aula '.fake()->words(2, true),
+            'quota' => 30,
             'created_by' => User::factory(),
         ];
     }

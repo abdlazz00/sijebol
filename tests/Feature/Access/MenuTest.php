@@ -28,22 +28,22 @@ test('tamu tidak menerima menu dan menu dibagikan sebagai shared prop', function
         ->where('menu.1.items.0.href', '/sekolah'));
 });
 
-test('menu Pendaftaran dan Antrean verifikasi mengikuti izin', function () {
+test('menu Antrean verifikasi mengikuti izin dan menu Pendaftaran batch sudah hilang', function () {
     $this->seed(AccessSeeder::class);
     $operator = app(MenuService::class)->forUser(User::factory()->create()->assignRole('operator-sekolah'));
     $admin = app(MenuService::class)->forUser(User::factory()->create()->assignRole('admin-kecamatan'));
 
-    // Operator kini hanya memantau: tidak lagi membuat pendaftaran.
-    expect(collect($operator)->firstWhere('group', 'Pelayanan')['items'])->not->toContain(['label' => 'Pendaftaran', 'href' => '/pendaftaran', 'icon' => 'clipboard-list'])
+    expect(collect($admin)->flatMap(fn ($g) => $g['items'])->pluck('href')->all())->not->toContain('/pendaftaran')
+        ->and(collect($operator)->flatMap(fn ($g) => $g['items'])->pluck('href')->all())->not->toContain('/pendaftaran')
         ->and(collect($operator)->firstWhere('group', 'Pelayanan')['items'])->not->toContain(['label' => 'Antrean verifikasi', 'href' => '/verifikasi', 'icon' => 'badge-check'])
         ->and(collect($admin)->firstWhere('group', 'Pelayanan')['items'])->toContain(['label' => 'Antrean verifikasi', 'href' => '/verifikasi', 'icon' => 'badge-check']);
 });
 
-test('menu Jadwal tampil untuk pemegang jadwal.lihat', function () {
+test('menu Sesi rekaman (jadwal) tampil untuk pemegang jadwal.lihat', function () {
     $this->seed(AccessSeeder::class);
     $operator = app(MenuService::class)->forUser(User::factory()->create()->assignRole('operator-sekolah'));
 
-    expect(collect($operator)->firstWhere('group', 'Pelayanan')['items'])->toContain(['label' => 'Jadwal', 'href' => '/jadwal', 'icon' => 'calendar-days']);
+    expect(collect($operator)->firstWhere('group', 'Pelayanan')['items'])->toContain(['label' => 'Sesi rekaman', 'href' => '/jadwal', 'icon' => 'calendar-days']);
 });
 
 test('menu Laporan tampil untuk pemegang laporan.lihat', function () {
@@ -82,5 +82,18 @@ test('menu Data saya tidak tampil untuk admin walau memegang izin profil', funct
 
     foreach ([$admin, $super] as $menu) {
         expect(collect($menu)->flatMap(fn ($g) => $g['items'])->pluck('href')->all())->not->toContain('/saya');
+    }
+});
+
+test('menu Sesi rekaman siswa tampil untuk siswa, tidak untuk operator dan admin', function () {
+    $this->seed(AccessSeeder::class);
+    $siswa = app(MenuService::class)->forUser(User::factory()->create()->assignRole('siswa'));
+    $operator = app(MenuService::class)->forUser(User::factory()->create()->assignRole('operator-sekolah'));
+    $admin = app(MenuService::class)->forUser(User::factory()->create()->assignRole('admin-kecamatan'));
+
+    expect(collect($siswa)->firstWhere('group', 'Pelayanan')['items'])
+        ->toContain(['label' => 'Sesi rekaman', 'href' => '/saya/sesi', 'icon' => 'calendar-days']);
+    foreach ([$operator, $admin] as $menu) {
+        expect(collect($menu)->flatMap(fn ($g) => $g['items'])->pluck('href')->all())->not->toContain('/saya/sesi');
     }
 });

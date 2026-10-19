@@ -7,7 +7,8 @@ use Inertia\Testing\AssertableInertia as Assert;
 test('Beranda memuat jadwal terdekat milik sekolah pengguna tanpa yang lewat', function () {
     $sekolah = School::factory()->create();
     $depan = makeSchedule($sekolah, now('Asia/Jakarta')->addDays(2)->toDateString());
-    makeScheduledEntry(S::Terjadwal, $depan);
+    makeEntry(S::Terdaftar, $sekolah, schedule: $depan);
+    makeEntry(S::Ditolak, $sekolah, schedule: $depan);
     makeSchedule($sekolah, now('Asia/Jakarta')->subDays(2)->toDateString());
     makeSchedule(null, now('Asia/Jakarta')->addDay()->toDateString());
     $op = makeUserWith(['jadwal.lihat'], $sekolah, true, 'op-beranda');
