@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 /**
  * @property RegistrationStatus|null $from_status
  * @property RegistrationStatus $to_status
- * @property int $by_user_id
+ * @property int|null $by_user_id
  * @property string|null $note
  * @property Carbon $created_at
  */

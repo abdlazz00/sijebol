@@ -1,3 +1,4 @@
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import Form from '@/Pages/Siswa/Form.vue';
 import Index from '@/Pages/Siswa/Index.vue';
 import Show from '@/Pages/Siswa/Show.vue';
@@ -44,6 +45,7 @@ const siswa: StudentDetail = {
     nisn: '0012345678',
     nik: '3201********1234',
     age: 16,
+    ktp_langsung: false,
     school: 'SMAN 1',
     docs: { kk: true, akta_lahir: true },
     eligible: true,
@@ -209,5 +211,47 @@ describe('Siswa/Index kosong', () => {
             props: { students: paginator, filters: {}, schools: null },
         });
         expect(tanpa.text()).not.toContain('Lihat link pendaftaran');
+    });
+});
+
+describe('Siswa — penanda KTP-el langsung', () => {
+    const halaman = (rows: (typeof siswa)[]) => ({
+        data: rows,
+        current_page: 1,
+        last_page: 1,
+        from: 1,
+        to: rows.length,
+        total: rows.length,
+        per_page: 20,
+        links: [],
+    });
+
+    it('daftar menampilkan lencana hanya pada siswa yang ktp_langsung', () => {
+        permissions.push('siswa.lihat');
+        const w = mount(Index, {
+            props: {
+                students: halaman([
+                    { ...siswa, id: 1, ktp_langsung: true },
+                    { ...siswa, id: 2, ktp_langsung: false },
+                ]),
+                filters: {},
+                schools: null,
+            },
+        });
+
+        expect(w.findAllComponents(KtpLangsungBadge)).toHaveLength(1);
+    });
+
+    it('detail menampilkan lencana beserta kalimat penjelas hanya bila ktp_langsung', () => {
+        permissions.push('siswa.lihat');
+        const ya = mount(Show, {
+            props: { ...showProps, student: { ...siswa, ktp_langsung: true } },
+        });
+        const tidak = mount(Show, { props: showProps });
+
+        expect(ya.findComponent(KtpLangsungBadge).exists()).toBe(true);
+        expect(ya.text()).toContain('KTP-el dapat langsung diterbitkan');
+        expect(tidak.findComponent(KtpLangsungBadge).exists()).toBe(false);
+        expect(tidak.text()).not.toContain('KTP-el dapat langsung diterbitkan');
     });
 });

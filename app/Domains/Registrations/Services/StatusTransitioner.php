@@ -14,13 +14,13 @@ class StatusTransitioner
     private const DECISIONS = [RegistrationStatus::Terdaftar, RegistrationStatus::PerluPerbaikan, RegistrationStatus::Ditolak];
 
     /**
-     * Satu-satunya pintu perubahan status entri: memeriksa peta transisi di bawah kunci baris
+     * Satu-satunya pintu perubahan status entri (`$actor` null = aksi sistem/scheduler): memeriksa peta transisi di bawah kunci baris
      * (dua petugas tidak bisa sama-sama memutuskan status lama) dan menulis riwayat.
      * `$attributes` ikut diperbarui dalam transaksi yang sama (mis. `schedule_id`).
      *
      * @param  array<string, mixed>  $attributes
      */
-    public function move(RegistrationStudent $entry, RegistrationStatus $to, User $actor, ?string $note = null, array $attributes = []): RegistrationStudent
+    public function move(RegistrationStudent $entry, RegistrationStatus $to, ?User $actor, ?string $note = null, array $attributes = []): RegistrationStudent
     {
         return DB::transaction(function () use ($entry, $to, $actor, $note, $attributes) {
             $fresh = RegistrationStudent::query()->lockForUpdate()->findOrFail($entry->id);
@@ -33,13 +33,13 @@ class StatusTransitioner
             $fresh->update([
                 'status' => $to,
                 'note' => $note,
-                ...(in_array($to, self::DECISIONS, true) ? ['decided_by' => $actor->id, 'decided_at' => now()] : []),
+                ...($actor !== null && in_array($to, self::DECISIONS, true) ? ['decided_by' => $actor->id, 'decided_at' => now()] : []),
                 ...$attributes,
             ]);
             $fresh->histories()->create([
                 'from_status' => $from,
                 'to_status' => $to,
-                'by_user_id' => $actor->id,
+                'by_user_id' => $actor?->id,
                 'note' => $note,
             ]);
 

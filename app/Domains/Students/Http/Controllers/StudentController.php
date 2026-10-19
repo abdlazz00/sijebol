@@ -100,6 +100,7 @@ class StudentController extends Controller
             'nisn' => $s->nisn,
             'nik' => Nik::mask($s->nik),
             'age' => $this->eligibility->age($s),
+            'ktp_langsung' => $this->eligibility->directKtp($s, $this->eligibility->activeSessionDate($s)),
             'school' => $s->school?->name,
             'docs' => ['kk' => in_array('kk', $types, true), 'akta_lahir' => in_array('akta_lahir', $types, true)],
             'eligible' => $check['eligible'],

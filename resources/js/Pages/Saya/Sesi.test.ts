@@ -212,14 +212,16 @@ describe('Saya/Sesi — pendaftaran saya', () => {
         expect(w.text()).not.toContain('Pendaftaran ditutup');
     });
 
-    it('terdaftar: tahap Terdaftar aktif dan tidak menjanjikan tiket', () => {
+    it('terdaftar: tahap Terdaftar aktif dan tiket dapat dibuka', () => {
         const w = mount(Sesi, {
             props: { ...base, entry: entry({ status: 'terdaftar' }) },
         });
 
         expect(w.find('[aria-current="step"]').text()).toContain('Terdaftar');
         expect(w.text()).toContain('Anda terdaftar. Datang sesuai jadwal.');
-        expect(w.text().toLowerCase()).not.toContain('tiket');
+        expect(w.find('a[href="/saya.tiket/9"]').text()).toContain(
+            'Lihat tiket',
+        );
     });
 
     it('perlu perbaikan: catatan petugas, perbaiki data, dan ajukan ulang lewat konfirmasi', async () => {
@@ -299,5 +301,86 @@ describe('Saya/Sesi — pendaftaran saya', () => {
         expect(
             w.findAll('button').some((b) => b.text().startsWith('Daftar')),
         ).toBe(true);
+    });
+});
+
+describe('Saya/Sesi — fase 7c', () => {
+    it('Terdaftar dan Sudah rekaman menampilkan tautan Lihat tiket; status lain tidak', () => {
+        for (const status of ['terdaftar', 'sudah_rekaman'] as const) {
+            const w = mount(Sesi, {
+                props: { ...base, entry: entry({ status }) },
+            });
+            expect(w.find('a[href="/saya.tiket/9"]').text()).toContain(
+                'Lihat tiket',
+            );
+        }
+        for (const status of [
+            'menunggu_verifikasi',
+            'perlu_perbaikan',
+            'ditolak',
+        ] as const) {
+            const w = mount(Sesi, {
+                props: { ...base, entry: entry({ status }) },
+            });
+            expect(w.find('a[href="/saya.tiket/9"]').exists()).toBe(false);
+        }
+    });
+
+    it('Perlu perbaikan menampilkan batas perbaikan mutlak dan relatif', () => {
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(new Date('2026-10-19T03:00:00Z'));
+        const w = mount(Sesi, {
+            props: {
+                ...base,
+                entry: entry({
+                    status: 'perlu_perbaikan',
+                    can_resubmit: true,
+                    fix_deadline: '2026-10-19T23:00:00+07:00',
+                }),
+            },
+        });
+        vi.useRealTimers();
+
+        expect(w.text()).toContain('Batas perbaikan:');
+        expect(w.text()).toContain('19 Okt 2026');
+        expect(w.text()).toContain('13 jam');
+    });
+
+    it('setelah batas perbaikan tampil teks penjelas, bukan sekadar tombol yang hilang', () => {
+        const w = mount(Sesi, {
+            props: {
+                ...base,
+                entry: entry({
+                    status: 'perlu_perbaikan',
+                    can_resubmit: false,
+                    fix_deadline: '2026-10-01T10:00:00+07:00',
+                }),
+            },
+        });
+
+        expect(w.text()).toContain(
+            'Batas perbaikan sudah lewat; kursi akan dilepas otomatis.',
+        );
+        expect(
+            w.findAll('button').some((b) => b.text().includes('Ajukan ulang')),
+        ).toBe(false);
+    });
+
+    it('spinner tombol Daftar tampil selama proses untuk sesi yang sedang dikirim saja', async () => {
+        routerPost.mockImplementation(
+            (_url: string, _data: unknown, options: { onStart?: () => void }) =>
+                options.onStart?.(),
+        );
+        const w = mount(Sesi, {
+            props: { ...base, schedules: [sesi({ id: 4 }), sesi({ id: 5 })] },
+        });
+        const tombol = () =>
+            w.findAll('button').filter((b) => b.text().startsWith('Daftar'));
+
+        await tombol()[0].trigger('click');
+        await w.find('[data-testid="ok"]').trigger('click');
+
+        expect(tombol()[0].find('.animate-spin').exists()).toBe(true);
+        expect(tombol()[1].find('.animate-spin').exists()).toBe(false);
     });
 });

@@ -19,3 +19,26 @@ export interface ReportFilters {
     dari: string | null;
     sampai: string | null;
 }
+
+export interface SessionRecapRow {
+    id: number;
+    date: string;
+    start_time: string;
+    end_time: string;
+    school: string;
+    location: string;
+    quota: number;
+    taken: number;
+    present: number;
+    not_recorded: number;
+    absent: number;
+    attendance: number | null;
+}
+
+export interface SessionRecap {
+    rows: SessionRecapRow[];
+    totals: Omit<
+        SessionRecapRow,
+        'id' | 'date' | 'start_time' | 'end_time' | 'school' | 'location'
+    >;
+}

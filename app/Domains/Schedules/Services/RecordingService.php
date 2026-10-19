@@ -94,7 +94,7 @@ class RecordingService
                     }
                 }
 
-                $this->transitions->move($entry, RegistrationStatus::Terdaftar, $actor, $note);
+                $this->transitions->move($entry, RegistrationStatus::Terdaftar, $actor, $note, ['scanned_at' => null]);
                 activity('jadwal')->performedOn($schedule)->causedBy($actor)
                     ->withProperties(['status_lama' => $previous->value, 'siswa_id' => $entry->student_id])->log('rekaman.dibatalkan');
             });

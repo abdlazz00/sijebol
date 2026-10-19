@@ -90,3 +90,67 @@ test('ekspor dicatat di log aktivitas dengan filternya', function () {
         ->and($log->properties['dari'])->toBe('2026-10-01')
         ->and($log->properties['sampai'])->toBeNull();
 });
+
+/** Dua sesi berisi campuran status untuk rekap kehadiran. */
+function sesiUntukRekap(): array
+{
+    $a = School::factory()->create(['name' => 'SMPN A']);
+    $b = School::factory()->create(['name' => 'SMPN B']);
+    $sesiA = makeSchedule($a, '2026-10-20');
+    $sesiB = makeSchedule($b, '2026-10-21');
+    foreach ([S::SudahRekaman, S::SudahRekaman, S::SudahRekaman, S::BelumRekaman, S::TidakHadir, S::Terdaftar, S::Ditolak] as $status) {
+        makeEntry($status, $a, schedule: $sesiA);
+    }
+    makeEntry(S::MenungguVerifikasi, $b, schedule: $sesiB);
+    makeEntry(S::MenungguVerifikasi, $b, schedule: $sesiB);
+
+    return [$sesiA, $sesiB];
+}
+
+test('rekap kehadiran per sesi menghitung angka per baris dan total', function () {
+    [$sesiA, $sesiB] = sesiUntukRekap();
+
+    $recap = $this->service->sessionRecap(null, null);
+
+    expect($recap['rows'])->toHaveCount(2)
+        ->and($recap['rows'][0])->toMatchArray([
+            'id' => $sesiA->id, 'date' => '2026-10-20', 'start_time' => '08:00', 'end_time' => '12:00', 'school' => 'SMPN A',
+            'location' => $sesiA->location, 'quota' => 30, 'taken' => 5, 'present' => 3, 'not_recorded' => 1, 'absent' => 1, 'attendance' => 80,
+        ])
+        ->and($recap['rows'][1])->toMatchArray(['id' => $sesiB->id, 'taken' => 2, 'present' => 0, 'not_recorded' => 0, 'absent' => 0, 'attendance' => null])
+        ->and($recap['totals'])->toBe(['quota' => 60, 'taken' => 7, 'present' => 3, 'not_recorded' => 1, 'absent' => 1, 'attendance' => 80]);
+});
+
+test('rekap kehadiran tidak memuat sesi dibatalkan dan terurut tanggal lalu id', function () {
+    [$sesiA, $sesiB] = sesiUntukRekap();
+    $sama = makeSchedule($sesiA->school, '2026-10-20');
+    $batal = makeSchedule($sesiA->school, '2026-10-19');
+    $batal->update(['cancelled_at' => now()]);
+
+    $ids = collect($this->service->sessionRecap(null, null)['rows'])->pluck('id')->all();
+
+    expect($ids)->toBe([$sesiA->id, $sama->id, $sesiB->id]);
+});
+
+test('filter rekap kehadiran memakai tanggal sesi, inklusif di kedua ujung', function () {
+    [$sesiA, $sesiB] = sesiUntukRekap();
+
+    $ids = fn (?string $dari, ?string $sampai) => collect($this->service->sessionRecap($dari, $sampai)['rows'])->pluck('id')->all();
+
+    expect($ids('2026-10-20', '2026-10-21'))->toBe([$sesiA->id, $sesiB->id])
+        ->and($ids('2026-10-21', null))->toBe([$sesiB->id])
+        ->and($ids(null, '2026-10-20'))->toBe([$sesiA->id])
+        ->and($ids('2026-10-22', null))->toBe([]);
+
+    $kosong = $this->service->sessionRecap('2026-10-22', null);
+    expect($kosong['totals'])->toBe(['quota' => 0, 'taken' => 0, 'present' => 0, 'not_recorded' => 0, 'absent' => 0, 'attendance' => null]);
+});
+
+test('operator terikat sekolah hanya melihat sesi sekolahnya pada rekap kehadiran', function () {
+    [$sesiA] = sesiUntukRekap();
+    $this->actingAs(makeUserWith([], $sesiA->school, true, 'op-rekap-sesi'));
+
+    $rows = $this->service->sessionRecap(null, null)['rows'];
+
+    expect($rows)->toHaveCount(1)->and($rows[0]['id'])->toBe($sesiA->id);
+});

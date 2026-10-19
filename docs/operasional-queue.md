@@ -39,3 +39,16 @@ dan ulangi dengan `php artisan queue:retry all`.
 ## SMTP
 
 Penyedia SMTP belum ditentukan (spec v1 bagian 11). Isi `MAIL_*` di `.env` produksi setelah diputuskan.
+
+## Perintah terjadwal (fase 7c dan 7d)
+
+Scheduler menjalankan tiga perintah **setiap jam** (`withoutOverlapping`). Keduanya butuh cron `schedule:run` setiap
+menit (lihat di atas) dan worker antrean yang hidup, karena pemberitahuan ke siswa dikirim lewat antrean.
+
+| Perintah | Fungsi |
+|---|---|
+| `php artisan sijebol:kedaluwarsakan` | Pendaftaran **Perlu perbaikan** yang lewat batas waktu, dan pendaftaran **Menunggu verifikasi / Perlu perbaikan** pada sesi yang tanggalnya sudah lewat, menjadi **Kedaluwarsa** (aktor "Sistem"). Kursi dilepas dan siswa diberi tahu. Aman dijalankan berulang. Kode keluar 1 bila ada pendaftaran yang gagal diproses (lihat log). |
+| `php artisan sijebol:tandai-tidak-hadir` | Pendaftaran **Terdaftar** pada sesi yang tanggalnya sudah lewat (mulai hari setelah sesi) menjadi **Tidak hadir** (aktor "Sistem", catatan "Tidak terpindai sampai sesi berakhir."). Kursi dilepas; tanpa notifikasi. Status lain, termasuk Sudah rekaman, tidak disentuh, dan tiket yang dipindai di antara pemilihan dan pemrosesan tidak ditimpa. Aman dijalankan berulang. Kode keluar 1 bila ada pendaftaran yang gagal diproses (lihat log). |
+| `php artisan sijebol:kirim-pengingat` | Pengingat batas perbaikan (tenggat tinggal 24 jam atau kurang) dan pengingat sesi H-1 (dikirim sejak pukul 08.00 WIB, `config('sijebol.reminder_hour')`). Tiap pendaftaran diingatkan sekali. |
+
+Untuk uji lokal jalankan keduanya langsung dari terminal; `php artisan schedule:list` menampilkan jadwalnya.

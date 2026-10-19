@@ -7,7 +7,13 @@ import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import { Button } from '@/Components/ui/button';
 import { useFlash } from '@/composables/useFlash';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDateWithDay, formatMonth, formatTimeRange } from '@/lib/date';
+import {
+    formatDateTime,
+    formatDateWithDay,
+    formatMonth,
+    formatTimeRange,
+    relativeTime,
+} from '@/lib/date';
 import type {
     OpenSchedule,
     RegistrationStatus,
@@ -58,7 +64,7 @@ const NEXT: Record<RegistrationStatus, string> = {
     menunggu_verifikasi:
         'Menunggu pemeriksaan petugas; data dan dokumen Anda terkunci sementara.',
     perlu_perbaikan:
-        'Perbaiki data atau dokumen sesuai catatan petugas, lalu ajukan ulang.',
+        'Perbaiki data atau dokumen sesuai catatan petugas, lalu ajukan ulang sebelum batas waktu.',
     terdaftar: 'Anda terdaftar. Datang sesuai jadwal.',
     sudah_rekaman: 'Perekaman Anda sudah selesai.',
     tidak_hadir:
@@ -86,6 +92,16 @@ const CANCELLABLE: RegistrationStatus[] = [
     'perlu_perbaikan',
     'terdaftar',
 ];
+// Tenggat lewat (atau sesi sudah hari-H): tombol ajukan ulang hilang, jadi alasannya harus tertulis.
+const deadlinePassed = computed(
+    () =>
+        props.entry?.status === 'perlu_perbaikan' && !props.entry.can_resubmit,
+);
+const canViewTicket = computed(
+    () =>
+        props.entry?.status === 'terdaftar' ||
+        props.entry?.status === 'sudah_rekaman',
+);
 const cancelHint = computed(
     () =>
         props.entry !== null &&
@@ -128,6 +144,8 @@ const groups = computed(() => {
 });
 
 const busy = ref(false);
+// Sesi yang sedang dikirim, agar hanya tombolnya yang menampilkan spinner (dialog menutup dan mengosongkan pilihan lebih dulu).
+const sendingId = ref<number | null>(null);
 const entryHeading = ref<HTMLElement | null>(null);
 
 function send(name: string, id: number) {
@@ -137,7 +155,10 @@ function send(name: string, id: number) {
         {
             preserveScroll: true,
             onStart: () => (busy.value = true),
-            onFinish: () => (busy.value = false),
+            onFinish: () => {
+                busy.value = false;
+                sendingId.value = null;
+            },
             // Hasil langsung terbaca: fokus pindah ke judul kartu pendaftaran.
             onSuccess: () => void nextTick(() => entryHeading.value?.focus()),
         },
@@ -155,7 +176,9 @@ const cancelOpen = ref(false);
 const resubmitOpen = ref(false);
 
 function register() {
-    if (picked.value) send('saya.sesi.daftar', picked.value.id);
+    if (!picked.value) return;
+    sendingId.value = picked.value.id;
+    send('saya.sesi.daftar', picked.value.id);
 }
 </script>
 
@@ -239,6 +262,32 @@ function register() {
                     <span class="font-medium">Langkah berikutnya:</span>
                     {{ NEXT[entry.status] }}
                 </p>
+
+                <p
+                    v-if="
+                        entry.status === 'perlu_perbaikan' &&
+                        entry.fix_deadline &&
+                        !deadlinePassed
+                    "
+                    class="text-sm leading-5"
+                >
+                    <span class="font-medium">Batas perbaikan:</span>
+                    {{ formatDateTime(entry.fix_deadline) }}
+                    ({{ relativeTime(entry.fix_deadline) }})
+                </p>
+                <p v-if="deadlinePassed" class="text-warning text-sm leading-5">
+                    Batas perbaikan sudah lewat; kursi akan dilepas otomatis.
+                </p>
+
+                <Button
+                    v-if="canViewTicket"
+                    as-child
+                    class="h-10 self-start px-4"
+                >
+                    <Link :href="route('saya.tiket', entry.id)"
+                        >Lihat tiket</Link
+                    >
+                </Button>
 
                 <div
                     v-if="entry.can_resubmit || entry.can_cancel"
@@ -370,7 +419,7 @@ function register() {
                                     @click="picked = s"
                                 >
                                     <LoaderCircle
-                                        v-if="busy && picked?.id === s.id"
+                                        v-if="busy && sendingId === s.id"
                                         class="size-4 animate-spin"
                                         aria-hidden="true"
                                     />

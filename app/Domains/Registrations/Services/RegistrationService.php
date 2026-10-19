@@ -3,6 +3,8 @@
 namespace App\Domains\Registrations\Services;
 
 use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\RegistrationNotification;
+use App\Domains\Notifications\Services\NotificationService;
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Registrations\Repositories\Contracts\RegistrationRepositoryInterface;
@@ -23,6 +25,7 @@ class RegistrationService
         private readonly RegistrationRepositoryInterface $registrations,
         private readonly StatusTransitioner $transitions,
         private readonly EligibilityService $eligibility,
+        private readonly NotificationService $notifications,
     ) {}
 
     /**
@@ -92,6 +95,9 @@ class RegistrationService
         if ($entry->status !== RegistrationStatus::PerluPerbaikan) {
             throw new AccessRuleException('Hanya pendaftaran berstatus Perlu perbaikan yang dapat diajukan ulang.');
         }
+        if ($entry->fix_deadline_at?->isPast()) {
+            throw new AccessRuleException('Batas waktu perbaikan sudah lewat.');
+        }
         $this->assertStudentMayChange($entry, 'Pengajuan ulang');
 
         DB::transaction(function () use ($entry, $actor) {
@@ -103,9 +109,53 @@ class RegistrationService
                 throw new AccessRuleException(implode(' ', $check['reasons']));
             }
 
-            $this->transitions->move($entry, RegistrationStatus::MenungguVerifikasi, $actor);
+            $this->transitions->move($entry, RegistrationStatus::MenungguVerifikasi, $actor, null, ['fix_deadline_at' => null, 'fix_reminded_at' => null]);
             activity('pendaftaran')->performedOn($entry)->causedBy($actor)->log('pendaftaran.diajukan-ulang');
         });
+    }
+
+    /**
+     * Pembatalan oleh admin (spec 4.7): hanya sampai sehari sebelum sesi, catatan wajib, siswa diberi tahu.
+     * Pada hari sesi dipakai penandaan manual.
+     */
+    public function cancelByStaff(RegistrationStudent $entry, string $note, User $actor): void
+    {
+        if (! in_array($entry->status, self::CANCELLABLE, true)) {
+            throw new AccessRuleException('Pendaftaran dengan status ini tidak dapat dibatalkan.');
+        }
+        if (! $entry->schedule->allowsStudentChanges()) {
+            throw new AccessRuleException('Pada hari sesi, gunakan penandaan manual.');
+        }
+
+        DB::transaction(function () use ($entry, $note, $actor) {
+            $this->transitions->move($entry, RegistrationStatus::Dibatalkan, $actor, $note);
+            activity('pendaftaran')->performedOn($entry)->causedBy($actor)->withProperties(['oleh_staf' => true])->log('pendaftaran.dibatalkan');
+        });
+
+        $this->notifications->toStudent($entry->student, RegistrationNotification::cancelledByStaff($note));
+    }
+
+    /**
+     * Melepas kursi siswa sebelum sekolahnya diganti: pendaftaran pra-kehadiran dibatalkan; siswa yang sudah direkam
+     * menahan penggantian. Dipanggil di dalam transaksi pemanggil agar gagal sebagian tidak meninggalkan perubahan.
+     *
+     * @return int jumlah pendaftaran yang dibatalkan
+     */
+    public function releaseSeats(Student $student, string $note, User $actor): int
+    {
+        $entries = $student->registrationEntries()->withoutGlobalScope('owner')->orderBy('id')->get();
+
+        if ($entries->contains(fn (RegistrationStudent $e) => $e->status === RegistrationStatus::SudahRekaman)) {
+            throw new AccessRuleException('Sekolah tidak dapat diganti: siswa sudah direkam.');
+        }
+
+        $released = $entries->filter(fn (RegistrationStudent $e) => in_array($e->status, self::CANCELLABLE, true));
+        foreach ($released as $entry) {
+            $this->transitions->move($entry, RegistrationStatus::Dibatalkan, $actor, $note);
+            activity('pendaftaran')->performedOn($entry)->causedBy($actor)->withProperties(['oleh_staf' => true])->log('pendaftaran.dibatalkan');
+        }
+
+        return $released->count();
     }
 
     /** Pendaftaran yang ditampilkan ke siswa: yang aktif bila ada, selain itu yang terbaru. */

@@ -4,7 +4,6 @@ use App\Domains\Access\Enums\Permission;
 use App\Domains\Access\Models\Role;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Schools\Models\School;
-use App\Domains\Students\Models\Student;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -22,7 +21,7 @@ function perfSeedRows(string $halaman, int $n, School $school): void
             'pengguna' => User::factory()->create(),
             'role' => Role::create(['name' => 'role-'.Str::random(8), 'guard_name' => 'web']),
             'sekolah' => School::factory()->create(),
-            'siswa' => Student::factory()->for($school)->create(),
+            'siswa' => makeEntry(S::Terdaftar, $school), // dengan pendaftaran agar N+1 relasi sesi terdeteksi
             'verifikasi' => makeEntry(S::MenungguVerifikasi, $school),
             'jadwal' => makeEntry(S::Terdaftar, $school),
             'log' => activity('uji')->log("aksi {$i}"),

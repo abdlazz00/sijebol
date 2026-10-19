@@ -3,8 +3,10 @@
 namespace App\Domains\Students\Services;
 
 use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\RegistrationNotification;
 use App\Domains\Notifications\Notifications\StudentCorrectedNotification;
-use App\Domains\Registrations\Enums\RegistrationStatus;
+use App\Domains\Notifications\Services\NotificationService;
+use App\Domains\Registrations\Services\RegistrationService;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
 use App\Models\User;
@@ -14,7 +16,13 @@ use Illuminate\Support\Facades\Storage;
 
 class StudentService
 {
-    public function __construct(private readonly StudentRepositoryInterface $students) {}
+    private const SCHOOL_CHANGED_NOTE = 'Sekolah Anda diganti oleh admin.';
+
+    public function __construct(
+        private readonly StudentRepositoryInterface $students,
+        private readonly RegistrationService $registrations,
+        private readonly NotificationService $notifications,
+    ) {}
 
     /** @return LengthAwarePaginator<int, Student> */
     public function paginate(): LengthAwarePaginator
@@ -61,13 +69,15 @@ class StudentService
     public function correct(Student $student, array $data, string $note, User $actor): Student
     {
         $schoolId = $actor->school_id === null ? ($data['school_id'] ?? $student->school_id) : $student->school_id;
+        $schoolChanged = $schoolId !== $student->school_id;
 
-        if ($schoolId !== $student->school_id && $this->hasActiveEntry($student)) {
-            throw new AccessRuleException('Sekolah tidak dapat diganti: siswa masih punya pendaftaran aktif.');
-        }
-
+        // Ganti sekolah melepas kursi lama dalam transaksi yang sama: gagal sebagian = tidak ada yang berubah.
         // Akun siswa ikut pindah: scope sekolah membaca users.school_id, sehingga siswa tidak terkunci dari datanya sendiri.
-        $student = DB::transaction(function () use ($student, $data, $schoolId) {
+        $released = 0;
+        $student = DB::transaction(function () use ($student, $data, $schoolId, $schoolChanged, $actor, $note, &$released) {
+            if ($schoolChanged) {
+                $released = $this->registrations->releaseSeats($student, self::SCHOOL_CHANGED_NOTE." Catatan: {$note}", $actor);
+            }
             $student = $this->students->update($student, [...$data, 'school_id' => $schoolId]);
             $student->user?->update(['school_id' => $schoolId]);
 
@@ -75,15 +85,11 @@ class StudentService
         });
         activity('siswa')->performedOn($student)->causedBy($actor)->withProperties(['catatan' => $note])->log('siswa.dikoreksi');
         $student->user?->notify(new StudentCorrectedNotification($note));
+        if ($released > 0) {
+            $this->notifications->toStudent($student, RegistrationNotification::cancelledByStaff(self::SCHOOL_CHANGED_NOTE." Catatan: {$note}"));
+        }
 
         return $student;
-    }
-
-    private function hasActiveEntry(Student $student): bool
-    {
-        return $student->registrationEntries()
-            ->whereIn('status', RegistrationStatus::values(RegistrationStatus::active()))
-            ->exists();
     }
 
     public function delete(Student $student): void

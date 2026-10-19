@@ -3,6 +3,8 @@
 namespace App\Domains\Schedules\Services;
 
 use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\RegistrationNotification;
+use App\Domains\Notifications\Services\NotificationService;
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Services\StatusTransitioner;
 use App\Domains\Schedules\Models\Schedule;
@@ -21,6 +23,7 @@ class ScheduleService
     public function __construct(
         private readonly ScheduleRepositoryInterface $schedules,
         private readonly StatusTransitioner $transitions,
+        private readonly NotificationService $notifications,
     ) {}
 
     /** @return LengthAwarePaginator<int, Schedule> */
@@ -35,7 +38,7 @@ class ScheduleService
         return $this->schedules->upcoming($limit);
     }
 
-    /** @return list<array{id: int, date: string, school_name: string, participants: int, location: string, status: string}> */
+    /** @return list<array{id: int, date: string, school_name: string, participants: int, quota: int, waiting: int, present: int, location: string, status: string}> */
     public function upcomingTable(int $limit = 8): array
     {
         $today = Schedule::today();
@@ -48,6 +51,9 @@ class ScheduleService
                 'date' => $s->date->toDateString(),
                 'school_name' => $s->school->name,
                 'participants' => $s->taken_count,
+                'quota' => $s->quota,
+                'waiting' => $s->waiting_count,
+                'present' => $s->present_count,
                 'location' => $s->location,
                 'status' => $isToday ? 'Hari Ini' : 'Dijadwalkan',
             ];
@@ -58,7 +64,7 @@ class ScheduleService
     public function calendarEvents(?int $year = null, ?int $month = null): array
     {
         $today = Schedule::today();
-        $query = Schedule::query()->with('school')
+        $query = Schedule::query()->with('school')->whereNull('cancelled_at')
             ->withCount(['entries as taken_count' => fn ($q) => $q->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat()))]);
 
         if ($year !== null && $month !== null) {
@@ -102,11 +108,14 @@ class ScheduleService
      */
     public function update(Schedule $schedule, array $data, User $actor): Schedule
     {
-        return DB::transaction(function () use ($schedule, $data, $actor) {
+        $locked = DB::transaction(function () use ($schedule, $data, $actor) {
             $locked = Schedule::query()->whereKey($schedule->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->isCancelled()) {
                 throw new AccessRuleException('Sesi yang dibatalkan tidak dapat diubah.');
+            }
+            if ($locked->isPast()) {
+                throw new AccessRuleException('Sesi yang sudah lewat tidak dapat diubah.');
             }
             if ($data['date'] !== $locked->date->toDateString() && $locked->entries()->exists()) {
                 throw ValidationException::withMessages(['date' => 'Tanggal tidak dapat diubah karena sesi sudah memiliki pendaftar. Batalkan sesi lalu buat sesi baru.']);
@@ -124,17 +133,27 @@ class ScheduleService
 
             return $locked;
         });
+
+        // Siswa diberi tahu hanya bila jam atau lokasi berubah (kuota dan penyimpanan tanpa perubahan tidak).
+        if ($locked->wasChanged(['start_time', 'end_time', 'location'])) {
+            $holders = $locked->entries()->whereIn('status', RegistrationStatus::values(self::CANCELLABLE))->with('student')->get();
+            foreach ($holders as $entry) {
+                $this->notifications->toStudent($entry->student, RegistrationNotification::sessionChanged($locked->date->toDateString(), $locked->start_time, $locked->end_time, $locked->location));
+            }
+        }
+
+        return $locked;
     }
 
     /**
      * Membatalkan sesi: pendaftaran yang belum sampai hari kehadiran menjadi Dibatalkan, sisanya tidak disentuh.
-     * Notifikasi ke siswa menyusul di fase 7c.
+     * Siswa yang pendaftarannya dibatalkan diberi tahu setelah transaksi.
      *
      * @return int jumlah pendaftaran yang dibatalkan
      */
     public function cancel(Schedule $schedule, string $note, User $actor): int
     {
-        return DB::transaction(function () use ($schedule, $note, $actor) {
+        $result = DB::transaction(function () use ($schedule, $note, $actor) {
             $locked = Schedule::query()->whereKey($schedule->id)->lockForUpdate()->firstOrFail();
 
             if ($locked->isCancelled()) {
@@ -145,7 +164,7 @@ class ScheduleService
             }
 
             // Dikunci agar pembatalan oleh siswa yang bersamaan tidak membuat satu entri dipindah dua kali.
-            $entries = $locked->entries()->whereIn('status', RegistrationStatus::values(self::CANCELLABLE))->orderBy('id')->lockForUpdate()->get();
+            $entries = $locked->entries()->whereIn('status', RegistrationStatus::values(self::CANCELLABLE))->orderBy('id')->lockForUpdate()->with('student')->get();
             foreach ($entries as $entry) {
                 $this->transitions->move($entry, RegistrationStatus::Dibatalkan, $actor, $note);
             }
@@ -154,18 +173,27 @@ class ScheduleService
             activity('jadwal')->performedOn($locked)->causedBy($actor)
                 ->withProperties(['dibatalkan' => $entries->count(), 'catatan' => $note])->log('jadwal.dibatalkan');
 
-            return $entries->count();
+            return ['locked' => $locked, 'entries' => $entries];
         });
+
+        foreach ($result['entries'] as $entry) {
+            $this->notifications->toStudent($entry->student, RegistrationNotification::sessionCancelled($result['locked']->date->toDateString(), $note));
+        }
+
+        return $result['entries']->count();
     }
 
     public function delete(Schedule $schedule, User $actor): void
     {
-        // Entri berstatus apa pun adalah jejak; sesi berriwayat tidak dapat dihapus.
-        if ($schedule->entries()->exists()) {
-            throw new AccessRuleException('Sesi masih memiliki pendaftar; batalkan sesi bila tidak jadi dilaksanakan.');
-        }
-
         DB::transaction(function () use ($schedule, $actor) {
+            // Kunci baris sesi sebelum memeriksa: siswa yang mendaftar bersamaan tidak lolos ke penghapusan (FK menolak dengan 500).
+            Schedule::query()->whereKey($schedule->id)->lockForUpdate()->firstOrFail();
+
+            // Entri berstatus apa pun adalah jejak; sesi berriwayat tidak dapat dihapus.
+            if ($schedule->entries()->withoutGlobalScope('owner')->exists()) {
+                throw new AccessRuleException('Sesi masih memiliki pendaftar; batalkan sesi bila tidak jadi dilaksanakan.');
+            }
+
             activity('jadwal')->performedOn($schedule)->causedBy($actor)->log('jadwal.dihapus');
             $this->schedules->delete($schedule);
         });

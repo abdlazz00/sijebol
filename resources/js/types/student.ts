@@ -6,6 +6,7 @@ export type StudentRow = {
     nisn: string;
     nik: string;
     age: number;
+    ktp_langsung: boolean;
     school: string | null;
     docs: { kk: boolean; akta_lahir: boolean };
     eligible: boolean;

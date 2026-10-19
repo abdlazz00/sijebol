@@ -25,6 +25,11 @@ use Illuminate\Support\Facades\Auth;
  * @property int|null $decided_by
  * @property int $schedule_id
  * @property Carbon|null $decided_at
+ * @property string|null $ticket_code
+ * @property Carbon|null $fix_deadline_at
+ * @property Carbon|null $fix_reminded_at
+ * @property Carbon|null $session_reminded_at
+ * @property Carbon|null $scanned_at
  * @property Carbon $updated_at
  */
 #[UseFactory(RegistrationStudentFactory::class)]
@@ -33,7 +38,7 @@ class RegistrationStudent extends Model
     /** @use HasFactory<RegistrationStudentFactory> */
     use HasFactory, ScopedBySchool;
 
-    protected $fillable = ['school_id', 'student_id', 'schedule_id', 'status', 'note', 'decided_by', 'decided_at'];
+    protected $fillable = ['school_id', 'student_id', 'schedule_id', 'status', 'note', 'decided_by', 'decided_at', 'ticket_code', 'fix_deadline_at', 'fix_reminded_at', 'session_reminded_at', 'scanned_at'];
 
     protected static function booted(): void
     {
@@ -47,7 +52,14 @@ class RegistrationStudent extends Model
 
     protected function casts(): array
     {
-        return ['status' => RegistrationStatus::class, 'decided_at' => 'datetime'];
+        return [
+            'status' => RegistrationStatus::class,
+            'decided_at' => 'datetime',
+            'fix_deadline_at' => 'datetime',
+            'fix_reminded_at' => 'datetime',
+            'session_reminded_at' => 'datetime',
+            'scanned_at' => 'datetime',
+        ];
     }
 
     /** @return BelongsTo<Student, $this> */

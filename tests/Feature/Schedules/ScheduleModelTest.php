@@ -1,6 +1,7 @@
 <?php
 
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
 use Carbon\Carbon;
 
@@ -64,4 +65,28 @@ test('entri sekolah lain tidak terhitung di sesi ini', function () {
     makeEntry(S::Terdaftar, School::factory()->create());
 
     expect($schedule->seatsTaken())->toBe(0);
+});
+
+test('tenggat perbaikan = yang lebih awal antara 48 jam dan akhir hari sebelum sesi', function (string $sekarang, string $tanggalSesi, string $harapan) {
+    $now = Carbon::parse($sekarang, 'Asia/Jakarta');
+    Carbon::setTestNow($now);
+
+    expect(makeSchedule(date: $tanggalSesi)->fixDeadlineFrom($now)->setTimezone('Asia/Jakarta')->toDateTimeString())->toBe($harapan);
+})->with([
+    'sesi jauh: 48 jam' => ['2026-10-19 10:00:00', '2026-10-29', '2026-10-21 10:00:00'],
+    'sesi besok: akhir hari ini' => ['2026-10-19 10:00:00', '2026-10-20', '2026-10-19 23:59:59'],
+    'sesi lusa: dipotong akhir H-1' => ['2026-10-19 22:00:00', '2026-10-21', '2026-10-20 23:59:59'],
+]);
+
+test('jendela scan membentang dari toleransi sebelum jam mulai sampai toleransi sesudah jam selesai (WIB)', function () {
+    $schedule = Schedule::factory()->create(['date' => '2026-10-20', 'start_time' => '08:00', 'end_time' => '12:00']);
+
+    [$from, $to] = $schedule->scanWindow();
+    expect($from->format('Y-m-d H:i:s'))->toBe('2026-10-20 07:00:00')
+        ->and($to->format('Y-m-d H:i:s'))->toBe('2026-10-20 13:00:00')
+        ->and($from->getTimezone()->getName())->toBe('Asia/Jakarta');
+
+    config(['sijebol.scan_tolerance_minutes' => 15]);
+    [$from, $to] = $schedule->scanWindow();
+    expect($from->format('H:i'))->toBe('07:45')->and($to->format('H:i'))->toBe('12:15');
 });

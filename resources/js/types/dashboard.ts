@@ -48,7 +48,8 @@ export interface QuickActionItem {
         | 'id-card'
         | 'download'
         | 'user-plus'
-        | 'clipboard-check';
+        | 'clipboard-check'
+        | 'scan-line';
     variant: 'blue' | 'green' | 'amber' | 'rose';
 }
 
@@ -80,6 +81,9 @@ export interface UpcomingScheduleRow {
     school?: string;
     school_name?: string;
     participants: number;
+    quota: number;
+    waiting: number;
+    present: number;
     location: string;
     status: 'Hari Ini' | 'Terlaksana' | 'Dijadwalkan' | string;
 }

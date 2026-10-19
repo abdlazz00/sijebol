@@ -56,3 +56,22 @@ test('keputusan kedua pada entri yang sama ditolak walau modelnya basi', functio
     expect(fn () => app(StatusTransitioner::class)->move($basi, S::Ditolak, $actor))->toThrow(AccessRuleException::class);
     expect($entry->histories()->count())->toBe(1);
 });
+
+test('aksi sistem (tanpa aktor) mencatat riwayat tanpa pelaku dan tidak mengisi decided_*', function () {
+    $entry = makeEntry(S::PerluPerbaikan);
+
+    $moved = app(StatusTransitioner::class)->move($entry, S::Kedaluwarsa, null, 'Batas waktu perbaikan terlewati.');
+
+    expect($moved->status)->toBe(S::Kedaluwarsa)
+        ->and($moved->decided_by)->toBeNull()->and($moved->decided_at)->toBeNull()
+        ->and($moved->histories()->first()->by_user_id)->toBeNull()
+        ->and($moved->histories()->first()->note)->toBe('Batas waktu perbaikan terlewati.');
+});
+
+test('keputusan oleh aktor tetap mengisi decided_* walau atribut tambahan ikut disimpan', function () {
+    $petugas = User::factory()->create();
+
+    $moved = app(StatusTransitioner::class)->move(makeEntry(S::MenungguVerifikasi), S::Terdaftar, $petugas, null, ['ticket_code' => 'KODE-TES']);
+
+    expect($moved->decided_by)->toBe($petugas->id)->and($moved->ticket_code)->toBe('KODE-TES');
+});

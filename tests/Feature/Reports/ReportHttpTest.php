@@ -2,6 +2,7 @@
 
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Reports\Exports\RecapExport;
+use App\Domains\Reports\Exports\SessionRecapExport;
 use App\Domains\Schools\Models\School;
 use Inertia\Testing\AssertableInertia as Assert;
 use Maatwebsite\Excel\Facades\Excel;
@@ -79,4 +80,60 @@ test('nama sekolah berawalan simbol formula dinetralkan di berkas ekspor', funct
 
         return in_array("'=HYPERLINK(\"http://x\")", $names, true) && in_array("'@cmd", $names, true) && in_array('SMPN A', $names, true);
     });
+});
+
+test('halaman laporan memuat rekap kehadiran per sesi', function () {
+    $sesi = makeSchedule($this->school, '2026-10-20');
+    makeEntry(S::SudahRekaman, $this->school, schedule: $sesi);
+    makeEntry(S::TidakHadir, $this->school, schedule: $sesi);
+
+    $this->actingAs($this->viewer)->get('/laporan?dari=2026-10-20&sampai=2026-10-20')->assertInertia(fn (Assert $p) => $p
+        ->where('session_recap.rows.0.school', 'SMPN A')
+        ->where('session_recap.rows.0.present', 1)->where('session_recap.rows.0.absent', 1)->where('session_recap.rows.0.attendance', 50)
+        ->where('session_recap.totals.attendance', 50));
+});
+
+test('ekspor kehadiran sesi mengikuti filter, berkas xlsx, dan tercatat di audit', function () {
+    makeEntry(S::SudahRekaman, $this->school, schedule: makeSchedule($this->school, '2026-10-20'));
+    makeEntry(S::SudahRekaman, $this->school, schedule: makeSchedule($this->school, '2026-11-20'));
+
+    $this->actingAs($this->viewer)->get('/laporan/ekspor-sesi?dari=2026-10-01&sampai=2026-10-31')
+        ->assertOk()->assertDownload('rekap-kehadiran-sesi.xlsx');
+
+    $log = Activity::where('description', 'laporan.diekspor')->sole();
+    expect($log->properties['jenis'])->toBe('kehadiran-sesi')->and($log->properties['dari'])->toBe('2026-10-01');
+});
+
+test('ekspor kehadiran sesi: judul kolom, baris total, dan hanya sesi dalam rentang', function () {
+    Excel::fake();
+    makeEntry(S::SudahRekaman, $this->school, schedule: makeSchedule($this->school, '2026-10-20'));
+    makeSchedule($this->school, '2026-11-20');
+
+    $this->actingAs($this->viewer)->get('/laporan/ekspor-sesi?dari=2026-10-01&sampai=2026-10-31');
+
+    Excel::assertDownloaded('rekap-kehadiran-sesi.xlsx', function (SessionRecapExport $e) {
+        $rows = $e->array();
+
+        return $e->headings() === ['Tanggal', 'Jam', 'Sekolah', 'Lokasi', 'Kuota', 'Terisi', 'Sudah rekaman', 'Belum rekaman', 'Tidak hadir', 'Kehadiran (%)']
+            && count($rows) === 2
+            && $rows[0][0] === '2026-10-20' && $rows[0][1] === '08.00–12.00' && $rows[0][2] === 'SMPN A' && array_slice($rows[0], 4) === [30, 1, 1, 0, 0, 100]
+            && $rows[1] === ['Total', '', '', '', 30, 1, 1, 0, 0, 100];
+    });
+});
+
+test('ekspor kehadiran sesi menetralkan sel berawalan simbol formula', function () {
+    Excel::fake();
+    $sekolah = School::factory()->create(['name' => '=HYPERLINK("http://x")']);
+    $sesi = makeSchedule($sekolah, '2026-10-20');
+    $sesi->update(['location' => '@lokasi']);
+
+    $this->actingAs($this->viewer)->get('/laporan/ekspor-sesi');
+
+    Excel::assertDownloaded('rekap-kehadiran-sesi.xlsx', fn (SessionRecapExport $e) => $e->array()[0][2] === "'=HYPERLINK(\"http://x\")" && $e->array()[0][3] === "'@lokasi");
+});
+
+test('ekspor kehadiran sesi ditolak tanpa laporan.lihat dan dibatasi lajunya', function () {
+    $this->actingAs(makeUserWith([], roleName: 'tanpa-laporan'))->get('/laporan/ekspor-sesi')->assertForbidden();
+
+    expect(app('router')->getRoutes()->getByName('laporan.ekspor-sesi')->gatherMiddleware())->toContain('throttle:20,1');
 });

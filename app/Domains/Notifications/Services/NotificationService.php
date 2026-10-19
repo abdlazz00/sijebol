@@ -4,6 +4,7 @@ namespace App\Domains\Notifications\Services;
 
 use App\Domains\Notifications\Notifications\BaseNotification;
 use App\Domains\Notifications\Repositories\Contracts\NotificationRepositoryInterface;
+use App\Domains\Students\Models\Student;
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -29,6 +30,22 @@ class NotificationService
         Notification::send($recipients, $notification);
 
         return $recipients->count();
+    }
+
+    /**
+     * Mengirim ke akun siswa pemilik data; false bila siswa tidak punya akun atau akunnya nonaktif.
+     * Tanpa scope global agar pengirim dari sekolah lain (atau scheduler tanpa login) tidak memengaruhi penerima.
+     */
+    public function toStudent(Student $student, BaseNotification $notification): bool
+    {
+        $user = $student->user()->withoutGlobalScopes()->first();
+        if ($user === null || ! $user->is_active) {
+            return false;
+        }
+
+        $user->notify($notification);
+
+        return true;
     }
 
     /** @return LengthAwarePaginator<int, array{id: string, title: string, body: string, url: string, read_at: ?string, created_at: string}> */

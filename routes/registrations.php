@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Route;
 
 Route::middleware('auth')->group(function () {
     Route::get('saya/sesi', [SelfRegistrationController::class, 'index'])->middleware('can:pendaftaran.lihat')->name('saya.sesi');
+    Route::get('saya/tiket/{entry}', [SelfRegistrationController::class, 'ticket'])->middleware('can:pendaftaran.lihat')->name('saya.tiket');
     Route::post('saya/sesi/{schedule}/daftar', [SelfRegistrationController::class, 'register'])->middleware(['can:pendaftaran.buat', 'throttle:10,1'])->name('saya.sesi.daftar');
     Route::post('saya/pendaftaran/{entry}/batal', [SelfRegistrationController::class, 'cancel'])->middleware(['can:pendaftaran.buat', 'throttle:30,1'])->name('saya.pendaftaran.batal');
     Route::post('saya/pendaftaran/{entry}/ajukan-ulang', [SelfRegistrationController::class, 'resubmit'])->middleware(['can:pendaftaran.buat', 'throttle:30,1'])->name('saya.pendaftaran.ajukan-ulang');

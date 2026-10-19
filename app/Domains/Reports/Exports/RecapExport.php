@@ -34,7 +34,7 @@ class RecapExport implements FromArray, WithHeadings
     }
 
     /** Teks berawalan = + - @ dibaca Excel sebagai formula; awalan ' menjadikannya teks biasa. */
-    private static function safe(string $text): string
+    public static function safe(string $text): string
     {
         return preg_match('/^[=+\-@]/', $text) === 1 ? "'{$text}" : $text;
     }

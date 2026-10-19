@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
@@ -231,6 +232,7 @@ const columns = computed(() => [
                             >
                                 NISN {{ row.student.nisn }}
                             </p>
+                            <KtpLangsungBadge v-if="row.student.ktp_langsung" />
                         </div>
                     </template>
                     <template #cell-session="{ row }">

@@ -3,6 +3,7 @@
 namespace App\Domains\Reports\Http\Controllers;
 
 use App\Domains\Reports\Exports\RecapExport;
+use App\Domains\Reports\Exports\SessionRecapExport;
 use App\Domains\Reports\Http\Requests\ReportRequest;
 use App\Domains\Reports\Services\ReportService;
 use App\Http\Controllers\Controller;
@@ -21,6 +22,7 @@ class ReportController extends Controller
 
         return Inertia::render('Laporan/Index', [
             'recap' => $this->reports->recap($from, $to),
+            'session_recap' => $this->reports->sessionRecap($from, $to),
             'filters' => ['dari' => $from, 'sampai' => $to],
         ]);
     }
@@ -31,5 +33,13 @@ class ReportController extends Controller
         $this->reports->recordExport($request->user(), $from, $to);
 
         return Excel::download(new RecapExport($this->reports->recap($from, $to)), 'rekap-pendaftaran.xlsx');
+    }
+
+    public function exportSessions(ReportRequest $request): BinaryFileResponse
+    {
+        [$from, $to] = [$request->validated('dari'), $request->validated('sampai')];
+        $this->reports->recordExport($request->user(), $from, $to, 'kehadiran-sesi');
+
+        return Excel::download(new SessionRecapExport($this->reports->sessionRecap($from, $to)), 'rekap-kehadiran-sesi.xlsx');
     }
 }

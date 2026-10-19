@@ -86,8 +86,8 @@ const peserta = (
 });
 
 beforeEach(() => {
-    const route = (name: string, id?: number) =>
-        `/${name}${id !== undefined ? `/${id}` : ''}`;
+    const route = (name: string, id?: number | number[]) =>
+        `/${name}${id !== undefined ? `/${[id].flat().join('/')}` : ''}`;
     vi.stubGlobal('route', route);
     config.global.mocks = { route };
     post.mockReset();
@@ -246,6 +246,25 @@ describe('Jadwal/Show', () => {
         expect(w.text()).not.toContain('Keluarkan');
     });
 
+    it('tautan Pindai tiket hanya untuk pemegang rekaman.pindai dan sesi yang tidak dibatalkan', () => {
+        const tanpa = mount(Show, { props: base });
+        expect(tanpa.text()).not.toContain('Pindai tiket');
+
+        permissions.push('rekaman.pindai');
+        const dengan = mount(Show, { props: base });
+        expect(dengan.text()).toContain('Pindai tiket');
+        expect(
+            dengan
+                .findAll('a')
+                .some((a) => a.attributes('href') === '/jadwal.pindai.show/5'),
+        ).toBe(true);
+        expect(
+            mount(Show, {
+                props: { ...base, schedule: { ...detail, cancelled: true } },
+            }).text(),
+        ).not.toContain('Pindai tiket');
+    });
+
     it('tombol Batalkan sesi hanya untuk pemegang izin ubah dan sesi yang masih berlaku', () => {
         const tanpa = mount(Show, { props: base });
         expect(tanpa.text()).not.toContain('Batalkan sesi');
@@ -324,7 +343,80 @@ describe('Jadwal/Show', () => {
     });
 });
 
+describe('Jadwal/Show — pembatalan pendaftaran oleh admin', () => {
+    const dua = [
+        { ...peserta(1, 'terdaftar'), can_cancel: true },
+        { ...peserta(2, 'ditolak'), can_cancel: false },
+    ];
+
+    it('Batalkan pendaftaran ada di menu aksi baris, hanya untuk can_cancel dan pemegang verifikasi.putuskan', () => {
+        const tanpaIzin = mount(Show, {
+            props: { schedule: detail, participants: dua },
+        });
+        expect(tanpaIzin.text()).not.toContain('Batalkan pendaftaran');
+
+        permissions.push('verifikasi.putuskan');
+        const w = mount(Show, {
+            props: { schedule: detail, participants: dua },
+        });
+        const item = w
+            .findAll('button')
+            .filter((b) => b.text().includes('Batalkan pendaftaran'));
+
+        expect(item).toHaveLength(1);
+        expect(w.find('[data-testid="more"]').exists()).toBe(true);
+    });
+
+    it('dialog menyebut siswa dan kursi dilepas, mewajibkan catatan, lalu mengirim ke rute pembatalan peserta', async () => {
+        permissions.push('verifikasi.putuskan');
+        const w = mount(Show, {
+            props: { schedule: detail, participants: dua },
+        });
+        await w
+            .findAll('button')
+            .find((b) => b.text().includes('Batalkan pendaftaran'))!
+            .trigger('click');
+
+        const dialog = w.find('[data-testid="confirm"]');
+        expect(dialog.text()).toContain('Siswa 1');
+        expect(dialog.text()).toContain('kursi');
+        expect(
+            dialog.find('[data-testid="ok"]').attributes('disabled'),
+        ).toBeDefined();
+
+        await dialog.find('textarea').setValue('abc');
+        expect(
+            dialog.find('[data-testid="ok"]').attributes('disabled'),
+        ).toBeDefined();
+
+        await dialog
+            .find('textarea')
+            .setValue('Data ganda dengan pendaftaran lain.');
+        await dialog.find('[data-testid="ok"]').trigger('click');
+
+        expect(routerPost).toHaveBeenCalledWith(
+            '/jadwal.peserta.batalkan/5/1',
+            { note: 'Data ganda dengan pendaftaran lain.' },
+            expect.objectContaining({ preserveScroll: true }),
+        );
+    });
+});
+
 describe('Jadwal/Rekaman', () => {
+    it('menautkan ke halaman pindai bagi pemegang rekaman.pindai', () => {
+        const props = {
+            schedule: { ...detail, date: '2026-10-19' },
+            entries: [],
+            marked: [],
+            can_mark: true,
+        };
+        permissions.push('rekaman.lihat');
+        expect(mount(Rekaman, { props }).text()).not.toContain('Pindai tiket');
+
+        permissions.push('rekaman.pindai');
+        expect(mount(Rekaman, { props }).text()).toContain('Pindai tiket');
+    });
+
     it('daftar ceklis memakai istilah Terdaftar', () => {
         permissions.push('rekaman.lihat', 'rekaman.tandai');
         const w = mount(Rekaman, {

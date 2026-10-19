@@ -34,7 +34,7 @@ class VerificationController extends Controller
         return Inertia::render('Verifikasi/Index', [
             'queue' => $this->verification->queue()->through(fn (RegistrationStudent $e) => [
                 'id' => $e->id,
-                'student' => ['id' => $e->student->id, 'name' => $e->student->name, 'nisn' => $e->student->nisn],
+                'student' => ['id' => $e->student->id, 'name' => $e->student->name, 'nisn' => $e->student->nisn, 'ktp_langsung' => $this->eligibility->directKtp($e->student, $e->schedule->date)],
                 'school' => $e->schedule->school?->name,
                 'session' => $this->session($e->schedule),
                 'since' => $e->updated_at->toIso8601String(),
@@ -53,9 +53,16 @@ class VerificationController extends Controller
     {
         $entry->load(['student.school', 'student.documents', 'student.registrationEntries', 'schedule', 'histories.user']);
         $student = $entry->student;
+        $canRequestFix = ! $entry->schedule->isOpenForMarking();
 
         return Inertia::render('Verifikasi/Show', [
-            'entry' => EntryPresenter::row($entry) + ['session' => $this->session($entry->schedule)],
+            'entry' => EntryPresenter::row($entry) + [
+                'session' => $this->session($entry->schedule),
+                // Perbaikan hanya boleh diminta sampai sehari sebelum sesi; tenggat yang akan dikirim ditampilkan lebih dulu.
+                'can_request_fix' => $canRequestFix,
+                'fix_deadline' => $entry->fix_deadline_at?->toIso8601String(),
+                'fix_deadline_preview' => $canRequestFix ? $entry->schedule->fixDeadlineFrom(now())->toIso8601String() : null,
+            ],
             'student' => [
                 'id' => $student->id,
                 'name' => $student->name,
@@ -63,6 +70,7 @@ class VerificationController extends Controller
                 'nik' => Nik::mask($student->nik),
                 'birth_date' => $student->birth_date->toDateString(),
                 'age' => $this->eligibility->age($student, $entry->schedule->date),
+                'ktp_langsung' => $this->eligibility->directKtp($student, $entry->schedule->date),
                 'gender' => $student->gender,
                 'school' => $student->school?->name,
             ],

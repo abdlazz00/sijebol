@@ -5,6 +5,7 @@ use App\Domains\Notifications\Notifications\ScheduleNotification;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Registrations\Services\RegistrationService;
 use App\Domains\Schedules\Services\RecordingService;
+use App\Domains\Schedules\Services\ScanService;
 use App\Domains\Schools\Models\School;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Notification;
@@ -171,4 +172,30 @@ test('batalkan Tidak hadir diterima selama kuota masih longgar, Sudah rekaman ti
     $this->hariIni->update(['quota' => 3]);
     $this->service->undo($absen, 'Salah tandai', $this->admin);
     expect($absen->fresh()->status)->toBe(S::Terdaftar);
+});
+
+test('membatalkan penandaan hasil pindai mengosongkan scanned_at sehingga tiket dapat dipindai lagi', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-20 08:30:00', 'Asia/Jakarta'));
+    $sesi = makeSchedule($this->school, '2026-10-20');
+    $entry = makeEntry(S::Terdaftar, $this->school, schedule: $sesi);
+    $entry->update(['ticket_code' => 'KODE-ULANG']);
+    $pemindai = makeUserWith(['rekaman.pindai'], roleName: 'pemindai-undo');
+    $scan = app(ScanService::class);
+
+    $scan->scan($sesi, 'KODE-ULANG', $pemindai);
+    expect($entry->fresh()->scanned_at)->not->toBeNull();
+
+    $this->service->undo($entry->fresh(), 'Salah pindai', $this->admin);
+    expect($entry->fresh()->status)->toBe(S::Terdaftar)->and($entry->fresh()->scanned_at)->toBeNull();
+
+    $scan->scan($sesi, 'KODE-ULANG', $pemindai);
+    expect($entry->fresh()->status)->toBe(S::SudahRekaman)->and($entry->fresh()->scanned_at)->not->toBeNull();
+});
+
+test('penandaan manual tidak mengisi scanned_at', function () {
+    $entry = makeEntry(S::Terdaftar, schedule: $this->hariIni);
+
+    $this->service->mark($this->hariIni, [$entry->id], S::SudahRekaman, null, $this->admin);
+
+    expect($entry->fresh()->status)->toBe(S::SudahRekaman)->and($entry->fresh()->scanned_at)->toBeNull();
 });

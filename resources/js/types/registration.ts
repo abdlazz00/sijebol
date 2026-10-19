@@ -36,7 +36,12 @@ export type EntryRow = {
 
 export type QueueRow = {
     id: number;
-    student: { id: number; name: string; nisn: string };
+    student: {
+        id: number;
+        name: string;
+        nisn: string;
+        ktp_langsung: boolean;
+    };
     school: string | null;
     session: SessionBrief;
     since: string;
@@ -49,6 +54,7 @@ export type SelfEntry = {
     note: string | null;
     can_cancel: boolean;
     can_resubmit: boolean;
+    fix_deadline?: string | null;
     schedule: SessionBrief;
 };
 
@@ -63,3 +69,14 @@ export type OpenSchedule = SessionBrief & {
 
 /** Opsi filter sesi di antrean verifikasi. */
 export type QueueSession = SessionBrief & { school: string | null };
+
+/** Tiket Terdaftar (dengan kode QR) atau Sudah rekaman (tanpa kode). */
+export type Ticket = {
+    entry_id: number;
+    status: 'terdaftar' | 'sudah_rekaman';
+    code: string | null;
+    student_name: string;
+    ktp_langsung: boolean;
+    school: string;
+    schedule: SessionBrief;
+};

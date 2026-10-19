@@ -18,8 +18,8 @@ import type {
     ParticipantRow,
     ScheduleDetail,
 } from '@/types/schedule';
-import { router, useForm } from '@inertiajs/vue3';
-import { LoaderCircle } from '@lucide/vue';
+import { Link, router, useForm } from '@inertiajs/vue3';
+import { LoaderCircle, ScanLine } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -138,6 +138,18 @@ const crumbs = computed(() => [
         </div>
 
         <div class="flex max-w-[720px] flex-col gap-6">
+            <Button
+                v-if="can(PERMISSIONS.RekamanPindai) && !schedule.cancelled"
+                as-child
+                variant="outline"
+                class="h-10 self-start px-4"
+            >
+                <Link :href="route('jadwal.pindai.show', schedule.id)">
+                    <ScanLine class="size-4" aria-hidden="true" />
+                    Pindai tiket
+                </Link>
+            </Button>
+
             <InlineAlert v-if="!can_mark" variant="warning">
                 Penandaan dibuka pada {{ formatDate(schedule.date) }}.
             </InlineAlert>

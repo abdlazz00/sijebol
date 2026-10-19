@@ -47,13 +47,13 @@ test('validasi: lokasi, sekolah, jam, dan kuota; tanggal tidak boleh lewat', fun
     expect(Schedule::count())->toBe(0);
 });
 
-test('ubah: tanggal lampau yang tidak berubah boleh, memindahkan ke masa lalu tidak', function () {
+test('ubah: sesi yang sudah lewat ditolak, memindahkan sesi mendatang ke masa lalu juga', function () {
     $lewat = makeSchedule($this->school, now('Asia/Jakarta')->subDays(3)->toDateString());
     $this->actingAs($this->admin);
 
     $this->put("/jadwal/{$lewat->id}", formSesi(['date' => $lewat->date->toDateString(), 'location' => 'Lokasi baru']))
-        ->assertRedirect("/jadwal/{$lewat->id}");
-    expect($lewat->fresh()->location)->toBe('Lokasi baru');
+        ->assertSessionHas('error', 'Sesi yang sudah lewat tidak dapat diubah.');
+    expect($lewat->fresh()->location)->not->toBe('Lokasi baru');
 
     $depan = makeSchedule($this->school, $this->besok);
     $this->put("/jadwal/{$depan->id}", formSesi(['date' => now('Asia/Jakarta')->subDay()->toDateString()]))->assertSessionHasErrors('date');

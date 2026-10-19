@@ -2,6 +2,7 @@
 
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Schools\Models\School;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Notification;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -110,4 +111,60 @@ test('antrean memuat opsi sesi yang punya antrean, urut tanggal, untuk filter', 
         ->has('sessions', 2)
         ->where('sessions.0.id', $segera->id)->where('sessions.1.id', $nanti->id)
         ->where('sessions.0.start_time', '08:00')->where('sessions.0.school', $segera->school->name));
+});
+
+test('riwayat aksi sistem tampil sebagai "Sistem" di halaman keputusan', function () {
+    $entry = makeEntry(S::MenungguVerifikasi, student: eligibleStudent());
+    $entry->histories()->create(['from_status' => S::PerluPerbaikan, 'to_status' => S::MenungguVerifikasi, 'by_user_id' => null]);
+
+    $this->actingAs($this->petugas)->get("/verifikasi/{$entry->id}")->assertInertia(fn (Assert $p) => $p
+        ->where('entry.history.0.by', 'Sistem'));
+});
+
+test('halaman keputusan memuat aturan perbaikan: boleh sebelum hari sesi dengan tenggat sebenarnya, tidak pada hari sesi', function () {
+    $this->actingAs($this->petugas);
+    $nanti = makeEntry(S::MenungguVerifikasi, student: eligibleStudent(), schedule: makeSchedule(null, now('Asia/Jakarta')->addDays(10)->toDateString()));
+    $hariH = makeEntry(S::MenungguVerifikasi, student: eligibleStudent(), schedule: makeSchedule(null, now('Asia/Jakarta')->toDateString()));
+    $perbaikan = makeEntry(S::PerluPerbaikan, student: eligibleStudent());
+    $perbaikan->update(['fix_deadline_at' => '2026-10-30 10:00:00']);
+
+    $this->get("/verifikasi/{$nanti->id}")->assertInertia(fn (Assert $p) => $p
+        ->where('entry.can_request_fix', true)
+        ->where('entry.fix_deadline', null)
+        ->where('entry.fix_deadline_preview', fn ($v) => abs(Carbon::parse($v)->diffInMinutes(now()->addHours(48))) <= 1));
+    $this->get("/verifikasi/{$hariH->id}")->assertInertia(fn (Assert $p) => $p
+        ->where('entry.can_request_fix', false)->where('entry.fix_deadline_preview', null));
+    $this->get("/verifikasi/{$perbaikan->id}")->assertInertia(fn (Assert $p) => $p
+        ->where('entry.fix_deadline', fn ($v) => str_starts_with($v, '2026-10-30')));
+});
+
+test('kode tiket tidak pernah muncul di antrean maupun halaman keputusan', function () {
+    $this->actingAs($this->petugas);
+    $entry = makeEntry(S::MenungguVerifikasi, student: eligibleStudent());
+    $entry->update(['ticket_code' => 'KODE-RAHASIA-TIKET']);
+    $terdaftar = makeEntry(S::Terdaftar, student: eligibleStudent());
+    $terdaftar->update(['ticket_code' => 'KODE-RAHASIA-LAIN']);
+
+    expect($this->get('/verifikasi')->getContent())->not->toContain('KODE-RAHASIA')
+        ->and($this->get("/verifikasi/{$entry->id}")->getContent())->not->toContain('KODE-RAHASIA')
+        ->and($this->get("/verifikasi/{$terdaftar->id}")->getContent())->not->toContain('KODE-RAHASIA');
+});
+
+test('antrean dan keputusan menandai siswa KTP-el langsung menurut tanggal sesi entri', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+    $school = School::factory()->create();
+    $lebih = eligibleStudent($school);
+    $lebih->update(['birth_date' => '2009-10-19']);
+    $pas = eligibleStudent($school);
+    $pas->update(['birth_date' => '2009-10-20']);
+    $a = makeEntry(S::MenungguVerifikasi, $school, $lebih, makeSchedule($school, '2026-10-20'));
+    $b = makeEntry(S::MenungguVerifikasi, $school, $pas, makeSchedule($school, '2026-10-20'));
+    $this->actingAs($this->petugas);
+
+    $this->get('/verifikasi')->assertInertia(fn (Assert $p) => $p
+        ->where('queue.data', fn ($rows) => collect($rows)->pluck('student.ktp_langsung', 'id')->all() === [$a->id => true, $b->id => false]));
+    $this->get("/verifikasi/{$a->id}")->assertInertia(fn (Assert $p) => $p->where('student.ktp_langsung', true));
+    $this->get("/verifikasi/{$b->id}")->assertInertia(fn (Assert $p) => $p->where('student.ktp_langsung', false));
+
+    Carbon::setTestNow();
 });

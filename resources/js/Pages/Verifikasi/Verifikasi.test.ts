@@ -1,3 +1,4 @@
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import StatusTimeline from '@/Components/shared/StatusTimeline.vue';
 import Index from '@/Pages/Verifikasi/Index.vue';
 import Show from '@/Pages/Verifikasi/Show.vue';
@@ -47,7 +48,12 @@ const sesi: SessionBrief = {
 };
 const baris: QueueRow = {
     id: 11,
-    student: { id: 7, name: 'Budi Santoso', nisn: '0012345678' },
+    student: {
+        id: 7,
+        name: 'Budi Santoso',
+        nisn: '0012345678',
+        ktp_langsung: false,
+    },
     school: 'SMPN 1',
     session: sesi,
     since: '2026-10-01T10:00:00+07:00',
@@ -119,7 +125,12 @@ describe('Verifikasi/Index', () => {
 });
 
 describe('Verifikasi/Show', () => {
-    const entry: EntryRow & { session: SessionBrief } = {
+    const entry: EntryRow & {
+        session: SessionBrief;
+        can_request_fix: boolean;
+        fix_deadline: string | null;
+        fix_deadline_preview: string | null;
+    } = {
         id: 11,
         student: baris.student,
         status: 'menunggu_verifikasi',
@@ -135,6 +146,9 @@ describe('Verifikasi/Show', () => {
             },
         ],
         session: sesi,
+        can_request_fix: true,
+        fix_deadline: null,
+        fix_deadline_preview: '2026-10-21T10:00:00+07:00',
     };
     const props = {
         entry,
@@ -145,6 +159,7 @@ describe('Verifikasi/Show', () => {
             nik: '3201********1234',
             birth_date: '2009-05-01',
             age: 17,
+            ktp_langsung: false,
             gender: 'L' as const,
             school: 'SMPN 1',
         },
@@ -179,6 +194,85 @@ describe('Verifikasi/Show', () => {
     });
 });
 
+describe('Verifikasi/Show — fase 7c', () => {
+    const dasar = {
+        entry: {
+            id: 11,
+            student: baris.student,
+            status: 'menunggu_verifikasi' as const,
+            note: null,
+            decided_at: null,
+            history: [],
+            session: sesi,
+            can_request_fix: true,
+            fix_deadline: null,
+            fix_deadline_preview: '2026-10-21T10:00:00+07:00',
+        },
+        student: {
+            id: 7,
+            name: 'Budi Santoso',
+            nisn: '0012345678',
+            nik: '3201********1234',
+            birth_date: '2009-05-01',
+            age: 17,
+            ktp_langsung: false,
+            gender: 'L' as const,
+            school: 'SMPN 1',
+        },
+        documents: [],
+        eligibility: { eligible: true, reasons: [] },
+    };
+    const radio = (w: ReturnType<typeof mount>, value: string) =>
+        w.find(`input[type="radio"][value="${value}"]`);
+
+    it('Minta perbaikan nonaktif dengan keterangan tertulis bila sesi sudah hari-H; Setujui dan Tolak tetap bisa', () => {
+        permissions.push('verifikasi.putuskan');
+        const w = mount(Show, {
+            props: {
+                ...dasar,
+                entry: {
+                    ...dasar.entry,
+                    can_request_fix: false,
+                    fix_deadline_preview: null,
+                },
+            },
+        });
+
+        expect(radio(w, 'fix').attributes('disabled')).toBeDefined();
+        expect(radio(w, 'approve').attributes('disabled')).toBeUndefined();
+        expect(radio(w, 'reject').attributes('disabled')).toBeUndefined();
+        expect(w.text()).toContain('Hanya sampai sehari sebelum sesi.');
+    });
+
+    it('memilih Minta perbaikan menampilkan tenggat sebenarnya yang akan dikirim', async () => {
+        permissions.push('verifikasi.putuskan');
+        const w = mount(Show, { props: dasar });
+
+        expect(radio(w, 'fix').attributes('disabled')).toBeUndefined();
+        await radio(w, 'fix').setValue(true);
+
+        expect(w.text()).toContain('Siswa diberi batas sampai');
+        expect(w.text()).toContain('21 Okt 2026');
+    });
+
+    it('menampilkan tenggat perbaikan yang sedang berjalan', () => {
+        const w = mount(Show, {
+            props: {
+                ...dasar,
+                entry: {
+                    ...dasar.entry,
+                    status: 'perlu_perbaikan' as const,
+                    fix_deadline: '2026-10-21T10:00:00+07:00',
+                    can_request_fix: true,
+                },
+            },
+        });
+
+        expect(w.text()).toContain('Batas perbaikan');
+        expect(w.text()).toContain('21 Okt 2026');
+    });
+});
+
 describe('StatusTimeline', () => {
     it('riwayat tanpa status asal tampil sebagai "Mendaftar"', () => {
         const w = mount(StatusTimeline, {
@@ -204,5 +298,68 @@ describe('StatusTimeline', () => {
 
         expect(w.text()).toContain('Mendaftar');
         expect(w.text()).toMatch(/Menunggu verifikasi →\s+Terdaftar/);
+    });
+});
+
+describe('Verifikasi — penanda KTP-el langsung', () => {
+    it('antrean menampilkan lencana hanya pada siswa yang ktp_langsung', () => {
+        const w = mount(Index, {
+            props: {
+                queue: paginator([
+                    {
+                        ...baris,
+                        id: 1,
+                        student: { ...baris.student, ktp_langsung: true },
+                    },
+                    { ...baris, id: 2 },
+                ]),
+                filters: {},
+                schools: null,
+                sessions: [],
+            },
+        });
+
+        expect(w.findAllComponents(KtpLangsungBadge)).toHaveLength(1);
+    });
+
+    it('halaman keputusan menampilkan lencana dan kalimat penjelas hanya bila ktp_langsung', () => {
+        const dasar = {
+            entry: {
+                id: 11,
+                student: baris.student,
+                status: 'menunggu_verifikasi' as const,
+                note: null,
+                decided_at: null,
+                history: [],
+                session: sesi,
+                can_request_fix: true,
+                fix_deadline: null,
+                fix_deadline_preview: '2026-10-21T10:00:00+07:00',
+            },
+            student: {
+                id: 7,
+                name: 'Budi Santoso',
+                nisn: '0012345678',
+                nik: '3201********1234',
+                birth_date: '2009-05-01',
+                age: 17,
+                ktp_langsung: false,
+                gender: 'L' as const,
+                school: 'SMPN 1',
+            },
+            documents: [],
+            eligibility: { eligible: true, reasons: [] },
+        };
+        const ya = mount(Show, {
+            props: {
+                ...dasar,
+                student: { ...dasar.student, ktp_langsung: true },
+            },
+        });
+        const tidak = mount(Show, { props: dasar });
+
+        expect(ya.findComponent(KtpLangsungBadge).exists()).toBe(true);
+        expect(ya.text()).toContain('KTP-el dapat langsung diterbitkan');
+        expect(tidak.findComponent(KtpLangsungBadge).exists()).toBe(false);
     });
 });

@@ -3,6 +3,7 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
 import FormField from '@/Components/shared/FormField.vue';
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import Pagination from '@/Components/shared/Pagination.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
@@ -164,6 +165,7 @@ function destroy() {
                             >
                                 NISN {{ row.nisn }}
                             </p>
+                            <KtpLangsungBadge v-if="row.ktp_langsung" />
                         </div>
                     </template>
                     <template #cell-nik="{ row }">

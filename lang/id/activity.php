@@ -31,6 +31,8 @@ return [
         'rekaman.ditandai' => 'Rekaman ditandai',
         'laporan.diekspor' => 'Laporan diekspor',
         'rekaman.dibatalkan' => 'Penandaan rekaman dibatalkan',
+        'rekaman.dipindai' => 'Tiket dipindai',
+        'rekaman.pindai-ditolak' => 'Pindai tiket ditolak',
         'jadwal.dihapus' => 'Jadwal dihapus',
         'jadwal.dipindahkan' => 'Siswa dipindahkan antar-jadwal',
     ],

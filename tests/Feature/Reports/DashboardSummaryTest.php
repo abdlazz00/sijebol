@@ -115,3 +115,51 @@ test('semua tautan aksi dan aksi cepat beranda mengarah ke rute yang ada', funct
         expect(fn () => Route::getRoutes()->match(Request::create($href, 'GET')))->not->toThrow(Throwable::class);
     }
 });
+
+test('tren bulanan Sudah Rekam mengikuti bulan tanggal sesi, bukan updated_at', function () {
+    Carbon\Carbon::setTestNow(Carbon\Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+    $sekolah = School::factory()->create();
+    $okt = makeEntry(S::SudahRekaman, $sekolah, schedule: makeSchedule($sekolah, '2026-10-12'));
+    $okt->forceFill(['updated_at' => '2026-03-05 10:00:00'])->saveQuietly();
+    makeEntry(S::SudahRekaman, $sekolah, schedule: makeSchedule($sekolah, '2026-02-02'));
+    makeEntry(S::SudahRekaman, $sekolah, schedule: makeSchedule($sekolah, '2025-10-12'));
+    makeEntry(S::Terdaftar, $sekolah, schedule: makeSchedule($sekolah, '2026-10-13'));
+    $staf = makeUserWith(['jadwal.lihat'], roleName: 'staf-tren');
+
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->where('charts.monthly_trend.series.1.name', 'Sudah Rekam')
+        ->where('charts.monthly_trend.series.1.data', [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])
+        ->where('charts.monthly_trend.series.0.name', 'Terdaftar'));
+
+    Carbon\Carbon::setTestNow();
+});
+
+test('tren bulanan Terdaftar menghitung pendaftaran dibuat pada tahun berjalan per bulan', function () {
+    Carbon\Carbon::setTestNow(Carbon\Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+    $sekolah = School::factory()->create();
+    $a = makeEntry(S::Terdaftar, $sekolah);
+    $a->forceFill(['created_at' => '2026-01-10 10:00:00'])->saveQuietly();
+    $b = makeEntry(S::Ditolak, $sekolah);
+    $b->forceFill(['created_at' => '2026-01-20 10:00:00'])->saveQuietly();
+    $lama = makeEntry(S::Terdaftar, $sekolah);
+    $lama->forceFill(['created_at' => '2025-01-10 10:00:00'])->saveQuietly();
+    $staf = makeUserWith(['jadwal.lihat'], roleName: 'staf-tren-daftar');
+
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->where('charts.monthly_trend.series.0.data.0', 2)
+        ->where('charts.monthly_trend.series.0.data.9', 0));
+
+    Carbon\Carbon::setTestNow();
+});
+
+test('aksi cepat: Pindai Tiket bagi pemegang rekaman.pindai, tanpa Input Hasil Perekaman', function () {
+    $admin = makeUserWith(['jadwal.lihat', 'rekaman.pindai'], roleName: 'admin-aksi');
+    $tanpa = makeUserWith(['jadwal.lihat'], roleName: 'staf-tanpa-pindai');
+
+    $dengan = collect($this->actingAs($admin)->get('/dashboard')->viewData('page')['props']['quick_actions']);
+    $tanpaAksi = collect($this->actingAs($tanpa)->get('/dashboard')->viewData('page')['props']['quick_actions']);
+
+    expect($dengan->firstWhere('label', 'Pindai Tiket'))->toMatchArray(['href' => '/jadwal', 'icon' => 'scan-line'])
+        ->and($dengan->pluck('label'))->not->toContain('Input Hasil Perekaman')
+        ->and($tanpaAksi->pluck('label'))->not->toContain('Pindai Tiket')->not->toContain('Input Hasil Perekaman');
+});

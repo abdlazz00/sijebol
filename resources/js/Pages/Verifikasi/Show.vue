@@ -4,13 +4,19 @@ import DocumentPreviewDialog from '@/Components/shared/DocumentPreviewDialog.vue
 import FormField from '@/Components/shared/FormField.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import StatusTimeline from '@/Components/shared/StatusTimeline.vue';
 import { Button } from '@/Components/ui/button';
 import { Textarea } from '@/Components/ui/textarea';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate, formatDateWithDay, formatTimeRange } from '@/lib/date';
+import {
+    formatDate,
+    formatDateTime,
+    formatDateWithDay,
+    formatTimeRange,
+} from '@/lib/date';
 import { formatBytes } from '@/lib/files';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { PERMISSIONS } from '@/lib/permissions';
@@ -21,7 +27,12 @@ import { Download, Eye, LoaderCircle } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
-    entry: EntryRow & { session: SessionBrief };
+    entry: EntryRow & {
+        session: SessionBrief;
+        can_request_fix: boolean;
+        fix_deadline: string | null;
+        fix_deadline_preview: string | null;
+    };
     student: {
         id: number;
         name: string;
@@ -29,6 +40,7 @@ const props = defineProps<{
         nik: string;
         birth_date: string;
         age: number;
+        ktp_langsung: boolean;
         gender: 'L' | 'P';
         school: string | null;
     };
@@ -51,23 +63,28 @@ const canDecide = computed(
         can(PERMISSIONS.VerifikasiPutuskan),
 );
 
-const decisions = [
+const decisions = computed(() => [
     {
         value: 'approve',
         label: 'Setujui',
         hint: 'Siswa terdaftar di sesi ini.',
+        disabled: false,
     },
     {
         value: 'fix',
         label: 'Minta perbaikan',
-        hint: 'Siswa diminta membetulkan data atau dokumen; kursi tetap ditahan.',
+        hint: props.entry.can_request_fix
+            ? 'Siswa diminta membetulkan data atau dokumen; kursi tetap ditahan sampai batas waktu.'
+            : 'Hanya sampai sehari sebelum sesi.',
+        disabled: !props.entry.can_request_fix,
     },
     {
         value: 'reject',
         label: 'Tolak',
         hint: 'Pendaftaran ditolak. Kursi dilepas.',
+        disabled: false,
     },
-];
+]);
 
 const form = useForm({ decision: '', note: '' });
 const clientErrors = ref<Record<string, string>>({});
@@ -109,6 +126,14 @@ const info = computed(() => [
         value: props.student.gender === 'L' ? 'Laki-laki' : 'Perempuan',
     },
     { label: 'Sekolah', value: props.student.school },
+    ...(props.entry.status === 'perlu_perbaikan' && props.entry.fix_deadline
+        ? [
+              {
+                  label: 'Batas perbaikan',
+                  value: formatDateTime(props.entry.fix_deadline),
+              },
+          ]
+        : []),
     {
         label: 'Sesi',
         value: `${formatDateWithDay(props.entry.session.date)} · ${formatTimeRange(props.entry.session.start_time, props.entry.session.end_time)} · ${props.entry.session.location}`,
@@ -132,7 +157,15 @@ const crumbs = computed(() => [
                     NISN {{ student.nisn }}
                 </p>
                 <StatusBadge :status="entry.status" kind="registration" />
+                <KtpLangsungBadge v-if="student.ktp_langsung" />
             </div>
+            <p
+                v-if="student.ktp_langsung"
+                class="text-muted-foreground text-sm leading-5"
+            >
+                KTP-el dapat langsung diterbitkan: siswa sudah lebih dari 17
+                tahun pada tanggal sesi.
+            </p>
         </div>
 
         <div class="flex max-w-[720px] flex-col gap-6">
@@ -219,6 +252,7 @@ const crumbs = computed(() => [
                                 type="radio"
                                 name="decision"
                                 :value="d.value"
+                                :disabled="d.disabled"
                                 class="accent-primary mt-1 size-4"
                                 :aria-invalid="!!error('decision')"
                             />
@@ -229,6 +263,21 @@ const crumbs = computed(() => [
                                 <span class="text-muted-foreground text-xs">{{
                                     d.hint
                                 }}</span>
+                                <span
+                                    v-if="
+                                        d.value === 'fix' &&
+                                        form.decision === 'fix' &&
+                                        entry.fix_deadline_preview
+                                    "
+                                    class="mt-1 block text-xs leading-4 font-medium"
+                                >
+                                    Siswa diberi batas sampai
+                                    {{
+                                        formatDateTime(
+                                            entry.fix_deadline_preview,
+                                        )
+                                    }}.
+                                </span>
                             </span>
                         </label>
                         <p

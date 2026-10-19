@@ -34,6 +34,7 @@ export type ParticipantRow = {
     id: number;
     student: { id: number; name: string; nisn: string };
     status: RegistrationStatus;
+    can_cancel?: boolean;
 };
 
 export type ChecklistItem = {
@@ -41,3 +42,17 @@ export type ChecklistItem = {
     name: string;
     nisn: string;
 };
+
+/** Hitungan di halaman pindai: Terdaftar (belum) dan Sudah rekaman (sudah). */
+export type ScanCounts = { waiting: number; done: number };
+
+/** Jawaban JSON endpoint pindai: 200 ok, 422 ditolak. */
+export type ScanResponse =
+    | {
+          status: 'ok';
+          message: string;
+          student: { name: string; nisn: string; ktp_langsung: boolean };
+          scanned_at: string;
+          counts: ScanCounts;
+      }
+    | { status: 'rejected'; message: string };

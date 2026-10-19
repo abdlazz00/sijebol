@@ -66,3 +66,13 @@ test('aturan password: minimal 8, huruf, dan angka', function () {
         ->and($rule('abc1234'))->toBeFalse()
         ->and($rule('abcd1234'))->toBeTrue();
 });
+
+test('izin rekaman.pindai hanya dimiliki admin kecamatan dan super admin', function () {
+    $this->seed(AccessSeeder::class);
+
+    expect(Permission::values())->toContain('rekaman.pindai')
+        ->and(Role::findByName('super-admin')->hasPermissionTo('rekaman.pindai'))->toBeTrue()
+        ->and(Role::findByName('admin-kecamatan')->hasPermissionTo('rekaman.pindai'))->toBeTrue()
+        ->and(Role::findByName('operator-sekolah')->hasPermissionTo('rekaman.pindai'))->toBeFalse()
+        ->and(Role::findByName('siswa')->hasPermissionTo('rekaman.pindai'))->toBeFalse();
+});

@@ -16,7 +16,7 @@ import { PERMISSIONS } from '@/lib/permissions';
 import { registrationStatus } from '@/lib/status';
 import type { ParticipantRow, ScheduleDetail } from '@/types/schedule';
 import { Link, router } from '@inertiajs/vue3';
-import { Ban, ClipboardCheck, Pencil, Trash2 } from '@lucide/vue';
+import { Ban, ClipboardCheck, Pencil, ScanLine, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -87,10 +87,45 @@ const info = computed(() => [
     { label: 'Dibuat oleh', value: props.schedule.created_by ?? null },
 ]);
 
-const columns = [
+// Pembatalan pendaftaran oleh admin: server menentukan baris mana yang boleh (can_cancel); izin dicek di sini.
+const canCancelEntries = computed(
+    () =>
+        can(PERMISSIONS.VerifikasiPutuskan) &&
+        props.participants.some((p) => p.can_cancel),
+);
+const columns = computed(() => [
     { key: 'student', label: 'Siswa' },
     { key: 'status', label: 'Status', class: 'w-[176px]' },
-];
+    ...(canCancelEntries.value
+        ? [{ key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' }]
+        : []),
+]);
+
+const cancelling = ref<ParticipantRow | null>(null);
+const entryNote = ref('');
+const entryOpen = computed({
+    get: () => cancelling.value !== null,
+    set: (open: boolean) => {
+        if (!open) cancelling.value = null;
+    },
+});
+
+function startCancelEntry(row: ParticipantRow) {
+    entryNote.value = '';
+    cancelling.value = row;
+}
+
+function cancelEntry() {
+    if (!cancelling.value) return;
+    router.post(
+        route('jadwal.peserta.batalkan', [
+            props.schedule.id,
+            cancelling.value.id,
+        ]),
+        { note: entryNote.value.trim() },
+        { preserveScroll: true },
+    );
+}
 
 const cancelOpen = ref(false);
 const cancelNote = ref('');
@@ -151,6 +186,16 @@ const crumbs = computed(() => [
                     <Link :href="route('jadwal.edit', schedule.id)">
                         <Pencil class="size-4" aria-hidden="true" />
                         Ubah
+                    </Link>
+                </Button>
+                <Button
+                    v-if="can(PERMISSIONS.RekamanPindai) && !schedule.cancelled"
+                    as-child
+                    class="h-10 px-4"
+                >
+                    <Link :href="route('jadwal.pindai.show', schedule.id)">
+                        <ScanLine class="size-4" aria-hidden="true" />
+                        Pindai tiket
                     </Link>
                 </Button>
                 <Button
@@ -234,6 +279,24 @@ const crumbs = computed(() => [
                     <template #cell-status="{ row }">
                         <StatusBadge :status="row.status" kind="registration" />
                     </template>
+                    <template #cell-actions="{ row }">
+                        <div v-if="row.can_cancel" class="flex justify-end">
+                            <RowActions
+                                :label="`Aksi untuk ${row.student.name}`"
+                            >
+                                <DropdownMenuItem
+                                    class="text-danger h-10 gap-3 px-3 text-sm font-medium"
+                                    @select="startCancelEntry(row)"
+                                >
+                                    <Ban class="size-4" aria-hidden="true" />
+                                    Batalkan pendaftaran
+                                    <span class="sr-only">{{
+                                        row.student.name
+                                    }}</span>
+                                </DropdownMenuItem>
+                            </RowActions>
+                        </div>
+                    </template>
                     <template #empty>
                         <p class="text-muted-foreground p-6 text-sm">
                             Belum ada siswa yang mendaftar di sesi ini.
@@ -260,6 +323,30 @@ const crumbs = computed(() => [
                 <Textarea
                     :id="id"
                     v-model="cancelNote"
+                    rows="3"
+                    maxlength="500"
+                    :aria-describedby="describedBy"
+                />
+            </FormField>
+        </ConfirmDialog>
+
+        <ConfirmDialog
+            v-model:open="entryOpen"
+            :title="`Batalkan pendaftaran ${cancelling?.student.name ?? ''}?`"
+            description="Pendaftaran dibatalkan, kursi dilepas, dan siswa diberi tahu. Siswa dapat mendaftar ke sesi lain."
+            confirm-label="Batalkan pendaftaran"
+            destructive
+            :confirm-disabled="entryNote.trim().length < 5"
+            @confirm="cancelEntry"
+        >
+            <FormField
+                v-slot="{ id, describedBy }"
+                label="Catatan"
+                hint="Wajib, minimal 5 karakter; dikirim ke siswa."
+            >
+                <Textarea
+                    :id="id"
+                    v-model="entryNote"
                     rows="3"
                     maxlength="500"
                     :aria-describedby="describedBy"

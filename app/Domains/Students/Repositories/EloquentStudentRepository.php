@@ -18,7 +18,7 @@ class EloquentStudentRepository implements StudentRepositoryInterface
 
     public function paginate(int $perPage = 20): LengthAwarePaginator
     {
-        $base = Student::query()->with(['school', 'documents', 'registrationEntries'])->orderBy('name')->orderBy('id');
+        $base = Student::query()->with(['school', 'documents', 'registrationEntries.schedule'])->orderBy('name')->orderBy('id');
 
         return QueryBuilder::for($base)
             ->allowedFilters(

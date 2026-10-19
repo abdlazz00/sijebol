@@ -8,6 +8,7 @@ use App\Domains\Registrations\Services\RegistrationService;
 use App\Domains\Schedules\Http\Controllers\ScheduleController;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Students\Models\Student;
+use App\Domains\Students\Services\EligibilityService;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -17,7 +18,10 @@ use Inertia\Response;
 /** Halaman Sesi rekaman milik akun siswa; setiap aksi dibatasi ke akun siswa dan pendaftarannya sendiri. */
 class SelfRegistrationController extends Controller
 {
-    public function __construct(private readonly RegistrationService $registrations) {}
+    public function __construct(
+        private readonly RegistrationService $registrations,
+        private readonly EligibilityService $eligibility,
+    ) {}
 
     public function index(Request $request): Response
     {
@@ -57,6 +61,33 @@ class SelfRegistrationController extends Controller
         return redirect()->route('saya.sesi')->with('success', 'Pendaftaran diajukan ulang. Petugas akan memeriksanya kembali.');
     }
 
+    /** Tiket hanya untuk pendaftaran Terdaftar (dengan QR) atau Sudah rekaman (tanpa QR); status lain 404. */
+    public function ticket(Request $request, RegistrationStudent $entry): Response
+    {
+        $this->student($request);
+        abort_unless(in_array($entry->status, [RegistrationStatus::Terdaftar, RegistrationStatus::SudahRekaman], true), 404);
+
+        $schedule = $entry->schedule()->with('school')->firstOrFail();
+
+        return Inertia::render('Saya/Tiket', [
+            'ticket' => [
+                'entry_id' => $entry->id,
+                'status' => $entry->status->value,
+                'code' => $entry->status === RegistrationStatus::Terdaftar ? $entry->ticket_code : null,
+                'student_name' => $entry->student->name,
+                'ktp_langsung' => $this->eligibility->directKtp($entry->student, $schedule->date),
+                'school' => $schedule->school->name,
+                'schedule' => [
+                    'id' => $schedule->id,
+                    'date' => $schedule->date->toDateString(),
+                    'start_time' => ScheduleController::time($schedule->start_time),
+                    'end_time' => ScheduleController::time($schedule->end_time),
+                    'location' => $schedule->location,
+                ],
+            ],
+        ]);
+    }
+
     /** Akun non-siswa tidak diberi tahu bahwa rute ini ada. */
     private function student(Request $request): ?Student
     {
@@ -75,7 +106,8 @@ class SelfRegistrationController extends Controller
             'status' => $entry->status->value,
             'note' => $entry->note,
             'can_cancel' => $changeable && in_array($entry->status, [RegistrationStatus::MenungguVerifikasi, RegistrationStatus::PerluPerbaikan, RegistrationStatus::Terdaftar], true),
-            'can_resubmit' => $changeable && $entry->status === RegistrationStatus::PerluPerbaikan,
+            'can_resubmit' => $changeable && $entry->status === RegistrationStatus::PerluPerbaikan && ! $entry->fix_deadline_at?->isPast(),
+            'fix_deadline' => $entry->fix_deadline_at?->toIso8601String(),
             'schedule' => [
                 'id' => $entry->schedule->id,
                 'date' => $entry->schedule->date->toDateString(),

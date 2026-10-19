@@ -42,7 +42,12 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
     public function upcoming(int $limit): Collection
     {
         return Schedule::query()->with('school')
-            ->withCount(['entries as taken_count' => fn (Builder $q) => $q->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat()))])
+            ->withCount([
+                'entries as taken_count' => fn (Builder $q) => $q->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat())),
+                'entries as waiting_count' => fn (Builder $q) => $q->where('status', RegistrationStatus::MenungguVerifikasi->value),
+                'entries as present_count' => fn (Builder $q) => $q->where('status', RegistrationStatus::SudahRekaman->value),
+            ])
+            ->whereNull('cancelled_at')
             ->where('date', '>=', Schedule::today())->orderBy('date')->orderBy('id')->limit($limit)->get();
     }
 

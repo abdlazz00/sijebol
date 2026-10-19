@@ -1,7 +1,10 @@
 <?php
 
+use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\RegistrationNotification;
 use App\Domains\Notifications\Notifications\StudentCorrectedNotification;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
+use App\Domains\Registrations\Services\StatusTransitioner;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use Illuminate\Support\Facades\Notification;
@@ -78,15 +81,57 @@ test('setelah sekolah diganti, siswa tetap dapat membuka data dan melihat sekola
         ->where('school', 'SMAN Baru'));
 });
 
-test('sekolah tidak dapat diganti bila siswa masih punya pendaftaran aktif', function () {
+test('ganti sekolah membatalkan pendaftaran pra-kehadiran, melepas kursi, dan memberi tahu siswa', function (S $status) {
     $baru = School::factory()->create();
-    makeEntry(S::MenungguVerifikasi, student: $this->siswa);
+    $entry = makeEntry($status, student: $this->siswa);
+    $sesi = $entry->schedule;
+
+    $this->actingAs($this->admin)->put("/siswa/{$this->siswa->id}", koreksi(['school_id' => $baru->id]))->assertSessionHasNoErrors();
+
+    $fresh = $entry->fresh();
+    expect(Student::withoutGlobalScopes()->find($this->siswa->id)->school_id)->toBe($baru->id)
+        ->and($this->akun->fresh()->school_id)->toBe($baru->id)
+        ->and($fresh->status)->toBe(S::Dibatalkan)
+        ->and($fresh->note)->toContain('Sekolah Anda diganti')
+        ->and($sesi->seatsTaken())->toBe(0);
+    Notification::assertSentTo($this->akun, RegistrationNotification::class, fn (RegistrationNotification $n) => $n->title() === 'Pendaftaran dibatalkan petugas'
+        && str_contains($n->body(), 'NIK salah ketik saat mendaftar.'));
+})->with([[S::MenungguVerifikasi], [S::PerluPerbaikan], [S::Terdaftar]]);
+
+test('ganti sekolah ditolak total bila siswa sudah direkam: tidak ada yang berubah', function () {
+    $baru = School::factory()->create();
+    $entry = makeEntry(S::SudahRekaman, student: $this->siswa);
 
     $this->actingAs($this->admin)->put("/siswa/{$this->siswa->id}", koreksi(['school_id' => $baru->id]))
-        ->assertSessionHas('error');
+        ->assertSessionHas('error', 'Sekolah tidak dapat diganti: siswa sudah direkam.');
 
     $siswa = Student::withoutGlobalScopes()->find($this->siswa->id);
-    expect($siswa->school_id)->toBe($this->school->id)->and($siswa->name)->not->toBe('Nama Benar');
+    expect($siswa->school_id)->toBe($this->school->id)->and($siswa->name)->not->toBe('Nama Benar')
+        ->and($entry->fresh()->status)->toBe(S::SudahRekaman);
+    Notification::assertNothingSent();
+});
+
+test('kegagalan saat membatalkan kursi membatalkan seluruh koreksi (atomik)', function () {
+    $baru = School::factory()->create();
+    $entry = makeEntry(S::Terdaftar, student: $this->siswa);
+    $this->mock(StatusTransitioner::class, fn ($m) => $m->shouldReceive('move')->andThrow(new AccessRuleException('Gagal tiruan.')));
+
+    $this->actingAs($this->admin)->put("/siswa/{$this->siswa->id}", koreksi(['school_id' => $baru->id]))->assertSessionHas('error', 'Gagal tiruan.');
+
+    $siswa = Student::withoutGlobalScopes()->find($this->siswa->id);
+    expect($siswa->school_id)->toBe($this->school->id)->and($siswa->name)->not->toBe('Nama Benar')
+        ->and($this->akun->fresh()->school_id)->toBe($this->school->id)
+        ->and($entry->fresh()->status)->toBe(S::Terdaftar);
+    Notification::assertNothingSent();
+});
+
+test('koreksi tanpa ganti sekolah tidak menyentuh pendaftaran', function () {
+    $entry = makeEntry(S::Terdaftar, student: $this->siswa);
+
+    $this->actingAs($this->admin)->put("/siswa/{$this->siswa->id}", koreksi())->assertSessionHasNoErrors();
+
+    expect($entry->fresh()->status)->toBe(S::Terdaftar);
+    Notification::assertNotSentTo($this->akun, RegistrationNotification::class);
 });
 
 test('pelaku yang terikat sekolah tidak dapat memindah sekolah siswa', function () {

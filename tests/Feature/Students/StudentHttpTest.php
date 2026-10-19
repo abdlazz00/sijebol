@@ -3,6 +3,7 @@
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
+use Carbon\Carbon;
 use Inertia\Testing\AssertableInertia as Assert;
 
 function operatorSekolah(School $school, array $extra = [])
@@ -90,4 +91,22 @@ test('filter eligible tidak menampilkan siswa dengan entri aktif', function () {
     $this->actingAs($user)->get('/siswa?filter[eligible]=1')->assertInertia(fn (Assert $p) => $p
         ->has('students.data', 1)
         ->where('students.data.0.id', $bebas->id));
+});
+
+test('penanda KTP-el langsung mengikuti tanggal sesi pendaftaran aktif', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+    $a = School::factory()->create();
+    $lebih = Student::factory()->for($a)->create(['name' => 'Lebih', 'birth_date' => '2009-10-19']);
+    makeEntry(RegistrationStatus::Terdaftar, $a, $lebih, makeSchedule($a, '2026-10-20'));
+    $pas = Student::factory()->for($a)->create(['name' => 'Pas', 'birth_date' => '2009-10-20']);
+    makeEntry(RegistrationStatus::Terdaftar, $a, $pas, makeSchedule($a, '2026-10-20'));
+    Student::factory()->for($a)->create(['name' => 'Enam', 'birth_date' => '2010-10-19']);
+    $this->actingAs(operatorSekolah($a));
+
+    $this->get('/siswa')->assertInertia(fn (Assert $p) => $p
+        ->where('students.data', fn ($rows) => collect($rows)->pluck('ktp_langsung', 'name')->all() === ['Enam' => false, 'Lebih' => true, 'Pas' => false]));
+    $this->get("/siswa/{$lebih->id}")->assertInertia(fn (Assert $p) => $p->where('student.ktp_langsung', true));
+    $this->get("/siswa/{$pas->id}")->assertInertia(fn (Assert $p) => $p->where('student.ktp_langsung', false));
+
+    Carbon::setTestNow();
 });

@@ -228,3 +228,23 @@ test('siswa lain tidak ditemukan lewat scope pemilik', function () {
 
     expect(RegistrationStudent::find($entryB->id))->toBeNull();
 });
+
+test('ajukan ulang ditolak setelah tenggat perbaikan walau perintah kedaluwarsa belum jalan', function () {
+    $entry = makeEntry(S::PerluPerbaikan, $this->school, $this->siswa, $this->sesi);
+    $entry->update(['fix_deadline_at' => now()->subMinute()]);
+    $this->actingAs($this->akun);
+
+    expect(fn () => $this->service->resubmit($entry, $this->akun))->toThrow(AccessRuleException::class, 'Batas waktu perbaikan sudah lewat.');
+    expect($entry->fresh()->status)->toBe(S::PerluPerbaikan);
+});
+
+test('ajukan ulang sebelum tenggat mengosongkan tenggat dan penanda pengingat', function () {
+    $entry = makeEntry(S::PerluPerbaikan, $this->school, $this->siswa, $this->sesi);
+    $entry->update(['fix_deadline_at' => now()->addHours(5), 'fix_reminded_at' => now()->subHour()]);
+    $this->actingAs($this->akun);
+
+    $this->service->resubmit($entry, $this->akun);
+
+    $fresh = $entry->fresh();
+    expect($fresh->status)->toBe(S::MenungguVerifikasi)->and($fresh->fix_deadline_at)->toBeNull()->and($fresh->fix_reminded_at)->toBeNull();
+});

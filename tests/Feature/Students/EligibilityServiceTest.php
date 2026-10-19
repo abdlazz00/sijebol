@@ -71,3 +71,37 @@ test('entri yang sedang diperiksa tidak dihitung sebagai bentrok', function () {
 
     expect(app(EligibilityService::class)->check($siswa->fresh('documents'), null, $entry->id)['eligible'])->toBeTrue();
 });
+
+test('KTP-el langsung hanya bila tanggal acuan melewati ulang tahun ke-17', function (string $lahir, string $acuan, bool $langsung) {
+    $s = Student::factory()->create(['birth_date' => $lahir]);
+
+    expect(app(EligibilityService::class)->directKtp($s, Carbon::parse($acuan, 'Asia/Jakarta')))->toBe($langsung);
+})->with([
+    'sehari sebelum ulang tahun ke-17' => ['2009-10-20', '2026-10-19', false],
+    'tepat ulang tahun ke-17' => ['2009-10-20', '2026-10-20', false],
+    'sehari setelah ulang tahun ke-17' => ['2009-10-20', '2026-10-21', true],
+    'umur 16 tahun' => ['2010-10-20', '2026-10-21', false],
+    'lahir 29 Februari, 28 Februari tahun biasa' => ['2008-02-29', '2025-02-28', false],
+    'lahir 29 Februari, 1 Maret tahun biasa' => ['2008-02-29', '2025-03-01', true],
+]);
+
+test('KTP-el langsung memakai hari ini bila tanpa tanggal acuan', function () {
+    Carbon::setTestNow(Carbon::parse('2026-10-21 09:00:00', 'Asia/Jakarta'));
+    $s = Student::factory()->create(['birth_date' => '2009-10-20']);
+
+    expect(app(EligibilityService::class)->directKtp($s))->toBeTrue();
+
+    Carbon::setTestNow();
+});
+
+test('tanggal sesi aktif diambil dari pendaftaran aktif, kosong bila hanya ada yang ditolak', function () {
+    $s = Student::factory()->create();
+    $sesi = makeSchedule($s->school, '2026-10-25');
+    makeEntry(S::Ditolak, $s->school, $s, makeSchedule($s->school, '2026-10-22'));
+    $eligibility = app(EligibilityService::class);
+
+    expect($eligibility->activeSessionDate($s->load('registrationEntries.schedule')))->toBeNull();
+
+    makeEntry(S::Terdaftar, $s->school, $s, $sesi);
+    expect($eligibility->activeSessionDate($s->load('registrationEntries.schedule'))->toDateString())->toBe('2026-10-25');
+});

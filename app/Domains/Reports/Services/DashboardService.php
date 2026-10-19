@@ -5,6 +5,7 @@ namespace App\Domains\Reports\Services;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Reports\Repositories\Contracts\ReportRepositoryInterface;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
@@ -168,8 +169,8 @@ class DashboardService
             if ($user->can('jadwal.buat')) {
                 $actions[] = ['label' => 'Buat Sesi Rekaman', 'href' => route('jadwal.index', absolute: false), 'icon' => 'calendar-plus', 'variant' => 'green'];
             }
-            if ($user->can('rekaman.tambah') || $user->can('jadwal.lihat')) {
-                $actions[] = ['label' => 'Input Hasil Perekaman', 'href' => route('jadwal.index', absolute: false), 'icon' => 'id-card', 'variant' => 'amber'];
+            if ($user->can('rekaman.pindai') && $user->can('jadwal.lihat')) {
+                $actions[] = ['label' => 'Pindai Tiket', 'href' => route('jadwal.index', absolute: false), 'icon' => 'scan-line', 'variant' => 'amber'];
             }
             if ($user->can('laporan.ekspor') || $user->can('laporan.lihat')) {
                 $actions[] = ['label' => 'Unduh Laporan', 'href' => route('laporan.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
@@ -252,21 +253,21 @@ class DashboardService
         // 3. Line: Tren Perekaman Jan - Des Tahun Berjalan
         $year = (int) now()->year;
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        $entries = RegistrationStudent::query()->whereYear('created_at', $year)->get(['created_at', 'status', 'updated_at']);
 
+        // Terdaftar: pendaftaran dibuat pada bulan itu. Sudah Rekam: menurut bulan tanggal sesi (updated_at bergeser tiap pembaruan).
         $registered = array_fill(0, 12, 0);
-        $recorded = array_fill(0, 12, 0);
+        RegistrationStudent::query()->whereYear('created_at', $year)
+            ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')->groupBy('month')
+            ->toBase()->get()->each(function ($row) use (&$registered) {
+                $registered[(int) $row->month - 1] = (int) $row->total;
+            });
 
-        foreach ($entries as $e) {
-            if ($e->created_at) {
-                $m = (int) $e->created_at->format('n') - 1;
-                $registered[$m]++;
-            }
-            if ($e->status === S::SudahRekaman && (int) $e->updated_at->year === $year) {
-                $m = (int) $e->updated_at->format('n') - 1;
-                $recorded[$m]++;
-            }
-        }
+        $recorded = array_fill(0, 12, 0);
+        Schedule::query()->whereYear('date', $year)
+            ->withCount(['entries as present_count' => fn ($q) => $q->where('status', S::SudahRekaman->value)])
+            ->get(['id', 'date'])->each(function (Schedule $s) use (&$recorded) {
+                $recorded[(int) $s->date->format('n') - 1] += $s->present_count;
+            });
 
         $monthlyTrend = [
             'categories' => $months,

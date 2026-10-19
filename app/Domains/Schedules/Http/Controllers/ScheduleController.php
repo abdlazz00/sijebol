@@ -4,6 +4,8 @@ namespace App\Domains\Schedules\Http\Controllers;
 
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
+use App\Domains\Registrations\Services\RegistrationService;
+use App\Domains\Schedules\Http\Requests\CancelEntryRequest;
 use App\Domains\Schedules\Http\Requests\CancelScheduleRequest;
 use App\Domains\Schedules\Http\Requests\ScheduleRequest;
 use App\Domains\Schedules\Models\Schedule;
@@ -20,6 +22,7 @@ class ScheduleController extends Controller
     public function __construct(
         private readonly ScheduleService $schedules,
         private readonly SchoolService $schools,
+        private readonly RegistrationService $registrations,
     ) {}
 
     public function index(Request $request): Response
@@ -64,7 +67,10 @@ class ScheduleController extends Controller
 
         return Inertia::render('Jadwal/Show', [
             'schedule' => self::detail($schedule) + ['created_by' => $schedule->creator?->name],
-            'participants' => $schedule->entries->map(fn (RegistrationStudent $e) => self::participant($e))->values(),
+            'participants' => $schedule->entries->map(fn (RegistrationStudent $e) => self::participant($e) + [
+                // Pembatalan oleh admin: status pra-kehadiran dan sesi belum hari-H (selaras RegistrationService::cancelByStaff).
+                'can_cancel' => $schedule->allowsStudentChanges() && in_array($e->status, [RegistrationStatus::MenungguVerifikasi, RegistrationStatus::PerluPerbaikan, RegistrationStatus::Terdaftar], true),
+            ])->values(),
         ]);
     }
 
@@ -103,6 +109,13 @@ class ScheduleController extends Controller
         $count = $this->schedules->cancel($schedule, $request->validated('note'), $request->user());
 
         return redirect()->route('jadwal.show', $schedule)->with('success', "Sesi dibatalkan; {$count} pendaftaran ikut dibatalkan.");
+    }
+
+    public function cancelEntry(CancelEntryRequest $request, Schedule $schedule, RegistrationStudent $entry): RedirectResponse
+    {
+        $this->registrations->cancelByStaff($entry, $request->validated('note'), $request->user());
+
+        return redirect()->route('jadwal.show', $schedule)->with('success', 'Pendaftaran dibatalkan.');
     }
 
     /** Jam `HH:MM:SS` dari basis data menjadi `HH:MM`. */

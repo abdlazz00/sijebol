@@ -2,6 +2,7 @@
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DocumentPreviewDialog from '@/Components/shared/DocumentPreviewDialog.vue';
 import FileUpload from '@/Components/shared/FileUpload.vue';
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
@@ -111,6 +112,14 @@ const crumbs = [
                         </h2>
                         <p class="text-muted-foreground text-sm leading-5">
                             NISN {{ student.nisn }}
+                        </p>
+                        <KtpLangsungBadge v-if="student.ktp_langsung" />
+                        <p
+                            v-if="student.ktp_langsung"
+                            class="text-muted-foreground text-sm leading-5"
+                        >
+                            KTP-el dapat langsung diterbitkan: siswa sudah lebih
+                            dari 17 tahun.
                         </p>
                         <span
                             class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap"

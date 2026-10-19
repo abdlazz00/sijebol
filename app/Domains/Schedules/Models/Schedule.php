@@ -8,6 +8,7 @@ use App\Domains\Schools\Models\School;
 use App\Models\Concerns\ScopedBySchool;
 use App\Models\User;
 use Carbon\Carbon;
+use Carbon\CarbonInterface;
 use Database\Factories\ScheduleFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -25,6 +26,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property int $quota
  * @property Carbon|null $cancelled_at
  * @property int $taken_count Hanya ada pada query ber-withCount (kursi tertahan).
+ * @property int $waiting_count Hanya ada pada query ber-withCount (menunggu verifikasi).
+ * @property int $present_count Hanya ada pada query ber-withCount (sudah rekaman).
  * @property int $created_by
  */
 #[UseFactory(ScheduleFactory::class)]
@@ -80,6 +83,34 @@ class Schedule extends Model
     public function allowsStudentChanges(): bool
     {
         return ! $this->isCancelled() && self::today() < $this->date->toDateString();
+    }
+
+    /**
+     * Batas perbaikan jika diminta pada `$now`: yang lebih awal antara `fix_window_hours` jam sejak `$now`
+     * dan akhir hari sebelum sesi (23.59.59 H-1).
+     */
+    public function fixDeadlineFrom(CarbonInterface $now): Carbon
+    {
+        $window = Carbon::instance($now)->addHours((int) config('sijebol.fix_window_hours'));
+        $cap = $this->date->copy()->subDay()->endOfDay();
+
+        return $window->lessThan($cap) ? $window : $cap;
+    }
+
+    /**
+     * Rentang waktu tiket boleh dipindai: pada tanggal sesi, dari jam mulai dikurangi toleransi sampai jam selesai ditambah toleransi.
+     *
+     * @return array{0: Carbon, 1: Carbon}
+     */
+    public function scanWindow(): array
+    {
+        $date = $this->date->toDateString();
+        $tolerance = (int) config('sijebol.scan_tolerance_minutes');
+
+        return [
+            Carbon::parse("{$date} {$this->start_time}", self::ZONE)->subMinutes($tolerance),
+            Carbon::parse("{$date} {$this->end_time}", self::ZONE)->addMinutes($tolerance),
+        ];
     }
 
     /** Jumlah kursi yang sedang ditahan pendaftaran (lihat RegistrationStatus::holdingSeat). */

@@ -1,12 +1,21 @@
 <script setup lang="ts">
+import { usePermission } from '@/composables/usePermission';
 import { formatDate } from '@/lib/date';
+import { PERMISSIONS } from '@/lib/permissions';
 import type { UpcomingScheduleRow } from '@/types/dashboard';
 import { Link } from '@inertiajs/vue3';
-import { CalendarDays, ChevronRight, MapPin, Users } from '@lucide/vue';
+import { CalendarDays, ChevronRight, MapPin, ScanLine, Users } from '@lucide/vue';
+import { computed } from 'vue';
 
-defineProps<{
+const props = defineProps<{
     schedules: UpcomingScheduleRow[];
 }>();
+
+const { can } = usePermission();
+// Kolom Aksi hanya muncul bila ada sesi hari ini dan pengguna boleh memindai.
+const showScan = computed(
+    () => can(PERMISSIONS.RekamanPindai) && props.schedules.some((s) => s.status === 'Hari Ini'),
+);
 
 function statusBadgeClass(status: string): string {
     switch (status) {
@@ -60,9 +69,10 @@ function statusBadgeClass(status: string): string {
                         <th class="py-2.5 pr-2 font-medium">No</th>
                         <th class="py-2.5 px-3 font-medium">Tanggal</th>
                         <th class="py-2.5 px-3 font-medium">Sekolah</th>
-                        <th class="py-2.5 px-3 font-medium">Peserta</th>
+                        <th class="py-2.5 px-3 font-medium">Kursi</th>
                         <th class="py-2.5 px-3 font-medium">Lokasi</th>
                         <th class="py-2.5 pl-3 text-right font-medium">Status</th>
+                        <th v-if="showScan" class="py-2.5 pl-3 text-right font-medium">Aksi</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border/40">
@@ -83,7 +93,10 @@ function statusBadgeClass(status: string): string {
                         <td class="py-3 px-3 whitespace-nowrap text-muted-foreground">
                             <span class="inline-flex items-center gap-1.5">
                                 <Users class="size-3.5 text-muted-foreground/70" aria-hidden="true" />
-                                <span>{{ row.participants }} peserta</span>
+                                <span>{{ row.participants }}/{{ row.quota }} kursi</span>
+                            </span>
+                            <span class="block text-xs leading-4">
+                                {{ row.waiting }} menunggu verifikasi · {{ row.present }} sudah rekaman
                             </span>
                         </td>
                         <td class="py-3 px-3 text-muted-foreground">
@@ -114,6 +127,16 @@ function statusBadgeClass(status: string): string {
                                 </span>
                                 {{ row.status }}
                             </span>
+                        </td>
+                        <td v-if="showScan" class="py-3 pl-3 text-right whitespace-nowrap">
+                            <Link
+                                v-if="row.status === 'Hari Ini'"
+                                :href="route('jadwal.pindai.show', row.id)"
+                                class="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
+                            >
+                                <ScanLine class="size-3.5" aria-hidden="true" />
+                                Pindai
+                            </Link>
                         </td>
                     </tr>
                 </tbody>
