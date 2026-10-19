@@ -517,3 +517,40 @@ Untuk melihat dan mengelola database `sijebol_prod` dan `sijebol_uat` langsung d
   systemctl restart ssh
   ufw enable
   ```
+
+## 9. Catatan Alur Mandiri Siswa (Fase 7a)
+
+### Batas unggah dokumen
+
+Aplikasi menyatakan berkas dokumen maksimal 5 MB sah, jadi server harus menerima minimal 6 MB:
+
+- PHP: `upload_max_filesize` dan `post_max_size` minimal `6M`.
+- Nginx (termasuk Nginx Proxy Manager): `client_max_body_size` minimal `6m`.
+
+Foto dari kamera HP dikecilkan otomatis di peramban sebelum diunggah, tetapi PDF tidak.
+
+### Memulai dari data kosong (sekali jalan)
+
+Menghapus semua data siswa, pendaftaran, jadwal, dan berkas dokumen. Akun pengguna, sekolah, dan log aktivitas tidak tersentuh.
+
+```bash
+php artisan sijebol:bersihkan-data-siswa          # meminta konfirmasi
+php artisan sijebol:bersihkan-data-siswa --force  # tanpa konfirmasi
+```
+
+Jalankan hanya sebelum rilis, dan cadangkan database lebih dulu.
+
+### Link pendaftaran sekolah
+
+Setiap sekolah mendapat token otomatis. Operator menyalin link dari menu **Link pendaftaran**; admin dapat mereset bila link bocor. Pendaftaran akun memakai email, jadi pengiriman email (SMTP produksi) harus sudah berfungsi sebelum siswa mendaftar.
+
+### Wajib setelah migrasi: jalankan ulang seeder role
+
+Role di database yang sudah ada tidak berubah sendiri. Tanpa langkah ini, role `siswa` belum ada (pendaftaran akun gagal) dan operator sekolah masih memegang hak ubah/hapus siswa yang seharusnya dicabut.
+
+```bash
+php artisan migrate --force
+php artisan db:seed --class=AccessSeeder --force
+```
+
+Seeder menyetel ulang izin tiga role bawaan (`admin-kecamatan`, `operator-sekolah`, `siswa`); perubahan izin yang pernah dibuat lewat UI pada role-role itu ikut tertimpa.

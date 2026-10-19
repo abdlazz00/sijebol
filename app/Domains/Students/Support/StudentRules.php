@@ -26,7 +26,7 @@ final class StudentRules
         return [
             'nik.required' => 'NIK wajib diisi.',
             'nik.digits' => 'NIK harus 16 digit angka.',
-            'nik.unique' => 'NIK sudah terdaftar.',
+            'nik.unique' => 'NIK ini sudah terdaftar pada akun lain. Bila menurut Anda keliru, hubungi operator sekolah atau admin kecamatan.',
             'nisn.required' => 'NISN wajib diisi.',
             'nisn.digits' => 'NISN harus 10 digit angka.',
             'name.required' => 'Nama lengkap wajib diisi.',

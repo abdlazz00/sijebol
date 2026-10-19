@@ -4,7 +4,6 @@ use App\Domains\Access\Enums\Permission;
 use App\Domains\Access\Models\Role;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
-use App\Domains\Students\Models\StudentImport;
 use App\Models\User;
 
 dataset('rute', [
@@ -13,6 +12,10 @@ dataset('rute', [
     ['POST', '/sekolah', 'sekolah.buat'],
     ['GET', '/sekolah/{school}/ubah', 'sekolah.ubah'],
     ['PUT', '/sekolah/{school}', 'sekolah.ubah'],
+    ['GET', '/saya', 'profil.lihat'],
+    ['PUT', '/saya', 'profil.ubah'],
+    ['GET', '/tautan-pendaftaran', 'sekolah.tautan'],
+    ['POST', '/tautan-pendaftaran/{school}/reset', 'sekolah.reset-tautan'],
     ['GET', '/pengguna', 'user.lihat'],
     ['GET', '/pengguna/buat', 'user.buat'],
     ['POST', '/pengguna', 'user.buat'],
@@ -31,14 +34,10 @@ dataset('rute', [
     ['DELETE', '/role/{role}', 'role.hapus'],
     ['GET', '/log', 'log.lihat'],
     ['GET', '/siswa', 'siswa.lihat'],
-    ['GET', '/siswa/buat', 'siswa.buat'],
-    ['POST', '/siswa', 'siswa.buat'],
     ['GET', '/siswa/{student}', 'siswa.lihat'],
     ['GET', '/siswa/{student}/ubah', 'siswa.ubah'],
     ['PUT', '/siswa/{student}', 'siswa.ubah'],
     ['DELETE', '/siswa/{student}', 'siswa.hapus'],
-    ['GET', '/siswa/impor/template', 'siswa.impor'],
-    ['POST', '/siswa/impor', 'siswa.impor'],
     ['POST', '/siswa/{student}/dokumen/kk', 'dokumen.unggah'],
     ['GET', '/siswa/{student}/dokumen/kk', 'dokumen.lihat'],
     ['DELETE', '/siswa/{student}/dokumen/kk', 'dokumen.hapus'],
@@ -70,7 +69,6 @@ dataset('rute', [
     ['POST', '/jadwal/{schedule}/siswa/{slot}/pindah', 'jadwal.ubah'],
     ['POST', '/jadwal/{schedule}/rekaman/{slot}/batalkan', 'rekaman.tandai'],
     ['POST', '/verifikasi/setujui', 'verifikasi.putuskan'],
-    ['GET', '/siswa/impor/{import}', 'siswa.impor'],
 ]);
 
 function resolveUri(string $uri): string
@@ -82,11 +80,10 @@ function resolveUri(string $uri): string
     $student = Student::factory()->create();
     $entry = makeEntry();
     $slot = makeScheduledEntry();
-    $import = StudentImport::create(['user_id' => $target->id, 'school_id' => $school->id, 'original_name' => 'x.xlsx']);
 
     return str_replace(
-        ['{user}', '{school}', '{role}', '{student}', '{registration}', '{entry}', '{schedule}', '{slot}', '{import}'],
-        [$target->id, $school->id, $role->id, $student->id, $entry->registration_id, $entry->id, $slot->schedule_id, $slot->id, $import->id],
+        ['{user}', '{school}', '{role}', '{student}', '{registration}', '{entry}', '{schedule}', '{slot}'],
+        [$target->id, $school->id, $role->id, $student->id, $entry->registration_id, $entry->id, $slot->schedule_id, $slot->id],
         $uri,
     );
 }

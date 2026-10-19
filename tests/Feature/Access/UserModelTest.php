@@ -4,6 +4,7 @@ use App\Domains\Access\Enums\UserStatus;
 use App\Domains\Access\Models\AccountActivation;
 use App\Domains\Schools\Models\School;
 use App\Models\User;
+use Database\Seeders\AccessSeeder;
 
 function activationFor(User $user, string $expires = '+1 day', bool $used = false): AccountActivation
 {
@@ -56,4 +57,13 @@ test('operator terikat sekolahnya, staf tanpa sekolah melihat semua', function (
 
     $this->actingAs($staf);
     expect(User::count())->toBe(3);
+});
+
+test('isStudent benar hanya untuk pemegang role siswa', function () {
+    $this->seed(AccessSeeder::class);
+    $siswa = User::factory()->create()->assignRole('siswa');
+    $operator = User::factory()->create()->assignRole('operator-sekolah');
+
+    expect($siswa->isStudent())->toBeTrue()
+        ->and($operator->isStudent())->toBeFalse();
 });

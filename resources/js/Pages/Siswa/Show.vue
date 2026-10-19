@@ -83,8 +83,13 @@ const crumbs = [
 
         <div class="flex flex-col gap-6">
             <InlineAlert v-if="locked" variant="warning">
-                Data siswa dikunci karena pendaftarannya sedang diproses.
-                Perubahan dibuka kembali bila petugas meminta perbaikan.
+                <template v-if="can(PERMISSIONS.SiswaUbah)">
+                    Terkunci untuk siswa. Anda tetap dapat mengoreksi; siswa
+                    akan diberi tahu.
+                </template>
+                <template v-else>
+                    Data tidak dapat diubah selama pendaftaran diproses.
+                </template>
             </InlineAlert>
 
             <section
@@ -136,14 +141,14 @@ const crumbs = [
                 </div>
                 <div class="flex items-start gap-2">
                     <Button
-                        v-if="can(PERMISSIONS.SiswaUbah) && !locked"
+                        v-if="can(PERMISSIONS.SiswaUbah)"
                         as-child
                         variant="outline"
                         class="h-10 px-4"
                     >
                         <Link :href="route('siswa.edit', student.id)">
                             <Pencil class="size-4" aria-hidden="true" />
-                            Ubah
+                            Koreksi data
                         </Link>
                     </Button>
                     <RowActions
@@ -172,7 +177,10 @@ const crumbs = [
                 <InfoList :items="info" />
             </section>
 
-            <section class="bg-card flex flex-col gap-4 rounded-lg border p-6">
+            <section
+                v-if="can(PERMISSIONS.DokumenLihat)"
+                class="bg-card flex flex-col gap-4 rounded-lg border p-6"
+            >
                 <div class="flex flex-col gap-1">
                     <h2 class="text-base leading-6 font-semibold">Dokumen</h2>
                     <p class="text-muted-foreground text-xs leading-4">

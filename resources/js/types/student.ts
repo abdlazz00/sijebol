@@ -15,6 +15,16 @@ export type StudentDetail = StudentRow & {
     gender: 'L' | 'P';
 };
 
+/** Data diri milik siswa yang sedang login (NIK tidak dimasker). */
+export type SelfStudent = {
+    id: number;
+    nik: string;
+    nisn: string;
+    name: string;
+    birth_date: string;
+    gender: 'L' | 'P';
+};
+
 export type DocumentType = 'kk' | 'akta_lahir';
 
 export type StudentDocumentRow = {
@@ -24,14 +34,6 @@ export type StudentDocumentRow = {
     url: string;
     preview_url?: string;
     mime?: string | null;
-};
-
-export type ImportStatus = {
-    id: number;
-    status: 'antri' | 'berjalan' | 'selesai' | 'gagal';
-    imported: number;
-    failed: { row: number; reason: string }[];
-    error: string | null;
 };
 
 export type StudentRegistrationRef = {

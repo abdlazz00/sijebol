@@ -1,5 +1,6 @@
 <?php
 
+use App\Domains\Access\Enums\Permission;
 use App\Domains\Access\Models\Role;
 use App\Domains\Access\Services\AccessGuard;
 use Database\Seeders\AccessSeeder;
@@ -9,7 +10,7 @@ beforeEach(fn () => $this->seed(AccessSeeder::class));
 test('super-admin memegang semua izin dan boleh memberi role apa pun', function () {
     $super = makeUserWith([], roleName: 'tmp')->syncRoles('super-admin');
 
-    expect(AccessGuard::permissionsOf($super))->toHaveCount(32)
+    expect(AccessGuard::permissionsOf($super))->toHaveCount(count(Permission::values()))
         ->and(AccessGuard::canGrantRole($super, Role::findByName('super-admin')))->toBeTrue();
 });
 

@@ -6,6 +6,7 @@ import {
     FileSpreadsheet,
     GraduationCap,
     Home,
+    Link2,
     ScrollText,
     Users,
 } from '@lucide/vue';
@@ -22,6 +23,7 @@ describe('menuIcon', () => {
         expect(menuIcon('badge-check')).toBe(BadgeCheck);
         expect(menuIcon('calendar-days')).toBe(CalendarDays);
         expect(menuIcon('file-spreadsheet')).toBe(FileSpreadsheet);
+        expect(menuIcon('link')).toBe(Link2);
     });
 
     it('kunci tak dikenal jatuh ke ikon default', () => {

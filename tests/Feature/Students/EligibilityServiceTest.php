@@ -58,7 +58,7 @@ test('entri aktif membuat siswa tidak eligible, draf dan ditolak tidak', functio
 
     expect($check['eligible'])->toBe($eligible);
     if (! $eligible) {
-        expect($check['reasons'])->toContain('Siswa sudah terdaftar di pendaftaran lain.');
+        expect($check['reasons'])->toContain('Sudah terdaftar di pendaftaran lain.');
     }
 })->with([
     [S::Draf, true], [S::Ditolak, true], [S::Diajukan, false],

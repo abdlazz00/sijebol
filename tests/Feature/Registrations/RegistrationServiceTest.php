@@ -105,7 +105,7 @@ test('siswa yang sudah aktif di pendaftaran lain ditolak dan pengajuan kedua gag
         $this->service->submit($kedua, $this->op);
         $this->fail('Seharusnya gagal.');
     } catch (ValidationException $e) {
-        expect($e->errors()["student_ids.{$a->id}"][0])->toContain('Siswa sudah terdaftar di pendaftaran lain.');
+        expect($e->errors()["student_ids.{$a->id}"][0])->toContain('Sudah terdaftar di pendaftaran lain.');
     }
 });
 

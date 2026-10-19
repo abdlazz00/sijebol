@@ -4,6 +4,7 @@ use App\Domains\Access\Http\Controllers\ActivationController;
 use App\Domains\Access\Http\Controllers\RoleController;
 use App\Domains\Access\Http\Controllers\UserController;
 use App\Domains\Schools\Http\Controllers\SchoolController;
+use App\Domains\Schools\Http\Controllers\SchoolLinkController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:10,1')->group(function () {
@@ -17,6 +18,9 @@ Route::middleware('auth')->group(function () {
     Route::post('sekolah', [SchoolController::class, 'store'])->middleware('can:sekolah.buat')->name('sekolah.store');
     Route::get('sekolah/{school}/ubah', [SchoolController::class, 'edit'])->middleware('can:sekolah.ubah')->name('sekolah.edit');
     Route::put('sekolah/{school}', [SchoolController::class, 'update'])->middleware('can:sekolah.ubah')->name('sekolah.update');
+
+    Route::get('tautan-pendaftaran', [SchoolLinkController::class, 'index'])->middleware('can:sekolah.tautan')->name('tautan.index');
+    Route::post('tautan-pendaftaran/{school}/reset', [SchoolLinkController::class, 'reset'])->middleware(['can:sekolah.reset-tautan', 'throttle:20,1'])->name('tautan.reset');
 
     Route::get('pengguna', [UserController::class, 'index'])->middleware('can:user.lihat')->name('pengguna.index');
     Route::get('pengguna/buat', [UserController::class, 'create'])->middleware('can:user.buat')->name('pengguna.create');

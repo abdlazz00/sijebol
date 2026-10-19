@@ -79,7 +79,7 @@ test('dashboard menyediakan payload kpi 5 kartu, quick actions, dan grafik untuk
 test('dashboard menyediakan kpi dan grafik khusus sekolah untuk operator', function () {
     $sekolah = School::factory()->create();
     makeEntries([S::Terjadwal, S::SudahRekaman], $sekolah);
-    $op = makeUserWith(['pendaftaran.lihat', 'pendaftaran.buat', 'jadwal.lihat', 'siswa.lihat', 'siswa.buat'], $sekolah, true, 'op-kpi');
+    $op = makeUserWith(['pendaftaran.lihat', 'pendaftaran.buat', 'jadwal.lihat', 'siswa.lihat'], $sekolah, true, 'op-kpi');
 
     $this->actingAs($op)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
         ->has('kpi', 5)

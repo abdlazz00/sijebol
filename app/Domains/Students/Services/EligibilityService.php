@@ -34,7 +34,7 @@ class EligibilityService
             fn ($entry) => $entry->status->isActive() && $entry->registration_id !== $exceptRegistrationId
         );
         if ($busy) {
-            $reasons[] = 'Siswa sudah terdaftar di pendaftaran lain.';
+            $reasons[] = 'Sudah terdaftar di pendaftaran lain.';
         }
 
         return ['eligible' => $reasons === [], 'reasons' => $reasons];

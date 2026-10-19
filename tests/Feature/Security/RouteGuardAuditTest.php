@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 /** Rute publik yang sah (tanpa login). Menambah entri di sini harus terlihat di diff dan ditinjau. */
 function auditPublicNames(): array
 {
-    return ['aktivasi.show', 'aktivasi.store', 'password.request', 'password.email', 'password.reset', 'password.store'];
+    return ['aktivasi.show', 'aktivasi.store', 'password.request', 'password.email', 'password.reset', 'password.store', 'daftar.show', 'daftar.store'];
 }
 
 /** Rute publik tak bernama: `/` hanya mengalihkan ke /dashboard yang sendirinya ber-auth. */

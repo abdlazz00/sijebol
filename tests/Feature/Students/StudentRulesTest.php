@@ -24,7 +24,7 @@ test('NIK harus 16 digit dan unik, pesan tidak menyebut sekolah', function () {
         ->and(validasi(dataSiswa(['nik' => '32011234123412345']))->passes())->toBeFalse();
 
     Student::factory()->create(['nik' => '3201123412341234']);
-    expect(validasi(dataSiswa())->errors()->first('nik'))->toBe('NIK sudah terdaftar.');
+    expect(validasi(dataSiswa())->errors()->first('nik'))->toBe('NIK ini sudah terdaftar pada akun lain. Bila menurut Anda keliru, hubungi operator sekolah atau admin kecamatan.');
 });
 
 test('mengabaikan siswa sendiri saat ubah', function () {

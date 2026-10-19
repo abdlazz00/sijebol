@@ -19,3 +19,8 @@ export function whatsappUrl(
 
     return `https://wa.me/${international}?text=${encodeURIComponent(message)}`;
 }
+
+/** Tautan wa.me tanpa nomor: pengguna memilih sendiri penerima atau grup di WhatsApp. */
+export function whatsappShareUrl(message: string): string {
+    return `https://wa.me/?text=${encodeURIComponent(message)}`;
+}

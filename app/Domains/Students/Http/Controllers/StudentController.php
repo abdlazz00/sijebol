@@ -3,16 +3,16 @@
 namespace App\Domains\Students\Http\Controllers;
 
 use App\Domains\Schools\Services\SchoolService;
-use App\Domains\Students\Http\Requests\StudentRequest;
+use App\Domains\Students\Http\Requests\StudentCorrectionRequest;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
 use App\Domains\Students\Services\StudentDocumentService;
-use App\Domains\Students\Services\StudentImportService;
 use App\Domains\Students\Services\StudentService;
 use App\Http\Controllers\Controller;
 use App\Support\Nik;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -23,7 +23,6 @@ class StudentController extends Controller
         private readonly EligibilityService $eligibility,
         private readonly SchoolService $schools,
         private readonly StudentDocumentService $documents,
-        private readonly StudentImportService $imports,
     ) {}
 
     public function index(Request $request): Response
@@ -32,22 +31,7 @@ class StudentController extends Controller
             'students' => $this->students->paginate()->through(fn (Student $s) => $this->row($s)),
             'filters' => $request->query('filter', []),
             'schools' => $this->schools->optionsFor($request->user()),
-            'recent_import' => $request->filled('impor')
-                ? $this->imports->findVisible($request->integer('impor'), $request->user())?->payload()
-                : null,
         ]);
-    }
-
-    public function create(Request $request): Response
-    {
-        return Inertia::render('Siswa/Form', ['student' => null, 'schools' => $this->schools->optionsFor($request->user())]);
-    }
-
-    public function store(StudentRequest $request): RedirectResponse
-    {
-        $student = $this->students->create($request->validated(), $request->user());
-
-        return redirect()->route('siswa.show', $student)->with('success', 'Siswa ditambahkan.');
     }
 
     public function show(Request $request, Student $student): Response
@@ -70,22 +54,24 @@ class StudentController extends Controller
         ]);
     }
 
-    public function edit(Student $student): Response
+    public function edit(Request $request, Student $student): Response
     {
         return Inertia::render('Siswa/Form', [
             'student' => [
                 'id' => $student->id, 'nik' => $student->nik, 'nisn' => $student->nisn, 'name' => $student->name,
                 'birth_date' => $student->birth_date->toDateString(), 'gender' => $student->gender,
+                'school_id' => $student->school_id,
             ],
-            'schools' => null,
+            'schools' => $this->schools->optionsFor($request->user()),
         ]);
     }
 
-    public function update(StudentRequest $request, Student $student): RedirectResponse
+    public function update(StudentCorrectionRequest $request, Student $student): RedirectResponse
     {
-        $this->students->update($student, $request->validated());
+        $data = $request->validated();
+        $this->students->correct($student, Arr::except($data, ['note']), $data['note'], $request->user());
 
-        return redirect()->route('siswa.show', $student)->with('success', 'Siswa diperbarui.');
+        return redirect()->route('siswa.show', $student)->with('success', 'Data siswa dikoreksi.');
     }
 
     public function destroy(Student $student): RedirectResponse

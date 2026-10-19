@@ -4,11 +4,12 @@ import InlineAlert from '@/Components/shared/InlineAlert.vue';
 import SelectField from '@/Components/shared/SelectField.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
+import { Textarea } from '@/Components/ui/textarea';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { Link, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 interface FormStudent {
     id: number;
@@ -17,24 +18,39 @@ interface FormStudent {
     name: string;
     birth_date: string;
     gender: 'L' | 'P';
+    school_id: number;
 }
 
 const props = defineProps<{
-    student: FormStudent | null;
+    student: FormStudent;
     schools: { id: number; name: string }[] | null;
 }>();
 
-const isEdit = computed(() => props.student !== null);
-const title = computed(() => (isEdit.value ? 'Ubah siswa' : 'Tambah siswa'));
-
 const form = useForm({
-    nik: props.student?.nik ?? '',
-    nisn: props.student?.nisn ?? '',
-    name: props.student?.name ?? '',
-    birth_date: props.student?.birth_date ?? '',
-    gender: props.student?.gender ?? '',
-    school_id: '' as number | '',
+    nik: props.student.nik,
+    nisn: props.student.nisn,
+    name: props.student.name,
+    birth_date: props.student.birth_date,
+    gender: props.student.gender as string,
+    school_id: props.student.school_id as number | '',
+    note: '',
 });
+
+// Tempelan dengan spasi atau titik tidak boleh memicu galat: karakter non-angka dibuang.
+watch(
+    () => form.nik,
+    (v) => {
+        const digits = v.replace(/\D/g, '');
+        if (digits !== v) form.nik = digits;
+    },
+);
+watch(
+    () => form.nisn,
+    (v) => {
+        const digits = v.replace(/\D/g, '');
+        if (digits !== v) form.nisn = digits;
+    },
+);
 
 const genderOptions = [
     { value: 'L', label: 'Laki-laki' },
@@ -64,8 +80,8 @@ function validate(): boolean {
     else if (form.birth_date > today)
         errors.birth_date = 'Tanggal lahir tidak boleh di masa depan.';
     if (!form.gender) errors.gender = 'Pilih jenis kelamin.';
-    if (props.schools && !isEdit.value && form.school_id === '')
-        errors.school_id = 'Pilih sekolah.';
+    if (form.note.trim().length < 5)
+        errors.note = 'Catatan koreksi wajib diisi (minimal 5 karakter).';
     clientErrors.value = errors;
 
     return Object.keys(errors).length === 0;
@@ -75,29 +91,24 @@ function submit() {
     form.clearErrors();
     if (!validate()) return focusFirstInvalid();
 
-    const options = { onError: focusFirstInvalid };
-
-    if (props.student)
-        form.put(route('siswa.update', props.student.id), options);
-    else form.post(route('siswa.store'), options);
+    form.put(route('siswa.update', props.student.id), {
+        onError: focusFirstInvalid,
+    });
 }
 
 const crumbs = computed(() => [
     { label: 'Siswa', href: route('siswa.index') },
-    { label: title.value },
+    { label: 'Koreksi data siswa' },
 ]);
 </script>
 
 <template>
-    <AppLayout :title="title" :breadcrumbs="crumbs">
+    <AppLayout title="Koreksi data siswa" :breadcrumbs="crumbs">
         <div class="mb-6 flex flex-col gap-1">
-            <h1 class="text-2xl leading-8 font-semibold">{{ title }}</h1>
+            <h1 class="text-2xl leading-8 font-semibold">Koreksi data siswa</h1>
             <p class="text-muted-foreground text-sm leading-5">
-                {{
-                    isEdit
-                        ? 'Perbarui data siswa.'
-                        : 'Tambahkan siswa baru. Dokumen diunggah setelah data disimpan.'
-                }}
+                Koreksi hanya untuk data yang salah dan tidak dapat diperbaiki
+                siswa sendiri. Siswa diberi tahu dan perubahan tercatat di log.
             </p>
         </div>
 
@@ -128,6 +139,7 @@ const crumbs = computed(() => [
                         v-model="form.nik"
                         class="h-10 font-mono"
                         inputmode="numeric"
+                        pattern="[0-9]*"
                         maxlength="16"
                         autocomplete="off"
                         :aria-invalid="invalid"
@@ -147,6 +159,7 @@ const crumbs = computed(() => [
                         v-model="form.nisn"
                         class="h-10 font-mono"
                         inputmode="numeric"
+                        pattern="[0-9]*"
                         maxlength="10"
                         autocomplete="off"
                         :aria-invalid="invalid"
@@ -164,7 +177,6 @@ const crumbs = computed(() => [
                         :id="id"
                         v-model="form.name"
                         class="h-10"
-                        placeholder="Contoh: Budi Santoso"
                         autocomplete="off"
                         :aria-invalid="invalid"
                         :aria-describedby="describedBy"
@@ -205,11 +217,11 @@ const crumbs = computed(() => [
                 </FormField>
 
                 <FormField
-                    v-if="schools && !isEdit"
+                    v-if="schools"
                     v-slot="{ id, describedBy, invalid }"
                     label="Sekolah"
-                    required
                     :error="error('school_id')"
+                    hint="Pindah sekolah ditolak bila siswa masih punya pendaftaran aktif."
                 >
                     <SelectField
                         :id="id"
@@ -220,18 +232,28 @@ const crumbs = computed(() => [
                         :described-by="describedBy"
                     />
                 </FormField>
+
+                <FormField
+                    v-slot="{ id, describedBy, invalid }"
+                    label="Catatan koreksi"
+                    required
+                    :error="error('note')"
+                    hint="Alasan koreksi; dikirim ke siswa dan dicatat di log."
+                >
+                    <Textarea
+                        :id="id"
+                        v-model="form.note"
+                        rows="3"
+                        maxlength="500"
+                        :aria-invalid="invalid"
+                        :aria-describedby="describedBy"
+                    />
+                </FormField>
             </div>
 
             <div class="mt-6 flex justify-end gap-2">
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link
-                        :href="
-                            student
-                                ? route('siswa.show', student.id)
-                                : route('siswa.index')
-                        "
-                        >Batal</Link
-                    >
+                    <Link :href="route('siswa.show', student.id)">Batal</Link>
                 </Button>
                 <Button
                     type="submit"
@@ -243,7 +265,7 @@ const crumbs = computed(() => [
                         class="size-4 animate-spin"
                         aria-hidden="true"
                     />
-                    {{ form.processing ? 'Menyimpan…' : 'Simpan' }}
+                    {{ form.processing ? 'Menyimpan…' : 'Simpan koreksi' }}
                 </Button>
             </div>
         </form>

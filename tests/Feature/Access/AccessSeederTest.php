@@ -8,17 +8,44 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Validation\Rules\Password;
 use Spatie\Permission\Models\Permission as PermissionModel;
 
-test('seeder membuat seluruh permission dan tiga role, dan aman diulang', function () {
+test('seeder membuat seluruh permission dan empat role, dan aman diulang', function () {
     $this->seed(AccessSeeder::class);
     $this->seed(AccessSeeder::class);
 
     expect(PermissionModel::count())->toBe(count(Permission::values()))
-        ->and(Role::count())->toBe(3)
+        ->and(Role::count())->toBe(4)
         ->and(Role::findByName('super-admin')->permissions)->toHaveCount(count(Permission::values()))
         ->and(Role::findByName('operator-sekolah')->is_school_scoped)->toBeTrue()
         ->and(Role::findByName('admin-kecamatan')->is_school_scoped)->toBeFalse()
         ->and(Role::findByName('admin-kecamatan')->hasPermissionTo('user.buat'))->toBeTrue()
         ->and(Role::findByName('operator-sekolah')->hasPermissionTo('user.buat'))->toBeFalse();
+});
+
+test('role siswa terikat sekolah dan hanya memegang izin data diri dan dokumen', function () {
+    $this->seed(AccessSeeder::class);
+    $role = Role::findByName('siswa');
+
+    expect($role->is_school_scoped)->toBeTrue()
+        ->and($role->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(['dokumen.hapus', 'dokumen.lihat', 'dokumen.unggah', 'profil.lihat', 'profil.ubah']);
+});
+
+test('operator sekolah hanya memantau: lihat siswa, lihat jadwal, dan salin link pendaftaran', function () {
+    $this->seed(AccessSeeder::class);
+    $operator = Role::findByName('operator-sekolah');
+
+    expect($operator->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(['jadwal.lihat', 'sekolah.tautan', 'siswa.lihat'])
+        ->and($operator->hasPermissionTo('dokumen.lihat'))->toBeFalse()
+        ->and($operator->hasPermissionTo('siswa.ubah'))->toBeFalse();
+});
+
+test('admin kecamatan memegang semua permission, termasuk yang baru', function () {
+    $this->seed(AccessSeeder::class);
+
+    expect(Role::findByName('admin-kecamatan')->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(collect(Permission::values())->sort()->values()->all())
+        ->and(Permission::values())->toContain('profil.lihat', 'profil.ubah', 'sekolah.tautan', 'sekolah.reset-tautan');
 });
 
 test('super-admin lolos gate apa pun, user biasa tidak', function () {

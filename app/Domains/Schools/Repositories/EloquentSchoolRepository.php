@@ -41,4 +41,16 @@ class EloquentSchoolRepository implements SchoolRepositoryInterface
 
         return $school;
     }
+
+    public function withStudentCount(?int $schoolId): Collection
+    {
+        return School::query()->withCount('students')
+            ->when($schoolId !== null, fn (Builder $q) => $q->whereKey($schoolId))
+            ->orderBy('name')->get();
+    }
+
+    public function findByRegistrationToken(string $token): ?School
+    {
+        return School::query()->where('registration_token', $token)->first();
+    }
 }

@@ -2,6 +2,7 @@
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import { Button } from '@/Components/ui/button';
 import { formatBytes, validateFile } from '@/lib/files';
+import { shrinkImage } from '@/lib/imageResize';
 import type { StudentDocumentRow } from '@/types/student';
 import { router, useForm } from '@inertiajs/vue3';
 import { Download, Eye, FileText, LoaderCircle, Upload } from '@lucide/vue';
@@ -14,6 +15,8 @@ const props = defineProps<{
     canDelete: boolean;
     uploadUrl: string;
     deleteUrl: string;
+    /** Siswa memegang berkasnya sendiri: tombol Unduh tidak diperlukan. */
+    hideDownload?: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -26,6 +29,8 @@ const clientError = ref('');
 const dragging = ref(false);
 const replacing = ref(false);
 const confirmOpen = ref(false);
+const preparing = ref(false);
+const failed = ref(false);
 const form = useForm<{ file: File | null }>({ file: null });
 
 const showPicker = computed(
@@ -35,11 +40,18 @@ const showPicker = computed(
         file.value === null,
 );
 const error = computed(() => clientError.value || form.errors.file);
+const percentage = computed(() => form.progress?.percentage ?? 0);
 
-function choose(picked?: File | null) {
-    if (!picked) return;
-    const problem = validateFile(picked);
+async function choose(raw?: File | null) {
+    if (!raw) return;
     form.clearErrors();
+    failed.value = false;
+
+    preparing.value = true;
+    const picked = await shrinkImage(raw);
+    preparing.value = false;
+
+    const problem = validateFile(picked);
     if (problem) {
         clientError.value = problem;
         file.value = null;
@@ -52,28 +64,39 @@ function choose(picked?: File | null) {
 
 function onPick(event: Event) {
     const target = event.target as HTMLInputElement;
-    choose(target.files?.[0]);
+    void choose(target.files?.[0]);
     target.value = '';
 }
 
 function onDrop(event: DragEvent) {
     dragging.value = false;
-    choose(event.dataTransfer?.files?.[0]);
+    void choose(event.dataTransfer?.files?.[0]);
 }
 
 function cancel() {
     file.value = null;
     replacing.value = false;
     clientError.value = '';
+    failed.value = false;
     form.reset();
     form.clearErrors();
 }
 
 function upload() {
+    failed.value = false;
+    let succeeded = false;
+
     form.post(props.uploadUrl, {
         forceFormData: true,
         preserveScroll: true,
-        onSuccess: cancel,
+        onSuccess: () => {
+            succeeded = true;
+            cancel();
+        },
+        // Jaringan putus atau respons non-validasi: berkas tetap terpilih agar bisa dicoba lagi tanpa memilih ulang.
+        onFinish: () => {
+            if (!succeeded && !form.hasErrors) failed.value = true;
+        },
     });
 }
 
@@ -102,7 +125,7 @@ function remove() {
                     {{ formatBytes(existing.size) }}
                 </p>
             </div>
-            <div class="flex items-center gap-1">
+            <div class="flex flex-wrap items-center gap-2">
                 <Button
                     type="button"
                     variant="ghost"
@@ -112,7 +135,12 @@ function remove() {
                     <Eye class="size-4" aria-hidden="true" />
                     Lihat
                 </Button>
-                <Button as-child variant="ghost" class="h-10 px-3">
+                <Button
+                    v-if="!hideDownload"
+                    as-child
+                    variant="ghost"
+                    class="h-10 px-3"
+                >
                     <a :href="existing.url">
                         <Download class="size-4" aria-hidden="true" />
                         Unduh
@@ -154,7 +182,9 @@ function remove() {
         >
             <Upload class="text-muted-foreground size-5" aria-hidden="true" />
             <span class="text-sm leading-5 font-medium"
-                >Pilih berkas atau seret ke sini</span
+                >Pilih berkas<span class="hidden md:inline">
+                    atau seret ke sini</span
+                ></span
             >
             <span class="text-muted-foreground text-xs leading-4"
                 >PDF, JPG, atau PNG, maksimal 5 MB</span
@@ -167,6 +197,15 @@ function remove() {
                 @change="onPick"
             />
         </label>
+
+        <p
+            v-if="preparing"
+            class="text-muted-foreground flex items-center gap-2 text-xs leading-4"
+            role="status"
+        >
+            <LoaderCircle class="size-4 animate-spin" aria-hidden="true" />
+            Menyiapkan berkas…
+        </p>
 
         <div
             v-if="file"
@@ -196,7 +235,7 @@ function remove() {
                         class="size-4 animate-spin"
                         aria-hidden="true"
                     />
-                    Unggah
+                    {{ failed ? 'Coba lagi' : 'Unggah' }}
                 </Button>
                 <Button
                     type="button"
@@ -208,18 +247,21 @@ function remove() {
                     Batal
                 </Button>
             </div>
-            <progress
-                v-if="form.processing && form.progress"
-                class="h-1 w-full"
-                max="100"
-                :value="form.progress.percentage"
-            />
+            <div v-if="form.processing" class="flex w-full flex-col gap-1">
+                <progress
+                    class="h-2 w-full"
+                    max="100"
+                    :value="percentage"
+                    :aria-label="`Mengunggah ${label}`"
+                />
+                <p
+                    class="text-muted-foreground text-xs leading-4"
+                    role="status"
+                >
+                    Mengunggah {{ percentage }}%… jangan tutup halaman.
+                </p>
+            </div>
         </div>
-        <span class="sr-only" role="status">{{
-            form.processing && form.progress
-                ? `Mengunggah ${form.progress.percentage}%`
-                : ''
-        }}</span>
 
         <p
             v-if="!existing && !canUpload"
@@ -230,11 +272,14 @@ function remove() {
         <p v-if="error" class="text-danger text-xs leading-4" role="alert">
             {{ error }}
         </p>
+        <p v-if="failed" class="text-danger text-xs leading-4" role="alert">
+            Gagal mengunggah. Periksa sinyal, lalu coba lagi.
+        </p>
 
         <ConfirmDialog
             v-model:open="confirmOpen"
             :title="`Hapus ${label}?`"
-            description="Berkas akan dihapus permanen dan siswa dapat menjadi belum memenuhi syarat."
+            description="Berkas akan dihapus permanen. Unggah ulang agar data tetap lengkap."
             confirm-label="Hapus"
             destructive
             @confirm="remove"

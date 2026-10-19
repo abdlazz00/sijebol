@@ -228,9 +228,6 @@ class DashboardService
             }
         } else {
             // Operator Sekolah
-            if ($user->can('siswa.buat')) {
-                $actions[] = ['label' => 'Tambah Siswa', 'href' => route('siswa.create', absolute: false), 'icon' => 'user-plus', 'variant' => 'blue'];
-            }
             if ($user->can('pendaftaran.buat')) {
                 $actions[] = ['label' => 'Ajukan Pendaftaran', 'href' => route('pendaftaran.create', absolute: false), 'icon' => 'clipboard-check', 'variant' => 'green'];
             }

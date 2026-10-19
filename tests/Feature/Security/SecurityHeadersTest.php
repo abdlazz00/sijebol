@@ -24,8 +24,8 @@ test('semua respons web membawa header keamanan dasar', function () {
 test('halaman error dan unduhan ikut membawa header', function () {
     $this->get('/tidak-ada')->assertStatus(404)->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('X-Frame-Options', 'DENY')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 
-    $user = makeUserWith(['siswa.impor'], roleName: 'pengunduh');
-    $this->actingAs($user)->get('/siswa/impor/template')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+    $user = makeUserWith(['laporan.lihat'], roleName: 'pengunduh');
+    $this->actingAs($user)->get('/laporan/ekspor')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
 });
 
 test('HSTS hanya pada HTTPS', function () {

@@ -12,7 +12,14 @@ export function validateFile(file: {
     size: number;
 }): string | null {
     if (!ACCEPT.includes(file.type)) return 'Berkas harus PDF, JPG, atau PNG.';
-    if (file.size > MAX_BYTES) return 'Ukuran berkas maksimal 5 MB.';
+    if (file.size > MAX_BYTES) {
+        const advice =
+            file.type === 'application/pdf'
+                ? 'Pilih PDF yang lebih kecil.'
+                : 'Ambil ulang dengan resolusi lebih rendah, atau pilih PDF.';
+
+        return `Berkas ${formatBytes(file.size)} terlalu besar (maksimal 5 MB). ${advice}`;
+    }
 
     return null;
 }

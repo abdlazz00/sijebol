@@ -4,59 +4,30 @@ use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use Inertia\Testing\AssertableInertia as Assert;
-use Spatie\Activitylog\Models\Activity;
-
-function dataBaru(array $override = []): array
-{
-    return [...['nik' => '3201123412341234', 'nisn' => '0012345678', 'name' => 'Budi', 'birth_date' => '2009-05-01', 'gender' => 'L'], ...$override];
-}
 
 function operatorSekolah(School $school, array $extra = [])
 {
-    return makeUserWith(['siswa.lihat', 'siswa.buat', 'siswa.ubah', 'siswa.hapus', ...$extra], $school, true, 'operator-uji');
+    return makeUserWith(['siswa.lihat', ...$extra], $school, true, 'operator-uji');
 }
 
-test('operator menambah siswa dan sekolah dipaksa ke sekolahnya', function () {
-    $a = School::factory()->create();
-    $b = School::factory()->create();
+test('rute tambah siswa dan impor Excel sudah tidak ada', function () {
+    $this->actingAs(makeUserWith(['siswa.lihat'], roleName: 'staf-hapus-rute'));
 
-    $this->actingAs(operatorSekolah($a))
-        ->post('/siswa', [...dataBaru(), 'school_id' => $b->id])
-        ->assertRedirect();
-
-    expect(Student::withoutGlobalScopes()->where('nik', '3201123412341234')->first()->school_id)->toBe($a->id);
-});
-
-test('staf tanpa sekolah wajib memilih sekolah', function () {
-    $staf = makeUserWith(['siswa.buat'], roleName: 'staf');
-
-    $this->actingAs($staf)->post('/siswa', dataBaru())->assertSessionHasErrors('school_id');
-
-    $sekolah = School::factory()->create();
-    $this->actingAs($staf)->post('/siswa', [...dataBaru(), 'school_id' => $sekolah->id])->assertSessionHasNoErrors();
-});
-
-test('sekolah tidak berubah saat ubah', function () {
-    $a = School::factory()->create();
-    $b = School::factory()->create();
-    $s = Student::factory()->for($a)->create();
-
-    $this->actingAs(operatorSekolah($a))
-        ->put("/siswa/{$s->id}", [...dataBaru(['nik' => $s->nik]), 'school_id' => $b->id])
-        ->assertRedirect("/siswa/{$s->id}");
-
-    expect($s->fresh()->school_id)->toBe($a->id)->and($s->fresh()->name)->toBe('Budi');
+    $this->get('/siswa/buat')->assertNotFound();
+    $this->post('/siswa', [])->assertNotFound();
+    $this->get('/siswa/impor/template')->assertNotFound();
+    $this->post('/siswa/impor', [])->assertNotFound();
 });
 
 test('siswa sekolah lain tidak terlihat, tidak bisa diubah atau dihapus (404)', function () {
     $a = School::factory()->create();
     $b = School::factory()->create();
     $milikB = Student::factory()->for($b)->create();
-    $op = operatorSekolah($a);
+    $op = operatorSekolah($a, ['siswa.ubah', 'siswa.hapus']);
 
     $this->actingAs($op)->get("/siswa/{$milikB->id}")->assertNotFound();
-    $this->actingAs($op)->put("/siswa/{$milikB->id}", ['name' => 'X'])->assertNotFound();
-    $this->actingAs($op)->delete("/siswa/{$milikB->id}")->assertNotFound();
+    $this->put("/siswa/{$milikB->id}", ['name' => 'X'])->assertNotFound();
+    $this->delete("/siswa/{$milikB->id}")->assertNotFound();
 });
 
 test('daftar memasker NIK dan menyaring', function () {
@@ -81,7 +52,7 @@ test('daftar memasker NIK dan menyaring', function () {
 test('detail menampilkan eligibility dan NIK termasking; ubah menampilkan NIK penuh', function () {
     $a = School::factory()->create();
     $s = Student::factory()->for($a)->create(['nik' => '3201123412341234']);
-    $op = operatorSekolah($a);
+    $op = operatorSekolah($a, ['siswa.ubah']);
 
     $this->actingAs($op)->get("/siswa/{$s->id}")->assertInertia(fn (Assert $p) => $p
         ->component('Siswa/Show')->where('student.nik', '3201********1234')
@@ -89,26 +60,6 @@ test('detail menampilkan eligibility dan NIK termasking; ubah menampilkan NIK pe
 
     $this->get("/siswa/{$s->id}/ubah")->assertInertia(fn (Assert $p) => $p
         ->component('Siswa/Form')->where('student.nik', '3201123412341234'));
-});
-
-test('perubahan siswa tercatat dan NIK termasking di respons log', function () {
-    $a = School::factory()->create();
-    $this->actingAs(operatorSekolah($a))->post('/siswa', dataBaru());
-
-    expect(Activity::where('log_name', 'siswa')->where('event', 'created')->exists())->toBeTrue();
-
-    $viewer = makeUserWith(['log.lihat'], roleName: 'pengamat');
-    $json = $this->actingAs($viewer)->get('/log')->getContent();
-    expect($json)->not->toContain('3201123412341234')->and($json)->toContain('3201********1234');
-});
-
-test('hapus siswa memerlukan izin dan menghapus data', function () {
-    $a = School::factory()->create();
-    $s = Student::factory()->for($a)->create();
-
-    $this->actingAs(makeUserWith(['siswa.lihat'], $a, true, 'baca'))->delete("/siswa/{$s->id}")->assertForbidden();
-    $this->actingAs(operatorSekolah($a))->delete("/siswa/{$s->id}")->assertRedirect('/siswa');
-    expect(Student::withoutGlobalScopes()->count())->toBe(0);
 });
 
 test('staf melihat semua sekolah dan daftar sekolah untuk filter', function () {
@@ -127,14 +78,6 @@ test('pencarian NIK hanya cocok persis sehingga masker tidak bisa dibongkar', fu
     $this->get('/siswa?filter[search]=3201')->assertInertia(fn (Assert $p) => $p->has('students.data', 0));
     $this->get('/siswa?filter[search]=32011234123412')->assertInertia(fn (Assert $p) => $p->has('students.data', 0));
     $this->get('/siswa?filter[search]=3201123412341234')->assertInertia(fn (Assert $p) => $p->has('students.data', 1));
-});
-
-test('operator tidak mendapat petunjuk keberadaan sekolah lewat school_id', function () {
-    $a = School::factory()->create();
-
-    $this->actingAs(operatorSekolah($a))
-        ->post('/siswa', [...dataBaru(), 'school_id' => 999999])
-        ->assertSessionHasNoErrors();
 });
 
 test('filter eligible tidak menampilkan siswa dengan entri aktif', function () {

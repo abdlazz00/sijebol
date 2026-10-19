@@ -42,3 +42,12 @@ test('menghapus siswa menghapus dokumennya (cascade) dan perubahan tercatat', fu
     expect(DB::table('student_documents')->count())->toBe(0)
         ->and(Activity::where('log_name', 'siswa')->where('event', 'updated')->count())->toBe(1);
 });
+
+test('akun siswa terhubung ke satu baris data siswa saja', function () {
+    $user = User::factory()->create();
+    $student = Student::factory()->create(['user_id' => $user->id]);
+
+    expect($user->student->is($student))->toBeTrue()
+        ->and($student->user->is($user))->toBeTrue()
+        ->and(fn () => Student::factory()->create(['user_id' => $user->id]))->toThrow(QueryException::class);
+});

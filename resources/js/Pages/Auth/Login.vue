@@ -60,7 +60,7 @@ function submit() {
             <div class="flex flex-col gap-2">
                 <h1 class="text-2xl leading-8 font-semibold">Masuk</h1>
                 <p class="text-muted-foreground text-sm leading-5">
-                    Gunakan akun yang diberikan admin kecamatan.
+                    Masuk dengan akun SIJEBOL Anda.
                 </p>
             </div>
 

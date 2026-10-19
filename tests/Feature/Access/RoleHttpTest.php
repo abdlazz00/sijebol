@@ -26,7 +26,7 @@ test('buat role lewat form', function () {
 
 test('izin yang tidak dimiliki menghasilkan flash error, bukan crash', function () {
     $this->actingAs($this->actor)->from('/role/buat')->post('/role', [
-        'name' => 'bocor', 'is_school_scoped' => false, 'permissions' => ['siswa.buat'],
+        'name' => 'bocor', 'is_school_scoped' => false, 'permissions' => ['siswa.hapus'],
     ])->assertRedirect('/role/buat')->assertSessionHas('error');
 
     expect(Role::where('name', 'bocor')->exists())->toBeFalse();

@@ -20,6 +20,14 @@ export interface Paginator<T> {
     links: { url: string | null; label: string; active: boolean }[];
 }
 
+export type SchoolLink = {
+    id: number;
+    name: string;
+    npsn: string;
+    url: string;
+    students_count: number;
+};
+
 export type UserStatusKey = 'aktif' | 'menunggu' | 'kedaluwarsa' | 'nonaktif';
 
 export type UserRow = {

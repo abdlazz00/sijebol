@@ -16,9 +16,16 @@ class Role extends SpatieRole
 
     public const SUPER_ADMIN = 'super-admin';
 
+    public const SISWA = 'siswa';
+
     protected function casts(): array
     {
         return ['is_school_scoped' => 'boolean'];
+    }
+
+    public function isSystem(): bool
+    {
+        return in_array($this->name, [self::SUPER_ADMIN, self::SISWA], true);
     }
 
     public function isProtected(): bool

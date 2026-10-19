@@ -36,15 +36,6 @@ Setelah deploy, jalankan `php artisan queue:restart` agar worker memuat kode bar
 permanen (setelah 3 percobaan) masuk tabel `failed_jobs`; periksa dengan `php artisan queue:failed`
 dan ulangi dengan `php artisan queue:retry all`.
 
-## Impor siswa
-
-Impor Excel (Siswa, Impor) diproses di queue oleh `ImportStudentsJob`, sehingga **queue worker wajib berjalan**
-(lokal: `php artisan queue:work`; produksi: program supervisor di atas). Tanpa worker impor tetap berstatus `antri`
-dan dialog menampilkan petunjuk setelah 20 detik. Berkas unggahan (berisi NIK) disimpan sementara di
-`storage/app/private/imports` dan dihapus setelah diproses, baik berhasil maupun gagal. Hasil (jumlah berhasil dan
-baris gagal) tersimpan di tabel `student_imports`. Job impor tidak diulang otomatis (`tries = 1`); bila gagal,
-impor ditandai `gagal` dan pembuatnya menerima notifikasi.
-
 ## SMTP
 
 Penyedia SMTP belum ditentukan (spec v1 bagian 11). Isi `MAIL_*` di `.env` produksi setelah diputuskan.
