@@ -4,18 +4,13 @@ import { formatDate } from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { UpcomingScheduleRow } from '@/types/dashboard';
 import { Link } from '@inertiajs/vue3';
-import { CalendarDays, ChevronRight, MapPin, ScanLine, Users } from '@lucide/vue';
-import { computed } from 'vue';
+import { CalendarDays, ChevronRight, ScanLine, Users } from '@lucide/vue';
 
-const props = defineProps<{
+defineProps<{
     schedules: UpcomingScheduleRow[];
 }>();
 
 const { can } = usePermission();
-// Kolom Aksi hanya muncul bila ada sesi hari ini dan pengguna boleh memindai.
-const showScan = computed(
-    () => can(PERMISSIONS.RekamanPindai) && props.schedules.some((s) => s.status === 'Hari Ini'),
-);
 
 function statusBadgeClass(status: string): string {
     switch (status) {
@@ -66,13 +61,11 @@ function statusBadgeClass(status: string): string {
             <table v-if="schedules.length" class="w-full text-left text-xs">
                 <thead>
                     <tr class="border-b border-border/60 text-muted-foreground">
-                        <th class="py-2.5 pr-2 font-medium">No</th>
-                        <th class="py-2.5 px-3 font-medium">Tanggal</th>
-                        <th class="py-2.5 px-3 font-medium">Sekolah</th>
-                        <th class="py-2.5 px-3 font-medium">Kursi</th>
-                        <th class="py-2.5 px-3 font-medium">Lokasi</th>
-                        <th class="py-2.5 pl-3 text-right font-medium">Status</th>
-                        <th v-if="showScan" class="py-2.5 pl-3 text-right font-medium">Aksi</th>
+                        <th class="py-2.5 px-2 font-medium">Tanggal</th>
+                        <th class="py-2.5 px-2 font-medium">Sekolah</th>
+                        <th class="py-2.5 px-2 font-medium">Kursi</th>
+                        <th class="py-2.5 px-2 font-medium">Lokasi</th>
+                        <th class="py-2.5 pl-2 text-right font-medium">Status</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-border/40">
@@ -81,33 +74,31 @@ function statusBadgeClass(status: string): string {
                         :key="row.id || idx"
                         class="group transition-colors hover:bg-muted/40"
                     >
-                        <td class="py-3 pr-2 font-medium text-muted-foreground">
-                            {{ idx + 1 }}
-                        </td>
-                        <td class="py-3 px-3 font-medium whitespace-nowrap text-foreground">
+                        <td class="py-3 px-2 font-medium whitespace-nowrap text-foreground">
                             {{ formatDate(row.date) }}
                         </td>
-                        <td class="py-3 px-3 font-medium text-foreground">
+                        <td class="py-3 px-2 font-medium text-foreground">
                             {{ row.school_name || row.school || '-' }}
                         </td>
-                        <td class="py-3 px-3 whitespace-nowrap text-muted-foreground">
-                            <span class="inline-flex items-center gap-1.5">
+                        <td class="py-3 px-2 text-muted-foreground">
+                            <span class="inline-flex items-center gap-1.5 whitespace-nowrap">
                                 <Users class="size-3.5 text-muted-foreground/70" aria-hidden="true" />
                                 <span>{{ row.participants }}/{{ row.quota }} kursi</span>
                             </span>
-                            <span class="block text-xs leading-4">
-                                {{ row.waiting }} menunggu verifikasi · {{ row.present }} sudah rekaman
+                            <span class="block text-xs leading-4 whitespace-nowrap">
+                                {{ row.waiting }} menunggu verifikasi
+                            </span>
+                            <span class="block text-xs leading-4 whitespace-nowrap">
+                                {{ row.present }} sudah rekaman
                             </span>
                         </td>
-                        <td class="py-3 px-3 text-muted-foreground">
-                            <span class="inline-flex items-center gap-1.5">
-                                <MapPin class="size-3.5 shrink-0 text-muted-foreground/70" aria-hidden="true" />
-                                <span class="max-w-[150px] truncate" :title="row.location">
-                                    {{ row.location || '-' }}
-                                </span>
+                        <td class="py-3 px-2 text-muted-foreground">
+                            <span class="block max-w-[110px] truncate" :title="row.location">
+                                {{ row.location || '-' }}
                             </span>
                         </td>
-                        <td class="py-3 pl-3 text-right whitespace-nowrap">
+                        <td class="py-3 pl-2 text-right whitespace-nowrap">
+                            <div class="flex flex-col items-end gap-1">
                             <span
                                 :class="[
                                     'inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[11px] font-semibold',
@@ -127,16 +118,15 @@ function statusBadgeClass(status: string): string {
                                 </span>
                                 {{ row.status }}
                             </span>
-                        </td>
-                        <td v-if="showScan" class="py-3 pl-3 text-right whitespace-nowrap">
                             <Link
-                                v-if="row.status === 'Hari Ini'"
+                                v-if="row.status === 'Hari Ini' && can(PERMISSIONS.RekamanPindai)"
                                 :href="route('jadwal.pindai.show', row.id)"
                                 class="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                             >
                                 <ScanLine class="size-3.5" aria-hidden="true" />
                                 Pindai
                             </Link>
+                            </div>
                         </td>
                     </tr>
                 </tbody>

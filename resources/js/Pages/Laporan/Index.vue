@@ -51,8 +51,7 @@ const sessionExportHref = computed(() =>
 const numeric = 'w-[104px] text-right';
 const sessionColumns = [
     { key: 'date', label: 'Sesi', class: 'min-w-[200px]' },
-    { key: 'school', label: 'Sekolah', class: 'min-w-[180px]' },
-    { key: 'location', label: 'Lokasi', class: 'min-w-[160px]' },
+    { key: 'school', label: 'Sekolah dan lokasi', class: 'min-w-[200px]' },
     { key: 'quota', label: 'Kuota', class: numeric },
     { key: 'taken', label: 'Terisi', class: numeric },
     { key: 'present', label: 'Sudah rekaman', class: numeric },
@@ -60,8 +59,8 @@ const sessionColumns = [
     { key: 'absent', label: 'Tidak hadir', class: numeric },
     { key: 'attendance', label: 'Kehadiran', class: numeric },
 ];
-// Kolom angka (setelah Sesi, Sekolah, Lokasi) memakai slot sel yang sama.
-const numericKeys = sessionColumns.slice(3);
+// Kolom angka (setelah Sesi dan Sekolah dan lokasi) memakai slot sel yang sama.
+const numericKeys = sessionColumns.slice(2);
 
 type SessionTableRow = Record<string, string | number | boolean | null>;
 const sessionRows = computed<SessionTableRow[]>(() => {
@@ -232,7 +231,7 @@ function cell(row: RecapTableRow, key: string): string {
                     :columns="sessionColumns"
                     :rows="sessionRows"
                     row-class="h-14"
-                    table-class="min-w-[1120px]"
+                    table-class="min-w-[960px]"
                 >
                     <template #cell-date="{ row }">
                         <span v-if="row.isTotal" class="font-semibold"
@@ -249,6 +248,17 @@ function cell(row: RecapTableRow, key: string): string {
                                         String(row.end_time),
                                     )
                                 }}
+                            </p>
+                        </div>
+                    </template>
+                    <template #cell-school="{ row }">
+                        <span v-if="row.isTotal" />
+                        <div v-else class="min-w-0">
+                            <p class="text-sm leading-5 font-medium">
+                                {{ row.school }}
+                            </p>
+                            <p class="text-muted-foreground text-xs leading-4">
+                                {{ row.location }}
                             </p>
                         </div>
                     </template>
