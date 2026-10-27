@@ -5,20 +5,21 @@ namespace App\Http\Controllers;
 use App\Domains\Reports\Services\DashboardService;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Services\ScheduleService;
-use Illuminate\Http\RedirectResponse;
+use App\Domains\Students\Services\StudentDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, ScheduleService $schedules, DashboardService $dashboard): Response|RedirectResponse
-    {
-        // Siswa tidak punya beranda staf; reflash agar toast aktivasi tidak hilang di pengalihan ini.
+    public function __invoke(
+        Request $request,
+        ScheduleService $schedules,
+        DashboardService $dashboard,
+        StudentDashboardService $studentDashboard
+    ): Response {
         if ($request->user()->isStudent()) {
-            $request->session()->reflash();
-
-            return redirect()->route('me.show');
+            return Inertia::render('Student/Dashboard', $studentDashboard->forUser($request->user()));
         }
 
         $canJadwal = $request->user()->can('jadwal.lihat');
