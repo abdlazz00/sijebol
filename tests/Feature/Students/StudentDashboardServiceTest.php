@@ -47,7 +47,7 @@ test('menghasilkan state NO_REGISTRATION jika data dan dokumen lengkap tetapi be
     $user = User::factory()->create(['school_id' => $school->id])->assignRole('siswa');
     $student = Student::factory()->create(['user_id' => $user->id, 'school_id' => $school->id]);
     StudentDocument::create(['student_id' => $student->id, 'type' => 'kk', 'path' => 'docs/kk.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
-    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
+    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta_lahir', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
 
     $service = app(StudentDashboardService::class);
     $data = $service->forUser($user);
@@ -65,7 +65,7 @@ test('menghasilkan state MENUNGGU_VERIFIKASI jika pendaftaran aktif dalam antrea
     $user = User::factory()->create(['school_id' => $school->id])->assignRole('siswa');
     $student = Student::factory()->create(['user_id' => $user->id, 'school_id' => $school->id]);
     StudentDocument::create(['student_id' => $student->id, 'type' => 'kk', 'path' => 'docs/kk.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
-    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
+    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta_lahir', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
     $schedule = Schedule::factory()->create(['school_id' => $school->id, 'date' => now()->addDays(5)]);
     RegistrationStudent::factory()->create([
         'student_id' => $student->id,
@@ -86,7 +86,7 @@ test('menghasilkan state PERBAIKAN jika verifikator meminta revisi berkas', func
     $user = User::factory()->create(['school_id' => $school->id])->assignRole('siswa');
     $student = Student::factory()->create(['user_id' => $user->id, 'school_id' => $school->id]);
     StudentDocument::create(['student_id' => $student->id, 'type' => 'kk', 'path' => 'docs/kk.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
-    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
+    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta_lahir', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
     $schedule = Schedule::factory()->create(['school_id' => $school->id, 'date' => now()->addDays(5)]);
     $deadline = now()->addDays(2);
     RegistrationStudent::factory()->create([
@@ -117,7 +117,7 @@ test('menghasilkan state TERDAFTAR jika pendaftaran disetujui', function () {
         'birth_date' => now()->subYears(18),
     ]);
     StudentDocument::create(['student_id' => $student->id, 'type' => 'kk', 'path' => 'docs/kk.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
-    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
+    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta_lahir', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
     $schedule = Schedule::factory()->create(['school_id' => $school->id, 'date' => now()->addDays(5)]);
     $entry = RegistrationStudent::factory()->create([
         'student_id' => $student->id,
@@ -142,7 +142,7 @@ test('menghasilkan state SUDAH_REKAMAN jika biometrik selesai', function () {
     $user = User::factory()->create(['school_id' => $school->id])->assignRole('siswa');
     $student = Student::factory()->create(['user_id' => $user->id, 'school_id' => $school->id]);
     StudentDocument::create(['student_id' => $student->id, 'type' => 'kk', 'path' => 'docs/kk.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
-    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
+    StudentDocument::create(['student_id' => $student->id, 'type' => 'akta_lahir', 'path' => 'docs/akta.pdf', 'mime' => 'application/pdf', 'size' => 1024]);
     $schedule = Schedule::factory()->create(['school_id' => $school->id, 'date' => now()->subDay()]);
     $entry = RegistrationStudent::factory()->create([
         'student_id' => $student->id,

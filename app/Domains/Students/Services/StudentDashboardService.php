@@ -41,7 +41,8 @@ class StudentDashboardService
         ];
 
         $uploadedTypes = $student ? $student->documents->pluck('type')->all() : [];
-        $hasMandatoryDocs = in_array('kk', $uploadedTypes, true) && in_array('akta', $uploadedTypes, true);
+        $hasMandatoryDocs = in_array('kk', $uploadedTypes, true)
+            && (in_array('akta_lahir', $uploadedTypes, true) || in_array('akta', $uploadedTypes, true));
 
         /** @var RegistrationStudent|null $activeEntry */
         $activeEntry = $student?->registrationEntries->first(fn (RegistrationStudent $e) => $e->status->isActive());
