@@ -50,6 +50,6 @@ class SelfStudentController extends Controller
         $first = ! $request->user()->student()->exists();
         $this->students->saveOwn($request->user(), $request->validated());
 
-        return redirect()->route('saya.show')->with('success', $first ? 'Data disimpan. Sekarang unggah dokumen.' : 'Data diperbarui.');
+        return redirect()->route('me.show')->with('success', $first ? 'Data disimpan. Sekarang unggah dokumen.' : 'Data diperbarui.');
     }
 }

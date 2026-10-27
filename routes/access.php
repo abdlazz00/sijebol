@@ -8,35 +8,35 @@ use App\Domains\Schools\Http\Controllers\SchoolLinkController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('throttle:10,1')->group(function () {
-    Route::get('aktivasi/{token}', [ActivationController::class, 'show'])->name('aktivasi.show');
-    Route::post('aktivasi/{token}', [ActivationController::class, 'store'])->name('aktivasi.store');
+    Route::get('activation/{token}', [ActivationController::class, 'show'])->name('activation.show');
+    Route::post('activation/{token}', [ActivationController::class, 'store'])->name('activation.store');
 });
 
 Route::middleware('auth')->group(function () {
-    Route::get('sekolah', [SchoolController::class, 'index'])->middleware('can:sekolah.lihat')->name('sekolah.index');
-    Route::get('sekolah/buat', [SchoolController::class, 'create'])->middleware('can:sekolah.buat')->name('sekolah.create');
-    Route::post('sekolah', [SchoolController::class, 'store'])->middleware('can:sekolah.buat')->name('sekolah.store');
-    Route::get('sekolah/{school}/ubah', [SchoolController::class, 'edit'])->middleware('can:sekolah.ubah')->name('sekolah.edit');
-    Route::put('sekolah/{school}', [SchoolController::class, 'update'])->middleware('can:sekolah.ubah')->name('sekolah.update');
+    Route::get('schools', [SchoolController::class, 'index'])->middleware('can:sekolah.lihat')->name('schools.index');
+    Route::get('schools/create', [SchoolController::class, 'create'])->middleware('can:sekolah.buat')->name('schools.create');
+    Route::post('schools', [SchoolController::class, 'store'])->middleware('can:sekolah.buat')->name('schools.store');
+    Route::get('schools/{school}/edit', [SchoolController::class, 'edit'])->middleware('can:sekolah.ubah')->name('schools.edit');
+    Route::put('schools/{school}', [SchoolController::class, 'update'])->middleware('can:sekolah.ubah')->name('schools.update');
 
-    Route::get('tautan-pendaftaran', [SchoolLinkController::class, 'index'])->middleware('can:sekolah.tautan')->name('tautan.index');
-    Route::post('tautan-pendaftaran/{school}/reset', [SchoolLinkController::class, 'reset'])->middleware(['can:sekolah.reset-tautan', 'throttle:20,1'])->name('tautan.reset');
+    Route::get('registration-links', [SchoolLinkController::class, 'index'])->middleware('can:sekolah.tautan')->name('registration-links.index');
+    Route::post('registration-links/{school}/reset', [SchoolLinkController::class, 'reset'])->middleware(['can:sekolah.reset-tautan', 'throttle:20,1'])->name('registration-links.reset');
 
-    Route::get('pengguna', [UserController::class, 'index'])->middleware('can:user.lihat')->name('pengguna.index');
-    Route::get('pengguna/buat', [UserController::class, 'create'])->middleware('can:user.buat')->name('pengguna.create');
-    Route::post('pengguna', [UserController::class, 'store'])->middleware('can:user.buat')->name('pengguna.store');
-    Route::get('pengguna/{user}', [UserController::class, 'show'])->middleware('can:user.lihat')->name('pengguna.show');
-    Route::get('pengguna/{user}/berhasil', [UserController::class, 'done'])->middleware('can:user.lihat')->name('pengguna.done');
-    Route::get('pengguna/{user}/ubah', [UserController::class, 'edit'])->middleware('can:user.ubah')->name('pengguna.edit');
-    Route::put('pengguna/{user}', [UserController::class, 'update'])->middleware('can:user.ubah')->name('pengguna.update');
-    Route::post('pengguna/{user}/nonaktifkan', [UserController::class, 'deactivate'])->middleware('can:user.nonaktifkan')->name('pengguna.deactivate');
-    Route::post('pengguna/{user}/aktifkan', [UserController::class, 'activate'])->middleware('can:user.nonaktifkan')->name('pengguna.activate');
-    Route::post('pengguna/{user}/kirim-ulang-aktivasi', [UserController::class, 'resend'])->middleware('can:user.kirim-ulang-aktivasi')->name('pengguna.resend');
+    Route::get('users', [UserController::class, 'index'])->middleware('can:user.lihat')->name('users.index');
+    Route::get('users/create', [UserController::class, 'create'])->middleware('can:user.buat')->name('users.create');
+    Route::post('users', [UserController::class, 'store'])->middleware('can:user.buat')->name('users.store');
+    Route::get('users/{user}', [UserController::class, 'show'])->middleware('can:user.lihat')->name('users.show');
+    Route::get('users/{user}/done', [UserController::class, 'done'])->middleware('can:user.lihat')->name('users.done');
+    Route::get('users/{user}/edit', [UserController::class, 'edit'])->middleware('can:user.ubah')->name('users.edit');
+    Route::put('users/{user}', [UserController::class, 'update'])->middleware('can:user.ubah')->name('users.update');
+    Route::post('users/{user}/deactivate', [UserController::class, 'deactivate'])->middleware('can:user.nonaktifkan')->name('users.deactivate');
+    Route::post('users/{user}/activate', [UserController::class, 'activate'])->middleware('can:user.nonaktifkan')->name('users.activate');
+    Route::post('users/{user}/resend-activation', [UserController::class, 'resend'])->middleware('can:user.kirim-ulang-aktivasi')->name('users.resend-activation');
 
-    Route::get('role', [RoleController::class, 'index'])->middleware('can:role.lihat')->name('role.index');
-    Route::get('role/buat', [RoleController::class, 'create'])->middleware('can:role.buat')->name('role.create');
-    Route::post('role', [RoleController::class, 'store'])->middleware('can:role.buat')->name('role.store');
-    Route::get('role/{role}/ubah', [RoleController::class, 'edit'])->middleware('can:role.ubah')->name('role.edit');
-    Route::put('role/{role}', [RoleController::class, 'update'])->middleware('can:role.ubah')->name('role.update');
-    Route::delete('role/{role}', [RoleController::class, 'destroy'])->middleware('can:role.hapus')->name('role.destroy');
+    Route::get('roles', [RoleController::class, 'index'])->middleware('can:role.lihat')->name('roles.index');
+    Route::get('roles/create', [RoleController::class, 'create'])->middleware('can:role.buat')->name('roles.create');
+    Route::post('roles', [RoleController::class, 'store'])->middleware('can:role.buat')->name('roles.store');
+    Route::get('roles/{role}/edit', [RoleController::class, 'edit'])->middleware('can:role.ubah')->name('roles.edit');
+    Route::put('roles/{role}', [RoleController::class, 'update'])->middleware('can:role.ubah')->name('roles.update');
+    Route::delete('roles/{role}', [RoleController::class, 'destroy'])->middleware('can:role.hapus')->name('roles.destroy');
 });

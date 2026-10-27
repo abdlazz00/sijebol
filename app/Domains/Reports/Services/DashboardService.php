@@ -53,10 +53,10 @@ class DashboardService
 
         // 2. Aksi yang perlu ditindaklanjuti
         if ($user->can('verifikasi.lihat') && $n(S::MenungguVerifikasi) > 0) {
-            $actions[] = $this->action($n(S::MenungguVerifikasi).' pendaftaran menunggu verifikasi', 'Periksa data dan dokumen siswa yang mendaftar sesi rekaman.', 'Buka antrean', route('verifikasi.index', absolute: false), 'clipboard-list');
+            $actions[] = $this->action($n(S::MenungguVerifikasi).' pendaftaran menunggu verifikasi', 'Periksa data dan dokumen siswa yang mendaftar sesi rekaman.', 'Buka antrean', route('verifications.index', absolute: false), 'clipboard-list');
         }
         if ($user->can('jadwal.lihat') && ! $user->can('jadwal.buat') && $n(S::Terdaftar) > 0) {
-            $actions[] = $this->action($n(S::Terdaftar).' siswa terdaftar', 'Lihat sesi rekaman sekolah Anda.', 'Lihat sesi', route('jadwal.index', absolute: false), 'calendar-plus');
+            $actions[] = $this->action($n(S::Terdaftar).' siswa terdaftar', 'Lihat sesi rekaman sekolah Anda.', 'Lihat sesi', route('schedules.index', absolute: false), 'calendar-plus');
         }
 
         return [
@@ -167,21 +167,21 @@ class DashboardService
         if ($user->school_id === null) {
             // Staf Kecamatan / Admin
             if ($user->can('jadwal.buat')) {
-                $actions[] = ['label' => 'Buat Sesi Rekaman', 'href' => route('jadwal.index', absolute: false), 'icon' => 'calendar-plus', 'variant' => 'green'];
+                $actions[] = ['label' => 'Buat Sesi Rekaman', 'href' => route('schedules.index', absolute: false), 'icon' => 'calendar-plus', 'variant' => 'green'];
             }
             if ($user->can('rekaman.pindai') && $user->can('jadwal.lihat')) {
-                $actions[] = ['label' => 'Pindai Tiket', 'href' => route('jadwal.index', absolute: false), 'icon' => 'scan-line', 'variant' => 'amber'];
+                $actions[] = ['label' => 'Pindai Tiket', 'href' => route('schedules.index', absolute: false), 'icon' => 'scan-line', 'variant' => 'amber'];
             }
             if ($user->can('laporan.ekspor') || $user->can('laporan.lihat')) {
-                $actions[] = ['label' => 'Unduh Laporan', 'href' => route('laporan.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
+                $actions[] = ['label' => 'Unduh Laporan', 'href' => route('reports.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
             }
         } else {
             // Operator Sekolah
             if ($user->can('siswa.lihat')) {
-                $actions[] = ['label' => 'Cek Siswa Memenuhi Syarat', 'href' => route('siswa.index', ['filter' => ['eligible' => 1]], absolute: false), 'icon' => 'shield-check', 'variant' => 'amber'];
+                $actions[] = ['label' => 'Cek Siswa Memenuhi Syarat', 'href' => route('students.index', ['filter' => ['eligible' => 1]], absolute: false), 'icon' => 'shield-check', 'variant' => 'amber'];
             }
             if ($user->can('laporan.lihat')) {
-                $actions[] = ['label' => 'Unduh Rekap Sekolah', 'href' => route('laporan.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
+                $actions[] = ['label' => 'Unduh Rekap Sekolah', 'href' => route('reports.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
             }
         }
 

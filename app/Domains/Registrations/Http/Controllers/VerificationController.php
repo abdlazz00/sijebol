@@ -83,14 +83,14 @@ class VerificationController extends Controller
     {
         $count = $this->verification->approveMany($request->validated('entry_ids'), $request->user());
 
-        return redirect()->route('verifikasi.index')->with('success', "{$count} siswa disetujui.");
+        return redirect()->route('verifications.index')->with('success', "{$count} siswa disetujui.");
     }
 
     public function decide(DecisionRequest $request, RegistrationStudent $entry): RedirectResponse
     {
         $this->verification->decide($entry, $request->validated('decision'), $request->validated('note'), $request->user());
 
-        return redirect()->route('verifikasi.index')->with('success', 'Keputusan disimpan.');
+        return redirect()->route('verifications.index')->with('success', 'Keputusan disimpan.');
     }
 
     /** @return array{id: int, date: string, start_time: string, end_time: string, location: string} */

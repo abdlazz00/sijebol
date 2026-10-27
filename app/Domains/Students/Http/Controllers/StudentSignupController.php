@@ -39,6 +39,6 @@ class StudentSignupController extends Controller
         }
 
         // Respons sama untuk semua kasus pada token yang sah.
-        return redirect()->route('daftar.show', $token)->with('sent', $school !== null);
+        return redirect()->route('register.show', $token)->with('sent', $school !== null);
     }
 }

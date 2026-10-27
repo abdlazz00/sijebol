@@ -18,7 +18,7 @@ class DashboardController extends Controller
         if ($request->user()->isStudent()) {
             $request->session()->reflash();
 
-            return redirect()->route('saya.show');
+            return redirect()->route('me.show');
         }
 
         $canJadwal = $request->user()->can('jadwal.lihat');

@@ -40,7 +40,7 @@ class RoleController extends Controller
     {
         $this->roles->create($request->validated(), $request->user());
 
-        return redirect()->route('role.index')->with('success', 'Role ditambahkan.');
+        return redirect()->route('roles.index')->with('success', 'Role ditambahkan.');
     }
 
     public function edit(Request $request, Role $role): Response
@@ -65,13 +65,13 @@ class RoleController extends Controller
     {
         $this->roles->update($role, $request->validated(), $request->user());
 
-        return redirect()->route('role.index')->with('success', 'Role diperbarui.');
+        return redirect()->route('roles.index')->with('success', 'Role diperbarui.');
     }
 
     public function destroy(Request $request, Role $role): RedirectResponse
     {
         $this->roles->delete($role, $request->user());
 
-        return redirect()->route('role.index')->with('success', 'Role dihapus.');
+        return redirect()->route('roles.index')->with('success', 'Role dihapus.');
     }
 }

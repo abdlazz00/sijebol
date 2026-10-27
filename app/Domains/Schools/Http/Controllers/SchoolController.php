@@ -32,7 +32,7 @@ class SchoolController extends Controller
     {
         $this->schools->create($request->validated());
 
-        return redirect()->route('sekolah.index')->with('success', 'Sekolah ditambahkan.');
+        return redirect()->route('schools.index')->with('success', 'Sekolah ditambahkan.');
     }
 
     public function edit(School $school): Response
@@ -44,6 +44,6 @@ class SchoolController extends Controller
     {
         $this->schools->update($school, $request->validated());
 
-        return redirect()->route('sekolah.index')->with('success', 'Sekolah diperbarui.');
+        return redirect()->route('schools.index')->with('success', 'Sekolah diperbarui.');
     }
 }

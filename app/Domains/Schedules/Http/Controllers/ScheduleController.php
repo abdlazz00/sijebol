@@ -58,7 +58,7 @@ class ScheduleController extends Controller
     {
         $schedule = $this->schedules->create($request->validated(), $request->user());
 
-        return redirect()->route('jadwal.show', $schedule)->with('success', 'Sesi dibuat.');
+        return redirect()->route('schedules.show', $schedule)->with('success', 'Sesi dibuat.');
     }
 
     public function show(Schedule $schedule): Response
@@ -94,28 +94,28 @@ class ScheduleController extends Controller
     {
         $this->schedules->delete($schedule, $request->user());
 
-        return redirect()->route('jadwal.index')->with('success', 'Sesi dihapus.');
+        return redirect()->route('schedules.index')->with('success', 'Sesi dihapus.');
     }
 
     public function update(ScheduleRequest $request, Schedule $schedule): RedirectResponse
     {
         $this->schedules->update($schedule, $request->validated(), $request->user());
 
-        return redirect()->route('jadwal.show', $schedule)->with('success', 'Sesi diperbarui.');
+        return redirect()->route('schedules.show', $schedule)->with('success', 'Sesi diperbarui.');
     }
 
     public function cancel(CancelScheduleRequest $request, Schedule $schedule): RedirectResponse
     {
         $count = $this->schedules->cancel($schedule, $request->validated('note'), $request->user());
 
-        return redirect()->route('jadwal.show', $schedule)->with('success', "Sesi dibatalkan; {$count} pendaftaran ikut dibatalkan.");
+        return redirect()->route('schedules.show', $schedule)->with('success', "Sesi dibatalkan; {$count} pendaftaran ikut dibatalkan.");
     }
 
     public function cancelEntry(CancelEntryRequest $request, Schedule $schedule, RegistrationStudent $entry): RedirectResponse
     {
         $this->registrations->cancelByStaff($entry, $request->validated('note'), $request->user());
 
-        return redirect()->route('jadwal.show', $schedule)->with('success', 'Pendaftaran dibatalkan.');
+        return redirect()->route('schedules.show', $schedule)->with('success', 'Pendaftaran dibatalkan.');
     }
 
     /** Jam `HH:MM:SS` dari basis data menjadi `HH:MM`. */

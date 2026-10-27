@@ -30,7 +30,7 @@ class School extends Model
 
     public function registrationUrl(): string
     {
-        return route('daftar.show', $this->registration_token);
+        return route('register.show', $this->registration_token);
     }
 
     /** Token lama berhenti berlaku; akun siswa yang sudah ada tidak terpengaruh. */

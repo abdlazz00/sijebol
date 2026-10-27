@@ -42,7 +42,7 @@ class SelfRegistrationController extends Controller
         $this->student($request);
         $this->registrations->register($request->user(), $schedule);
 
-        return redirect()->route('saya.sesi')->with('success', 'Pendaftaran terkirim. Petugas akan memeriksa data Anda.');
+        return redirect()->route('me.sessions.index')->with('success', 'Pendaftaran terkirim. Petugas akan memeriksa data Anda.');
     }
 
     public function cancel(Request $request, RegistrationStudent $entry): RedirectResponse
@@ -50,7 +50,7 @@ class SelfRegistrationController extends Controller
         $this->student($request);
         $this->registrations->cancel($entry, $request->user());
 
-        return redirect()->route('saya.sesi')->with('success', 'Pendaftaran dibatalkan.');
+        return redirect()->route('me.sessions.index')->with('success', 'Pendaftaran dibatalkan.');
     }
 
     public function resubmit(Request $request, RegistrationStudent $entry): RedirectResponse
@@ -58,7 +58,7 @@ class SelfRegistrationController extends Controller
         $this->student($request);
         $this->registrations->resubmit($entry, $request->user());
 
-        return redirect()->route('saya.sesi')->with('success', 'Pendaftaran diajukan ulang. Petugas akan memeriksanya kembali.');
+        return redirect()->route('me.sessions.index')->with('success', 'Pendaftaran diajukan ulang. Petugas akan memeriksanya kembali.');
     }
 
     /** Tiket hanya untuk pendaftaran Terdaftar (dengan QR) atau Sudah rekaman (tanpa QR); status lain 404. */

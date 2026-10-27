@@ -78,14 +78,14 @@ class StudentController extends Controller
         $data = $request->validated();
         $this->students->correct($student, Arr::except($data, ['note']), $data['note'], $request->user());
 
-        return redirect()->route('siswa.show', $student)->with('success', 'Data siswa dikoreksi.');
+        return redirect()->route('students.show', $student)->with('success', 'Data siswa dikoreksi.');
     }
 
     public function destroy(Student $student): RedirectResponse
     {
         $this->students->delete($student);
 
-        return redirect()->route('siswa.index')->with('success', 'Siswa dihapus.');
+        return redirect()->route('students.index')->with('success', 'Siswa dihapus.');
     }
 
     /** @return array<string, mixed> */

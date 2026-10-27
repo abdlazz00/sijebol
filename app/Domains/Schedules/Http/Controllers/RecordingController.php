@@ -36,7 +36,7 @@ class RecordingController extends Controller
     {
         $this->recording->undo($entry, $request->validated('note'), $request->user());
 
-        return redirect()->route('jadwal.rekaman.show', $schedule)->with('success', 'Penandaan dibatalkan.');
+        return redirect()->route('schedules.recording.show', $schedule)->with('success', 'Penandaan dibatalkan.');
     }
 
     public function store(RecordingRequest $request, Schedule $schedule): RedirectResponse
@@ -49,6 +49,6 @@ class RecordingController extends Controller
             $request->user(),
         );
 
-        return redirect()->route('jadwal.rekaman.show', $schedule)->with('success', 'Penandaan disimpan.');
+        return redirect()->route('schedules.recording.show', $schedule)->with('success', 'Penandaan disimpan.');
     }
 }
