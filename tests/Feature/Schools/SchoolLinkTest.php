@@ -12,14 +12,14 @@ test('operator hanya melihat link sekolahnya, staf melihat semua', function () {
     $operator = makeUserWith(['sekolah.tautan'], $a, true, 'op-link');
     $staf = makeUserWith(['sekolah.tautan'], roleName: 'staf-link');
 
-    $this->actingAs($operator)->get('/tautan-pendaftaran')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($operator)->get('/registration-links')->assertInertia(fn (Assert $p) => $p
         ->component('Sekolah/Tautan')
         ->has('schools', 1)
         ->where('schools.0.id', $a->id)
-        ->where('schools.0.url', url("/daftar/{$a->registration_token}"))
+        ->where('schools.0.url', url("/register/{$a->registration_token}"))
         ->where('schools.0.students_count', 2));
 
-    $this->actingAs($staf)->get('/tautan-pendaftaran')->assertInertia(fn (Assert $p) => $p->has('schools', 2));
+    $this->actingAs($staf)->get('/registration-links')->assertInertia(fn (Assert $p) => $p->has('schools', 2));
 });
 
 test('reset mengganti token, token lama tidak lagi menemukan sekolah, siswa tetap', function () {
@@ -28,7 +28,7 @@ test('reset mengganti token, token lama tidak lagi menemukan sekolah, siswa teta
     $lama = $school->registration_token;
     $admin = makeUserWith(['sekolah.reset-tautan'], roleName: 'admin-link');
 
-    $this->actingAs($admin)->post("/tautan-pendaftaran/{$school->id}/reset")->assertRedirect();
+    $this->actingAs($admin)->post("/registration-links/{$school->id}/reset")->assertRedirect();
 
     $school->refresh();
     expect($school->registration_token)->not->toBe($lama)->toHaveLength(40)
@@ -42,7 +42,7 @@ test('operator tidak dapat mereset link sekolah lain', function () {
     $token = $b->registration_token;
     $operator = makeUserWith(['sekolah.reset-tautan'], $a, true, 'op-reset');
 
-    $this->actingAs($operator)->post("/tautan-pendaftaran/{$b->id}/reset")->assertSessionHas('error');
+    $this->actingAs($operator)->post("/registration-links/{$b->id}/reset")->assertSessionHas('error');
 
     expect($b->fresh()->registration_token)->toBe($token);
 });

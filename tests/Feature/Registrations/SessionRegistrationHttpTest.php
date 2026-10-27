@@ -27,7 +27,7 @@ test('halaman sesi memuat sesi terbuka sekolah siswa, urut tanggal, dengan kursi
     makeSchedule($this->school, '2026-10-25')->update(['cancelled_at' => now()]);
     makeSchedule(School::factory()->create(), '2026-10-22');         // sekolah lain
 
-    $this->actingAs($this->akun)->get('/saya/sesi')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->component('Saya/Sesi')
         ->where('ready', true)->where('close_days', 2)->where('entry', null)
         ->has('schedules', 3)
@@ -42,7 +42,7 @@ test('kelayakan dihitung per sesi: umur 16 pada tanggal sesi', function () {
     $this->siswa->update(['birth_date' => '2010-10-25']);
     $nanti = makeSchedule($this->school, '2026-10-27');
 
-    $this->actingAs($this->akun)->get('/saya/sesi')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->where('schedules.0.id', $this->sesi->id)->where('schedules.0.eligible', false)
         ->where('schedules.0.reasons.0', fn ($r) => str_contains($r, 'Umur minimal 16 tahun'))
         ->where('schedules.1.id', $nanti->id)->where('schedules.1.eligible', true));
@@ -51,7 +51,7 @@ test('kelayakan dihitung per sesi: umur 16 pada tanggal sesi', function () {
 test('tanpa baris siswa, halaman belum siap dan tanpa daftar sesi', function () {
     $akun = makeUserWith(['pendaftaran.lihat', 'pendaftaran.buat'], $this->school, true, 'siswa');
 
-    $this->actingAs($akun)->get('/saya/sesi')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->where('ready', false)->where('entry', null)->has('schedules', 0));
 });
 
@@ -59,7 +59,7 @@ test('dengan pendaftaran aktif daftar sesi kosong dan entri memuat aksi yang ter
     makeEntry($status, $this->school, $this->siswa, $this->sesi);
     RegistrationStudent::query()->latest('id')->first()->update(['note' => 'Foto KK buram']);
 
-    $this->actingAs($this->akun)->get('/saya/sesi')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->has('schedules', 0)
         ->where('entry.status', $status->value)->where('entry.note', 'Foto KK buram')
         ->where('entry.can_cancel', $batal)->where('entry.can_resubmit', $ulang)
@@ -72,7 +72,7 @@ test('dengan pendaftaran aktif daftar sesi kosong dan entri memuat aksi yang ter
 test('pendaftaran yang sudah berakhir tetap tampil sebagai ringkasan dan sesi dapat dipilih lagi', function (S $status) {
     makeEntry($status, $this->school, $this->siswa, $this->sesi);
 
-    $this->actingAs($this->akun)->get('/saya/sesi')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->where('entry.status', $status->value)->where('entry.can_cancel', false)->has('schedules', 1));
 })->with([[S::Ditolak], [S::Dibatalkan]]);
 
@@ -80,13 +80,13 @@ test('aksi pembatalan dan ajukan ulang hilang pada hari sesi', function () {
     $hariH = makeSchedule($this->school, '2026-10-01');
     makeEntry(S::PerluPerbaikan, $this->school, $this->siswa, $hariH);
 
-    $this->actingAs($this->akun)->get('/saya/sesi')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->where('entry.can_cancel', false)->where('entry.can_resubmit', false));
 });
 
 test('mendaftar: sukses mengalihkan dengan pesan, gagal memberi galat tanpa entri', function () {
-    $this->actingAs($this->akun)->post("/saya/sesi/{$this->sesi->id}/daftar")
-        ->assertRedirect('/saya/sesi')->assertSessionHas('success');
+    $this->actingAs($this->akun)->post("/me/sessions/{$this->sesi->id}/register")
+        ->assertRedirect('/me/sessions')->assertSessionHas('success');
     expect(RegistrationStudent::count())->toBe(1);
 
     $penuh = makeSchedule($this->school, '2026-10-21');
@@ -94,7 +94,7 @@ test('mendaftar: sukses mengalihkan dengan pesan, gagal memberi galat tanpa entr
     makeEntry(S::Terdaftar, $this->school, schedule: $penuh);
     [$b] = siswaLengkap($this->school);
 
-    $this->actingAs($b)->post("/saya/sesi/{$penuh->id}/daftar")->assertSessionHas('error', 'Kuota sesi ini sudah penuh.');
+    $this->actingAs($b)->post("/me/sessions/{$penuh->id}/register")->assertSessionHas('error', 'Kuota sesi ini sudah penuh.');
     expect(RegistrationStudent::withoutGlobalScopes()->where('schedule_id', $penuh->id)->count())->toBe(1);
 });
 
@@ -102,13 +102,13 @@ test('membatalkan dan mengajukan ulang lewat HTTP', function () {
     $entry = makeEntry(S::PerluPerbaikan, $this->school, $this->siswa, $this->sesi);
     $this->actingAs($this->akun);
 
-    $this->post("/saya/pendaftaran/{$entry->id}/ajukan-ulang")->assertRedirect('/saya/sesi')->assertSessionHas('success');
+    $this->post("/me/registrations/{$entry->id}/resubmit")->assertRedirect('/me/sessions')->assertSessionHas('success');
     expect($entry->fresh()->status)->toBe(S::MenungguVerifikasi);
 
-    $this->post("/saya/pendaftaran/{$entry->id}/batal")->assertRedirect('/saya/sesi')->assertSessionHas('success');
+    $this->post("/me/registrations/{$entry->id}/cancel")->assertRedirect('/me/sessions')->assertSessionHas('success');
     expect($entry->fresh()->status)->toBe(S::Dibatalkan);
 
-    $this->post("/saya/pendaftaran/{$entry->id}/batal")->assertSessionHas('error');
+    $this->post("/me/registrations/{$entry->id}/cancel")->assertSessionHas('error');
 });
 
 test('siswa lain satu sekolah tidak dapat membatalkan atau mengajukan ulang pendaftaran siswa ini', function () {
@@ -116,15 +116,15 @@ test('siswa lain satu sekolah tidak dapat membatalkan atau mengajukan ulang pend
     [$b] = siswaLengkap($this->school);
     $this->actingAs($b);
 
-    $this->post("/saya/pendaftaran/{$entry->id}/batal")->assertNotFound();
-    $this->post("/saya/pendaftaran/{$entry->id}/ajukan-ulang")->assertNotFound();
+    $this->post("/me/registrations/{$entry->id}/cancel")->assertNotFound();
+    $this->post("/me/registrations/{$entry->id}/resubmit")->assertNotFound();
     expect($entry->fresh()->status)->toBe(S::PerluPerbaikan);
 });
 
 test('sesi sekolah lain tidak dapat didaftar', function () {
     $asing = makeSchedule(School::factory()->create(), '2026-10-22');
 
-    $this->actingAs($this->akun)->post("/saya/sesi/{$asing->id}/daftar")->assertNotFound();
+    $this->actingAs($this->akun)->post("/me/sessions/{$asing->id}/register")->assertNotFound();
     expect(RegistrationStudent::withoutGlobalScopes()->count())->toBe(0);
 });
 
@@ -132,17 +132,17 @@ test('akun non-siswa mendapat 404 walau memegang izin, tanpa izin 403, tamu diar
     $admin = makeUserWith(['pendaftaran.lihat', 'pendaftaran.buat'], roleName: 'admin-sesi');
     $operator = makeUserWith(['jadwal.lihat'], $this->school, true, 'op-sesi');
 
-    $this->actingAs($admin)->get('/saya/sesi')->assertNotFound();
-    $this->post("/saya/sesi/{$this->sesi->id}/daftar")->assertNotFound();
-    $this->actingAs($operator)->get('/saya/sesi')->assertForbidden();
+    $this->actingAs($admin)->get('/me/sessions')->assertNotFound();
+    $this->post("/me/sessions/{$this->sesi->id}/register")->assertNotFound();
+    $this->actingAs($operator)->get('/me/sessions')->assertForbidden();
 
     auth()->logout();
-    $this->get('/saya/sesi')->assertRedirect('/login');
+    $this->get('/me/sessions')->assertRedirect('/login');
 });
 
 test('rute tulis dibatasi laju', function () {
-    $daftar = Route::getRoutes()->getByName('saya.sesi.daftar');
-    $batal = Route::getRoutes()->getByName('saya.pendaftaran.batal');
+    $daftar = Route::getRoutes()->getByName('me.sessions.register');
+    $batal = Route::getRoutes()->getByName('me.registrations.cancel');
 
     expect($daftar->gatherMiddleware())->toContain('throttle:10,1')
         ->and($batal->gatherMiddleware())->toContain('throttle:30,1');

@@ -21,6 +21,6 @@ class StudentSignupNotification extends BaseNotification
 
     public function url(): string
     {
-        return "/aktivasi/{$this->token}";
+        return "/activation/{$this->token}";
     }
 }

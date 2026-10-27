@@ -17,23 +17,23 @@ test('hapus sesi kosong lewat HTTP; yang berisi memberi galat dan tetap ada', fu
     makeEntry(S::Ditolak, $this->school, schedule: $isi);
     $this->actingAs($this->admin);
 
-    $this->delete("/jadwal/{$this->besok->id}")->assertRedirect('/jadwal')->assertSessionHas('success');
+    $this->delete("/schedules/{$this->besok->id}")->assertRedirect('/schedules')->assertSessionHas('success');
     expect(Schedule::whereKey($this->besok->id)->exists())->toBeFalse();
 
-    $this->delete("/jadwal/{$isi->id}")->assertSessionHas('error');
+    $this->delete("/schedules/{$isi->id}")->assertSessionHas('error');
     expect(Schedule::whereKey($isi->id)->exists())->toBeTrue();
 });
 
 test('batalkan sesi lewat HTTP: catatan wajib, kursi dibatalkan, tanpa izin 403, sekolah lain 404', function () {
     $e = makeEntry(S::Terdaftar, $this->school, schedule: $this->besok);
-    $url = "/jadwal/{$this->besok->id}/batalkan";
+    $url = "/schedules/{$this->besok->id}/cancel";
     $this->actingAs($this->admin);
 
     $this->post($url, [])->assertSessionHasErrors('note');
     $this->post($url, ['note' => 'abc'])->assertSessionHasErrors('note');
     expect($this->besok->fresh()->isCancelled())->toBeFalse();
 
-    $this->post($url, ['note' => 'Gedung dipakai ujian.'])->assertRedirect("/jadwal/{$this->besok->id}")->assertSessionHas('success');
+    $this->post($url, ['note' => 'Gedung dipakai ujian.'])->assertRedirect("/schedules/{$this->besok->id}")->assertSessionHas('success');
     expect($this->besok->fresh()->isCancelled())->toBeTrue()->and($e->fresh()->status)->toBe(S::Dibatalkan);
 
     $this->post($url, ['note' => 'Sekali lagi'])->assertSessionHas('error');
@@ -43,5 +43,5 @@ test('batalkan sesi lewat HTTP: catatan wajib, kursi dibatalkan, tanpa izin 403,
 
     $asing = makeSchedule(School::factory()->create(), now('Asia/Jakarta')->addDay()->toDateString());
     $opUbah = makeUserWith(['jadwal.lihat', 'jadwal.ubah'], $this->school, true, 'op-ubah-sesi');
-    $this->actingAs($opUbah)->post("/jadwal/{$asing->id}/batalkan", ['note' => 'Sekolah lain'])->assertNotFound();
+    $this->actingAs($opUbah)->post("/schedules/{$asing->id}/cancel", ['note' => 'Sekolah lain'])->assertNotFound();
 });

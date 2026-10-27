@@ -25,7 +25,7 @@ test('halaman error dan unduhan ikut membawa header', function () {
     $this->get('/tidak-ada')->assertStatus(404)->assertHeader('X-Content-Type-Options', 'nosniff')->assertHeader('X-Frame-Options', 'DENY')->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 
     $user = makeUserWith(['laporan.lihat'], roleName: 'pengunduh');
-    $this->actingAs($user)->get('/laporan/ekspor')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+    $this->actingAs($user)->get('/reports/export')->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
 });
 
 test('HSTS hanya pada HTTPS', function () {
@@ -87,7 +87,7 @@ test('rute pratinjau dokumen mengizinkan same-origin framing (X-Frame-Options SA
     ]);
     Storage::disk('local')->put("students/{$siswa->id}/kk.pdf", '%PDF-1.4 dummy');
 
-    $res = $this->actingAs($op)->get("/siswa/{$siswa->id}/dokumen/kk/preview")->assertOk();
+    $res = $this->actingAs($op)->get("/students/{$siswa->id}/documents/kk/preview")->assertOk();
     $res->assertHeader('X-Frame-Options', 'SAMEORIGIN');
 
     $csp = (string) $res->headers->get('Content-Security-Policy');

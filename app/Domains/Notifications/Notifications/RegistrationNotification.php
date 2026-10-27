@@ -19,7 +19,7 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Pendaftaran disetujui',
             'Anda terdaftar pada '.self::day($date).', pukul '.self::range($startTime, $endTime)." di {$location}. Tiket Anda sudah tersedia; tunjukkan kepada petugas saat sesi. Simpan tiket sebagai gambar agar tetap bisa dibuka tanpa sinyal.",
-            "/saya/tiket/{$entryId}",
+            "/me/tickets/{$entryId}",
         );
     }
 
@@ -28,7 +28,7 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Pendaftaran perlu diperbaiki',
             'Catatan petugas: '.self::sentence($note).' Perbaiki data atau dokumen Anda sebelum '.self::moment($deadline).', lalu ajukan ulang.',
-            '/saya',
+            '/me',
         );
     }
 
@@ -37,19 +37,19 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Pendaftaran ditolak',
             'Catatan petugas: '.self::sentence($note).' Kursi Anda dilepas. Anda dapat mendaftar ke sesi lain bila perlu.',
-            '/saya/sesi',
+            '/me/sessions',
         );
     }
 
     public static function seatReleased(string $reason): self
     {
-        return new self('Kursi Anda dilepas', self::sentence($reason).' Anda dapat mendaftar ke sesi lain.', '/saya/sesi');
+        return new self('Kursi Anda dilepas', self::sentence($reason).' Anda dapat mendaftar ke sesi lain.', '/me/sessions');
     }
 
     /** Dipakai juga saat sekolah siswa diganti admin (catatan menjelaskan alasannya). */
     public static function cancelledByStaff(string $note): self
     {
-        return new self('Pendaftaran dibatalkan petugas', self::sentence($note).' Kursi Anda dilepas. Anda dapat mendaftar ke sesi lain.', '/saya/sesi');
+        return new self('Pendaftaran dibatalkan petugas', self::sentence($note).' Kursi Anda dilepas. Anda dapat mendaftar ke sesi lain.', '/me/sessions');
     }
 
     public static function sessionChanged(string $date, string $startTime, string $endTime, string $location): self
@@ -57,7 +57,7 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Jadwal sesi berubah',
             'Sesi rekaman Anda sekarang pada '.self::day($date).', pukul '.self::range($startTime, $endTime)." di {$location}.",
-            '/saya/sesi',
+            '/me/sessions',
         );
     }
 
@@ -66,7 +66,7 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Sesi dibatalkan',
             'Sesi '.self::day($date).' dibatalkan: '.self::sentence($note).' Pendaftaran Anda ikut dibatalkan; silakan pilih sesi lain.',
-            '/saya/sesi',
+            '/me/sessions',
         );
     }
 
@@ -75,7 +75,7 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Batas perbaikan segera berakhir',
             'Perbaiki dan ajukan ulang pendaftaran Anda sebelum '.self::moment($deadline).'; setelah itu kursi dilepas otomatis.',
-            '/saya',
+            '/me',
         );
     }
 
@@ -84,7 +84,7 @@ class RegistrationNotification extends BaseNotification
         return new self(
             'Sesi rekaman besok',
             'Besok ('.self::day($date).') pukul '.self::range($startTime, $endTime)." di {$location}. Siapkan tiket Anda.",
-            '/saya/sesi',
+            '/me/sessions',
         );
     }
 

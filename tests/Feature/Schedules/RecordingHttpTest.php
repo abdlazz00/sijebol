@@ -14,7 +14,7 @@ test('layar penandaan memuat peserta Terdaftar dan yang sudah ditandai', functio
     makeEntry(S::Terdaftar, schedule: $this->hariIni);
     makeEntry(S::SudahRekaman, schedule: $this->hariIni);
 
-    $this->actingAs($this->admin)->get("/jadwal/{$this->hariIni->id}/rekaman")->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->admin)->get("/schedules/{$this->hariIni->id}/recording")->assertInertia(fn (Assert $p) => $p
         ->component('Jadwal/Rekaman')->where('can_mark', true)
         ->has('entries', 1)->has('marked', 1)->where('marked.0.status', 'sudah_rekaman'));
 });
@@ -22,7 +22,7 @@ test('layar penandaan memuat peserta Terdaftar dan yang sudah ditandai', functio
 test('penandaan massal lewat HTTP dan validasi', function () {
     $a = makeEntry(S::Terdaftar, schedule: $this->hariIni);
     $this->actingAs($this->admin);
-    $url = "/jadwal/{$this->hariIni->id}/rekaman";
+    $url = "/schedules/{$this->hariIni->id}/recording";
 
     $this->post($url, ['entry_ids' => [$a->id]])->assertSessionHasErrors('status');
     $this->post($url, ['status' => 'diajukan', 'entry_ids' => [$a->id]])->assertSessionHasErrors('status');
@@ -38,29 +38,29 @@ test('sebelum hari kegiatan: halaman menandai can_mark salah dan POST menghasilk
     $e = makeEntry(S::Terdaftar, schedule: $besok);
     $this->actingAs($this->admin);
 
-    $this->get("/jadwal/{$besok->id}/rekaman")->assertInertia(fn (Assert $p) => $p->where('can_mark', false));
-    $this->post("/jadwal/{$besok->id}/rekaman", ['status' => 'sudah_rekaman', 'entry_ids' => [$e->id]])->assertSessionHas('error');
+    $this->get("/schedules/{$besok->id}/recording")->assertInertia(fn (Assert $p) => $p->where('can_mark', false));
+    $this->post("/schedules/{$besok->id}/recording", ['status' => 'sudah_rekaman', 'entry_ids' => [$e->id]])->assertSessionHas('error');
     expect($e->fresh()->status)->toBe(S::Terdaftar);
 });
 
 test('operator tanpa izin rekaman ditolak', function () {
     $op = makeUserWith(['jadwal.lihat'], $this->school, true, 'op-rek-http');
 
-    $this->actingAs($op)->get("/jadwal/{$this->hariIni->id}/rekaman")->assertForbidden();
+    $this->actingAs($op)->get("/schedules/{$this->hariIni->id}/recording")->assertForbidden();
 });
 
 test('batalkan penandaan lewat HTTP: catatan wajib, sukses, entri sesi lain 404, tanpa izin 403', function () {
     $e = makeEntry(S::SudahRekaman, schedule: $this->hariIni);
     $lain = makeEntry(S::SudahRekaman, schedule: makeSchedule($this->school, now('Asia/Jakarta')->addDay()->toDateString()));
-    $url = "/jadwal/{$this->hariIni->id}/rekaman/{$e->id}/batalkan";
+    $url = "/schedules/{$this->hariIni->id}/recording/{$e->id}/cancel";
     $this->actingAs($this->admin);
 
     $this->post($url, [])->assertSessionHasErrors('note');
     $this->post($url, ['note' => ''])->assertSessionHasErrors('note');
-    $this->post("/jadwal/{$this->hariIni->id}/rekaman/{$lain->id}/batalkan", ['note' => 'x'])->assertNotFound();
+    $this->post("/schedules/{$this->hariIni->id}/recording/{$lain->id}/cancel", ['note' => 'x'])->assertNotFound();
     expect($e->fresh()->status)->toBe(S::SudahRekaman);
 
-    $this->post($url, ['note' => 'Salah tandai'])->assertRedirect("/jadwal/{$this->hariIni->id}/rekaman")->assertSessionHas('success');
+    $this->post($url, ['note' => 'Salah tandai'])->assertRedirect("/schedules/{$this->hariIni->id}/recording")->assertSessionHas('success');
     expect($e->fresh()->status)->toBe(S::Terdaftar);
 
     $op = makeUserWith(['jadwal.lihat', 'rekaman.lihat'], $this->school, true, 'op-batal');

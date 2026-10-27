@@ -16,7 +16,7 @@ beforeEach(function () {
 test('halaman laporan memuat rekap dan filter kosong', function () {
     makeEntry(S::MenungguVerifikasi, $this->school);
 
-    $this->actingAs($this->viewer)->get('/laporan')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->viewer)->get('/reports')->assertInertia(fn (Assert $p) => $p
         ->component('Laporan/Index')
         ->where('recap.rows.0.school', 'SMPN A')
         ->where('recap.rows.0.counts.menunggu_verifikasi', 1)
@@ -26,21 +26,21 @@ test('halaman laporan memuat rekap dan filter kosong', function () {
 });
 
 test('filter dipakai halaman; salah satu batas boleh kosong; urutan terbalik dan format salah ditolak', function () {
-    $this->actingAs($this->viewer)->get('/laporan?dari=2026-10-05&sampai=2026-10-06')
+    $this->actingAs($this->viewer)->get('/reports?dari=2026-10-05&sampai=2026-10-06')
         ->assertInertia(fn (Assert $p) => $p->where('filters.dari', '2026-10-05')->where('filters.sampai', '2026-10-06'));
 
-    $this->actingAs($this->viewer)->get('/laporan?sampai=2026-10-05')->assertOk()->assertSessionHasNoErrors();
-    $this->actingAs($this->viewer)->get('/laporan?dari=2026-10-05')->assertOk()->assertSessionHasNoErrors();
+    $this->actingAs($this->viewer)->get('/reports?sampai=2026-10-05')->assertOk()->assertSessionHasNoErrors();
+    $this->actingAs($this->viewer)->get('/reports?dari=2026-10-05')->assertOk()->assertSessionHasNoErrors();
 
-    $this->actingAs($this->viewer)->from('/laporan')->get('/laporan?dari=2026-10-06&sampai=2026-10-05')->assertSessionHasErrors('sampai');
-    $this->actingAs($this->viewer)->from('/laporan')->get('/laporan?dari=bukan-tanggal')->assertSessionHasErrors('dari');
+    $this->actingAs($this->viewer)->from('/reports')->get('/reports?dari=2026-10-06&sampai=2026-10-05')->assertSessionHasErrors('sampai');
+    $this->actingAs($this->viewer)->from('/reports')->get('/reports?dari=bukan-tanggal')->assertSessionHasErrors('dari');
 });
 
 test('ekspor berisi data yang sama dengan halaman', function () {
     Excel::fake();
     makeEntry(S::MenungguVerifikasi, $this->school);
 
-    $this->actingAs($this->viewer)->get('/laporan/ekspor');
+    $this->actingAs($this->viewer)->get('/reports/export');
 
     Excel::assertDownloaded('rekap-pendaftaran.xlsx', function (RecapExport $export) {
         $rows = $export->array();
@@ -55,13 +55,13 @@ test('ekspor mengikuti filter tanggal', function () {
     Excel::fake();
     makeEntry(S::MenungguVerifikasi, $this->school);
 
-    $this->actingAs($this->viewer)->get('/laporan/ekspor?dari=2099-01-01');
+    $this->actingAs($this->viewer)->get('/reports/export?dari=2099-01-01');
 
     Excel::assertDownloaded('rekap-pendaftaran.xlsx', fn (RecapExport $e) => $e->array()[0] === ['SMPN A', 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
 });
 
 test('ekspor menghasilkan berkas xlsx sungguhan dan tercatat di log', function () {
-    $this->actingAs($this->viewer)->get('/laporan/ekspor?dari=2026-10-01')
+    $this->actingAs($this->viewer)->get('/reports/export?dari=2026-10-01')
         ->assertOk()->assertDownload('rekap-pendaftaran.xlsx');
 
     $log = Activity::where('description', 'laporan.diekspor')->sole();
@@ -73,7 +73,7 @@ test('nama sekolah berawalan simbol formula dinetralkan di berkas ekspor', funct
     School::factory()->create(['name' => '=HYPERLINK("http://x")']);
     School::factory()->create(['name' => '@cmd']);
 
-    $this->actingAs($this->viewer)->get('/laporan/ekspor');
+    $this->actingAs($this->viewer)->get('/reports/export');
 
     Excel::assertDownloaded('rekap-pendaftaran.xlsx', function (RecapExport $e) {
         $names = array_column($e->array(), 0);
@@ -87,7 +87,7 @@ test('halaman laporan memuat rekap kehadiran per sesi', function () {
     makeEntry(S::SudahRekaman, $this->school, schedule: $sesi);
     makeEntry(S::TidakHadir, $this->school, schedule: $sesi);
 
-    $this->actingAs($this->viewer)->get('/laporan?dari=2026-10-20&sampai=2026-10-20')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->viewer)->get('/reports?dari=2026-10-20&sampai=2026-10-20')->assertInertia(fn (Assert $p) => $p
         ->where('session_recap.rows.0.school', 'SMPN A')
         ->where('session_recap.rows.0.present', 1)->where('session_recap.rows.0.absent', 1)->where('session_recap.rows.0.attendance', 50)
         ->where('session_recap.totals.attendance', 50));
@@ -97,7 +97,7 @@ test('ekspor kehadiran sesi mengikuti filter, berkas xlsx, dan tercatat di audit
     makeEntry(S::SudahRekaman, $this->school, schedule: makeSchedule($this->school, '2026-10-20'));
     makeEntry(S::SudahRekaman, $this->school, schedule: makeSchedule($this->school, '2026-11-20'));
 
-    $this->actingAs($this->viewer)->get('/laporan/ekspor-sesi?dari=2026-10-01&sampai=2026-10-31')
+    $this->actingAs($this->viewer)->get('/reports/export-sessions?dari=2026-10-01&sampai=2026-10-31')
         ->assertOk()->assertDownload('rekap-kehadiran-sesi.xlsx');
 
     $log = Activity::where('description', 'laporan.diekspor')->sole();
@@ -109,7 +109,7 @@ test('ekspor kehadiran sesi: judul kolom, baris total, dan hanya sesi dalam rent
     makeEntry(S::SudahRekaman, $this->school, schedule: makeSchedule($this->school, '2026-10-20'));
     makeSchedule($this->school, '2026-11-20');
 
-    $this->actingAs($this->viewer)->get('/laporan/ekspor-sesi?dari=2026-10-01&sampai=2026-10-31');
+    $this->actingAs($this->viewer)->get('/reports/export-sessions?dari=2026-10-01&sampai=2026-10-31');
 
     Excel::assertDownloaded('rekap-kehadiran-sesi.xlsx', function (SessionRecapExport $e) {
         $rows = $e->array();
@@ -127,13 +127,13 @@ test('ekspor kehadiran sesi menetralkan sel berawalan simbol formula', function 
     $sesi = makeSchedule($sekolah, '2026-10-20');
     $sesi->update(['location' => '@lokasi']);
 
-    $this->actingAs($this->viewer)->get('/laporan/ekspor-sesi');
+    $this->actingAs($this->viewer)->get('/reports/export-sessions');
 
     Excel::assertDownloaded('rekap-kehadiran-sesi.xlsx', fn (SessionRecapExport $e) => $e->array()[0][2] === "'=HYPERLINK(\"http://x\")" && $e->array()[0][3] === "'@lokasi");
 });
 
 test('ekspor kehadiran sesi ditolak tanpa laporan.lihat dan dibatasi lajunya', function () {
-    $this->actingAs(makeUserWith([], roleName: 'tanpa-laporan'))->get('/laporan/ekspor-sesi')->assertForbidden();
+    $this->actingAs(makeUserWith([], roleName: 'tanpa-laporan'))->get('/reports/export-sessions')->assertForbidden();
 
-    expect(app('router')->getRoutes()->getByName('laporan.ekspor-sesi')->gatherMiddleware())->toContain('throttle:20,1');
+    expect(app('router')->getRoutes()->getByName('reports.export-sessions')->gatherMiddleware())->toContain('throttle:20,1');
 });

@@ -49,13 +49,13 @@ test('isi pesan setiap pabrik notifikasi pendaftaran', function () {
     expect($approved->title())->toBe('Pendaftaran disetujui')
         ->and($approved->body())->toContain('Selasa, 20 Oktober 2026')->toContain('08.00–12.00')->toContain('Aula SMPN 1')
         ->toContain('tiket')->toContain('Simpan tiket sebagai gambar')
-        ->and($approved->url())->toBe('/saya/tiket/9')
+        ->and($approved->url())->toBe('/me/tickets/9')
         ->and($fix->title())->toBe('Pendaftaran perlu diperbaiki')
         ->and($fix->body())->toContain('Foto KK buram')->toContain('sebelum')->toContain('21 Oktober 2026')
-        ->and($fix->url())->toBe('/saya')
+        ->and($fix->url())->toBe('/me')
         ->and($rejected->title())->toBe('Pendaftaran ditolak')
         ->and($rejected->body())->toContain('Dokumen tidak sesuai')->toContain('Kursi Anda dilepas')
-        ->and($rejected->url())->toBe('/saya/sesi')
+        ->and($rejected->url())->toBe('/me/sessions')
         ->and($released->title())->toBe('Kursi Anda dilepas')
         ->and($released->body())->toContain('Batas waktu perbaikan terlewati.')->toContain('mendaftar')
         ->and($byStaff->title())->toBe('Pendaftaran dibatalkan petugas')
@@ -65,11 +65,11 @@ test('isi pesan setiap pabrik notifikasi pendaftaran', function () {
         ->and($cancelled->title())->toBe('Sesi dibatalkan')
         ->and($cancelled->body())->toContain('Gedung dipakai ujian.')->toContain('ikut dibatalkan')
         ->and($fixReminder->title())->toBe('Batas perbaikan segera berakhir')
-        ->and($fixReminder->url())->toBe('/saya')
+        ->and($fixReminder->url())->toBe('/me')
         ->and($sessionReminder->title())->toBe('Sesi rekaman besok')
         ->and($sessionReminder->body())->toContain('Aula SMPN 1');
     foreach ([$released, $byStaff, $changed, $cancelled, $sessionReminder] as $n) {
-        expect($n->url())->toBe('/saya/sesi');
+        expect($n->url())->toBe('/me/sessions');
     }
 });
 
@@ -78,7 +78,7 @@ test('notifikasi pendaftaran memakai kanal database dan mail dengan tautan absol
     $user = makeUserWith([], roleName: 'siswa');
 
     expect($n->via($user))->toBe(['database', 'mail'])
-        ->and($n->toMail($user)->actionUrl)->toBe(url('/saya/tiket/9'));
+        ->and($n->toMail($user)->actionUrl)->toBe(url('/me/tickets/9'));
 });
 
 test('toStudent mengirim hanya ke akun siswa itu dan melewati yang tanpa akun atau nonaktif', function () {

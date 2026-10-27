@@ -11,7 +11,7 @@ beforeEach(function () {
     $this->school = School::factory()->create();
     $this->sesi = makeSchedule($this->school, '2026-10-20');
     $this->petugas = makeUserWith(['rekaman.pindai'], roleName: 'petugas-pindai-http');
-    $this->url = "/jadwal/{$this->sesi->id}/pindai";
+    $this->url = "/schedules/{$this->sesi->id}/scan";
 });
 
 afterEach(fn () => Carbon::setTestNow());
@@ -88,8 +88,8 @@ test('pemindai terikat sekolah tidak dapat memindai sesi sekolah lain', function
     $sesiLain = makeSchedule($lain, '2026-10-20');
     $terikat = makeUserWith(['rekaman.pindai'], $this->school, true, 'pemindai-terikat');
 
-    $this->actingAs($terikat)->get("/jadwal/{$sesiLain->id}/pindai")->assertNotFound();
-    $this->postJson("/jadwal/{$sesiLain->id}/pindai", ['code' => 'X'])->assertNotFound();
+    $this->actingAs($terikat)->get("/schedules/{$sesiLain->id}/scan")->assertNotFound();
+    $this->postJson("/schedules/{$sesiLain->id}/scan", ['code' => 'X'])->assertNotFound();
 });
 
 test('kode tiket tidak muncul di halaman peserta maupun penandaan', function () {
@@ -97,14 +97,14 @@ test('kode tiket tidak muncul di halaman peserta maupun penandaan', function () 
     $staf = makeUserWith(['jadwal.lihat', 'rekaman.lihat', 'rekaman.tandai', 'rekaman.pindai', 'verifikasi.lihat'], roleName: 'staf-kode');
     $this->actingAs($staf);
 
-    foreach (["/jadwal/{$this->sesi->id}", "/jadwal/{$this->sesi->id}/rekaman", $this->url] as $halaman) {
+    foreach (["/schedules/{$this->sesi->id}", "/schedules/{$this->sesi->id}/recording", $this->url] as $halaman) {
         $this->get($halaman)->assertOk();
         expect($this->get($halaman)->getContent())->not->toContain('KODE-HTTP-RAHASIA');
     }
 });
 
 test('rute pindai dibatasi lajunya', function () {
-    $rute = app('router')->getRoutes()->getByName('jadwal.pindai.store');
+    $rute = app('router')->getRoutes()->getByName('schedules.scan.store');
 
     expect($rute->gatherMiddleware())->toContain('throttle:120,1');
 });

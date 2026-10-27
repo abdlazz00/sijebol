@@ -62,13 +62,13 @@ test('jumlah query halaman daftar tidak tumbuh menurut jumlah baris', function (
 
     expect($besar)->toBeLessThanOrEqual($kecil, "{$halaman}: {$kecil} query untuk 3 baris, {$besar} untuk 23 baris (N+1)");
 })->with([
-    ['pengguna', '/pengguna'],
-    ['role', '/role'],
-    ['sekolah', '/sekolah'],
-    ['siswa', '/siswa'],
-    ['verifikasi', '/verifikasi'],
-    ['jadwal', '/jadwal'],
-    ['log', '/log'],
-    ['notifikasi', '/notifikasi'],
-    ['laporan', '/laporan'],
+    ['pengguna', '/users'],
+    ['role', '/roles'],
+    ['sekolah', '/schools'],
+    ['siswa', '/students'],
+    ['verifikasi', '/verifications'],
+    ['jadwal', '/schedules'],
+    ['log', '/audit-logs'],
+    ['notifikasi', '/notifications'],
+    ['laporan', '/reports'],
 ]);

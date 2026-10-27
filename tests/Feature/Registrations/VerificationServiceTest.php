@@ -64,7 +64,7 @@ test('setujui menerbitkan kode tiket unik dan tautan notifikasi ke tiket itu', f
 
     expect($a->fresh()->ticket_code)->toHaveLength(32)->and($b->fresh()->ticket_code)->toHaveLength(32)
         ->and($a->fresh()->ticket_code)->not->toBe($b->fresh()->ticket_code);
-    Notification::assertSentTo($akunA, RegistrationNotification::class, fn (RegistrationNotification $n) => $n->url() === "/saya/tiket/{$a->id}");
+    Notification::assertSentTo($akunA, RegistrationNotification::class, fn (RegistrationNotification $n) => $n->url() === "/me/tickets/{$a->id}");
 });
 
 test('minta perbaikan mengisi tenggat 48 jam untuk sesi jauh dan akhir hari ini untuk sesi besok', function () {

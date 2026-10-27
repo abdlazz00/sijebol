@@ -141,7 +141,7 @@ test('isi notifikasi penandaan memuat tanggal dan tautan sesi', function () {
 
     expect($marked->title())->toBe('Rekaman ditandai')
         ->and($marked->body())->toBe('2 siswa ditandai Tidak hadir pada 1 Desember 2026.')
-        ->and($marked->url())->toBe('/jadwal/7')
+        ->and($marked->url())->toBe('/schedules/7')
         ->and($undone->title())->toBe('Penandaan dibatalkan')
         ->and($undone->body())->toBe('Penandaan Sudah rekaman dibatalkan; siswa kembali Terdaftar.');
 });

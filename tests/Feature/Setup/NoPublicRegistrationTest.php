@@ -15,6 +15,6 @@ test('halaman utama mengalihkan ke dashboard', function () {
 });
 
 test('halaman daftar tanpa token yang dikenal tampil sebagai tidak berlaku, bukan 404', function () {
-    $this->get('/daftar/token-acak')->assertOk()
+    $this->get('/register/token-acak')->assertOk()
         ->assertInertia(fn ($page) => $page->component('Daftar/Index')->where('valid', false));
 });

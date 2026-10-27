@@ -24,7 +24,7 @@ test('staf melihat kartu dan aksi se-kecamatan', function () {
         ->where('summary.1.label', 'Terdaftar')->where('summary.1.value', 1)
         ->where('summary.2.label', 'Sudah rekaman')->where('summary.2.value', 1)
         ->has('actions', 1)
-        ->where('actions.0.title', '2 pendaftaran menunggu verifikasi')->where('actions.0.href', '/verifikasi'));
+        ->where('actions.0.title', '2 pendaftaran menunggu verifikasi')->where('actions.0.href', '/verifications'));
 });
 
 test('operator hanya melihat angka dan tugas sekolahnya', function () {
@@ -37,7 +37,7 @@ test('operator hanya melihat angka dan tugas sekolahnya', function () {
         ->has('summary', 1)
         ->where('summary.0.label', 'Sudah rekaman')->where('summary.0.value', 1)
         ->has('actions', 1)
-        ->where('actions.0.title', '1 siswa terdaftar')->where('actions.0.href', '/jadwal'));
+        ->where('actions.0.title', '1 siswa terdaftar')->where('actions.0.href', '/schedules'));
 });
 
 test('kartu dan aksi hilang bila izin modulnya tidak ada', function () {
@@ -159,7 +159,7 @@ test('aksi cepat: Pindai Tiket bagi pemegang rekaman.pindai, tanpa Input Hasil P
     $dengan = collect($this->actingAs($admin)->get('/dashboard')->viewData('page')['props']['quick_actions']);
     $tanpaAksi = collect($this->actingAs($tanpa)->get('/dashboard')->viewData('page')['props']['quick_actions']);
 
-    expect($dengan->firstWhere('label', 'Pindai Tiket'))->toMatchArray(['href' => '/jadwal', 'icon' => 'scan-line'])
+    expect($dengan->firstWhere('label', 'Pindai Tiket'))->toMatchArray(['href' => '/schedules', 'icon' => 'scan-line'])
         ->and($dengan->pluck('label'))->not->toContain('Input Hasil Perekaman')
         ->and($tanpaAksi->pluck('label'))->not->toContain('Pindai Tiket')->not->toContain('Input Hasil Perekaman');
 });

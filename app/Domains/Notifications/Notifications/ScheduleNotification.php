@@ -34,7 +34,7 @@ class ScheduleNotification extends BaseNotification
 
     public function url(): string
     {
-        return "/jadwal/{$this->scheduleId}";
+        return "/schedules/{$this->scheduleId}";
     }
 
     private static function format(string $date): string

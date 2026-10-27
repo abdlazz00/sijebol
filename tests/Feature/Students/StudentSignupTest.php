@@ -13,7 +13,7 @@ beforeEach(function () {
     $this->seed(AccessSeeder::class);
     Notification::fake();
     $this->school = School::factory()->create(['name' => 'SMAN 1 Sungai Beduk']);
-    $this->url = "/daftar/{$this->school->registration_token}";
+    $this->url = "/register/{$this->school->registration_token}";
 });
 
 test('token sah menampilkan form dan nama sekolah', function () {
@@ -26,7 +26,7 @@ test('token sah menampilkan form dan nama sekolah', function () {
 });
 
 test('token tidak dikenal menampilkan valid=false tanpa nama sekolah', function () {
-    $this->get('/daftar/acak')->assertInertia(fn (Assert $p) => $p
+    $this->get('/register/acak')->assertInertia(fn (Assert $p) => $p
         ->where('valid', false)
         ->missing('school'));
 });
@@ -79,7 +79,7 @@ test('email milik akun aktif, staf, atau akun non-siswa memberi respons identik 
 
 test('siswa belum aktif yang mendaftar lewat sekolah lain tidak dipindahkan', function () {
     $lain = School::factory()->create();
-    $this->post("/daftar/{$lain->registration_token}", ['name' => 'Budi', 'email' => 'budi@example.com']);
+    $this->post("/register/{$lain->registration_token}", ['name' => 'Budi', 'email' => 'budi@example.com']);
 
     $this->post($this->url, ['name' => 'Budi', 'email' => 'budi@example.com']);
 
@@ -87,8 +87,8 @@ test('siswa belum aktif yang mendaftar lewat sekolah lain tidak dipindahkan', fu
 });
 
 test('token tidak dikenal tidak membuat akun dan tidak mengirim apa pun', function () {
-    $this->post('/daftar/acak', ['name' => 'Budi', 'email' => 'budi@example.com'])
-        ->assertRedirect('/daftar/acak');
+    $this->post('/register/acak', ['name' => 'Budi', 'email' => 'budi@example.com'])
+        ->assertRedirect('/register/acak');
 
     expect(User::count())->toBe(0);
     Notification::assertNothingSent();

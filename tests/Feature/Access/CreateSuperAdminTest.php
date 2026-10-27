@@ -8,7 +8,7 @@ test('membuat super-admin pertama dan mencetak link aktivasi', function () {
     $this->seed(AccessSeeder::class);
 
     $this->artisan('sijebol:create-super-admin', ['email' => 'Root@Kecamatan.test', 'name' => 'Root'])
-        ->expectsOutputToContain('/aktivasi/')
+        ->expectsOutputToContain('/activation/')
         ->assertSuccessful();
 
     $user = User::firstWhere('email', 'root@kecamatan.test');

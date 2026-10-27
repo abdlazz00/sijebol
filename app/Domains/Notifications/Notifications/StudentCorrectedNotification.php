@@ -18,6 +18,6 @@ class StudentCorrectedNotification extends BaseNotification
 
     public function url(): string
     {
-        return '/saya';
+        return '/me';
     }
 }

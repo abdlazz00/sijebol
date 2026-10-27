@@ -9,7 +9,7 @@ test('menampilkan halaman 404 lewat Inertia untuk pengguna login', function () {
 
 test('menampilkan halaman 403 bagi pengguna tanpa izin', function () {
     $this->actingAs(makeUserWith([], roleName: 'operator-sekolah'))
-        ->get(route('role.index'))
+        ->get(route('roles.index'))
         ->assertStatus(403)
         ->assertInertia(fn ($page) => $page->component('Error')->where('status', 403));
 });

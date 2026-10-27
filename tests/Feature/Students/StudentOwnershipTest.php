@@ -28,35 +28,35 @@ beforeEach(function () {
 test('siswa tidak dapat melihat, mengunduh, mengunggah, atau menghapus dokumen siswa lain satu sekolah', function () {
     $this->actingAs($this->akunA);
 
-    $this->get("/siswa/{$this->b->id}/dokumen/kk")->assertNotFound();
-    $this->get("/siswa/{$this->b->id}/dokumen/kk/preview")->assertNotFound();
-    $this->post("/siswa/{$this->b->id}/dokumen/akta_lahir", [
+    $this->get("/students/{$this->b->id}/documents/kk")->assertNotFound();
+    $this->get("/students/{$this->b->id}/documents/kk/preview")->assertNotFound();
+    $this->post("/students/{$this->b->id}/documents/akta_lahir", [
         'file' => UploadedFile::fake()->create('a.pdf', 10, 'application/pdf'),
     ])->assertNotFound();
-    $this->delete("/siswa/{$this->b->id}/dokumen/kk")->assertNotFound();
+    $this->delete("/students/{$this->b->id}/documents/kk")->assertNotFound();
 
     expect($this->b->documents()->count())->toBe(1);
 });
 
 test('dokumen milik sendiri tetap dapat diakses', function () {
-    $this->actingAs($this->akunA)->get("/siswa/{$this->a->id}/dokumen/kk")->assertOk();
+    $this->actingAs($this->akunA)->get("/students/{$this->a->id}/documents/kk")->assertOk();
 });
 
 test('siswa hanya melihat barisnya sendiri walau keliru diberi siswa.lihat', function () {
     makeUserWith(['siswa.lihat'], $this->school, true, 'siswa'); // salah konfigurasi role
 
-    $this->actingAs($this->akunA)->get('/siswa')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->akunA)->get('/students')->assertInertia(fn (Assert $p) => $p
         ->component('Siswa/Index')
         ->has('students.data', 1)
         ->where('students.data.0.id', $this->a->id));
 
-    $this->get("/siswa/{$this->b->id}")->assertNotFound();
+    $this->get("/students/{$this->b->id}")->assertNotFound();
 });
 
 test('operator sekolah tetap melihat semua siswa sekolahnya', function () {
     $operator = makeUserWith(['siswa.lihat'], $this->school, true, 'operator-uji');
 
-    $this->actingAs($operator)->get('/siswa')->assertInertia(fn (Assert $p) => $p->has('students.data', 2));
+    $this->actingAs($operator)->get('/students')->assertInertia(fn (Assert $p) => $p->has('students.data', 2));
 });
 
 test('akun siswa hanya melihat pendaftaran sesi miliknya, staf tanpa sekolah melihat semua', function () {
