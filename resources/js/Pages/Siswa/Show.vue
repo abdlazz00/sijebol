@@ -64,11 +64,11 @@ const existing = (type: DocumentType) =>
     props.documents.find((d) => d.type === type) ?? null;
 
 function destroy() {
-    router.delete(route('siswa.destroy', props.student.id));
+    router.delete(route('students.destroy', props.student.id));
 }
 
 const crumbs = [
-    { label: 'Siswa', href: route('siswa.index') },
+    { label: 'Siswa', href: route('students.index') },
     { label: 'Detail siswa' },
 ];
 </script>
@@ -155,7 +155,7 @@ const crumbs = [
                         variant="outline"
                         class="h-10 px-4"
                     >
-                        <Link :href="route('siswa.edit', student.id)">
+                        <Link :href="route('students.edit', student.id)">
                             <Pencil class="size-4" aria-hidden="true" />
                             Koreksi data
                         </Link>
@@ -206,10 +206,10 @@ const crumbs = [
                         :can-upload="can(PERMISSIONS.DokumenUnggah) && !locked"
                         :can-delete="can(PERMISSIONS.DokumenHapus) && !locked"
                         :upload-url="
-                            route('siswa.dokumen.store', [student.id, doc.type])
+                            route('students.documents.store', [student.id, doc.type])
                         "
                         :delete-url="
-                            route('siswa.dokumen.destroy', [
+                            route('students.documents.destroy', [
                                 student.id,
                                 doc.type,
                             ])
@@ -231,7 +231,7 @@ const crumbs = [
                             :is="can(PERMISSIONS.JadwalLihat) ? Link : 'span'"
                             :href="
                                 can(PERMISSIONS.JadwalLihat)
-                                    ? route('jadwal.show', r.schedule.id)
+                                    ? route('schedules.show', r.schedule.id)
                                     : undefined
                             "
                             class="font-medium"

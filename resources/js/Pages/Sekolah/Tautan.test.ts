@@ -75,7 +75,7 @@ describe('Sekolah/Tautan', () => {
         await w.find('[data-testid="ok"]').trigger('click');
 
         expect(post).toHaveBeenCalledWith(
-            '/tautan.reset/4',
+            '/registration-links.reset/4',
             {},
             { preserveScroll: true },
         );

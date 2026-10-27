@@ -265,7 +265,7 @@ describe('DashboardUpcomingTable', () => {
             .findAll('a')
             .filter((a) => a.text().includes('Pindai'));
         expect(tautan).toHaveLength(1);
-        expect(tautan[0].attributes('href')).toBe('/jadwal.pindai.show/1');
+        expect(tautan[0].attributes('href')).toBe('/schedules.scan.show/1');
         vi.unstubAllGlobals();
     });
 

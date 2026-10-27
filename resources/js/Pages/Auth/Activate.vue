@@ -27,7 +27,7 @@ function submit() {
         return focusFirstInvalid();
     }
 
-    form.post(route('aktivasi.store', token), {
+    form.post(route('activation.store', token), {
         onError: focusFirstInvalid,
         onFinish: () => form.reset('password', 'password_confirmation'),
     });

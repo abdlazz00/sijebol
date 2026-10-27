@@ -118,7 +118,7 @@ function startCancelEntry(row: ParticipantRow) {
 function cancelEntry() {
     if (!cancelling.value) return;
     router.post(
-        route('jadwal.peserta.batalkan', [
+        route('schedules.entries.cancel', [
             props.schedule.id,
             cancelling.value.id,
         ]),
@@ -137,7 +137,7 @@ function startCancel() {
 
 function cancelSession() {
     router.post(
-        route('jadwal.batalkan', props.schedule.id),
+        route('schedules.cancel', props.schedule.id),
         { note: cancelNote.value.trim() },
         { preserveScroll: true },
     );
@@ -146,11 +146,11 @@ function cancelSession() {
 const deleteOpen = ref(false);
 
 function destroy() {
-    router.delete(route('jadwal.destroy', props.schedule.id));
+    router.delete(route('schedules.destroy', props.schedule.id));
 }
 
 const crumbs = computed(() => [
-    { label: 'Sesi rekaman', href: route('jadwal.index') },
+    { label: 'Sesi rekaman', href: route('schedules.index') },
     { label: formatDateWithDay(props.schedule.date) },
 ]);
 </script>
@@ -183,7 +183,7 @@ const crumbs = computed(() => [
                     variant="outline"
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.edit', schedule.id)">
+                    <Link :href="route('schedules.edit', schedule.id)">
                         <Pencil class="size-4" aria-hidden="true" />
                         Ubah
                     </Link>
@@ -193,7 +193,7 @@ const crumbs = computed(() => [
                     as-child
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.pindai.show', schedule.id)">
+                    <Link :href="route('schedules.scan.show', schedule.id)">
                         <ScanLine class="size-4" aria-hidden="true" />
                         Pindai tiket
                     </Link>
@@ -204,7 +204,7 @@ const crumbs = computed(() => [
                     variant="outline"
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.rekaman.show', schedule.id)">
+                    <Link :href="route('schedules.recording.show', schedule.id)">
                         <ClipboardCheck class="size-4" aria-hidden="true" />
                         Penandaan rekaman
                     </Link>
@@ -264,7 +264,7 @@ const crumbs = computed(() => [
                     <template #cell-student="{ row }">
                         <div class="min-w-0">
                             <Link
-                                :href="route('siswa.show', row.student.id)"
+                                :href="route('students.show', row.student.id)"
                                 class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ row.student.name }}

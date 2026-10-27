@@ -76,7 +76,7 @@ function submit() {
 }
 
 function save() {
-    form.post(route('jadwal.rekaman.store', props.schedule.id), {
+    form.post(route('schedules.recording.store', props.schedule.id), {
         preserveScroll: true,
         onSuccess: () => form.reset(),
         onError: focusFirstInvalid,
@@ -109,17 +109,17 @@ function startUndo(row: ParticipantRow) {
 function undo() {
     if (!undoing.value) return;
     router.post(
-        route('jadwal.rekaman.batalkan', [props.schedule.id, undoing.value.id]),
+        route('schedules.recording.cancel', [props.schedule.id, undoing.value.id]),
         { note: undoNote.value.trim() },
         { preserveScroll: true },
     );
 }
 
 const crumbs = computed(() => [
-    { label: 'Sesi rekaman', href: route('jadwal.index') },
+    { label: 'Sesi rekaman', href: route('schedules.index') },
     {
         label: formatDateWithDay(props.schedule.date),
-        href: route('jadwal.show', props.schedule.id),
+        href: route('schedules.show', props.schedule.id),
     },
     { label: 'Penandaan rekaman' },
 ]);
@@ -144,7 +144,7 @@ const crumbs = computed(() => [
                 variant="outline"
                 class="h-10 self-start px-4"
             >
-                <Link :href="route('jadwal.pindai.show', schedule.id)">
+                <Link :href="route('schedules.scan.show', schedule.id)">
                     <ScanLine class="size-4" aria-hidden="true" />
                     Pindai tiket
                 </Link>

@@ -75,7 +75,7 @@ const info = computed(() => [
 ]);
 
 const crumbs = [
-    { label: 'Sesi rekaman', href: route('saya.sesi') },
+    { label: 'Sesi rekaman', href: route('me.sessions.index') },
     { label: 'Tiket' },
 ];
 </script>
@@ -160,7 +160,7 @@ const crumbs = [
                     Simpan sebagai gambar
                 </Button>
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link :href="route('saya.sesi')">Kembali ke sesi saya</Link>
+                    <Link :href="route('me.sessions.index')">Kembali ke sesi saya</Link>
                 </Button>
             </div>
         </div>

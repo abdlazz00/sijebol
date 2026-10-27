@@ -79,7 +79,7 @@ describe('Saya/Sesi — daftar sesi', () => {
         });
 
         expect(w.text()).toContain('Lengkapi data diri dan dokumen dulu');
-        expect(w.find('a[href="/saya.show"]').exists()).toBe(true);
+        expect(w.find('a[href="/me.show"]').exists()).toBe(true);
         expect(w.text()).not.toContain('Daftar');
     });
 
@@ -123,7 +123,7 @@ describe('Saya/Sesi — daftar sesi', () => {
 
         await dialog.find('[data-testid="ok"]').trigger('click');
         expect(routerPost).toHaveBeenCalledWith(
-            '/saya.sesi.daftar/4',
+            '/me.sessions.register/4',
             {},
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -219,7 +219,7 @@ describe('Saya/Sesi — pendaftaran saya', () => {
 
         expect(w.find('[aria-current="step"]').text()).toContain('Terdaftar');
         expect(w.text()).toContain('Anda terdaftar. Datang sesuai jadwal.');
-        expect(w.find('a[href="/saya.tiket/9"]').text()).toContain(
+        expect(w.find('a[href="/me.tickets.show/9"]').text()).toContain(
             'Lihat tiket',
         );
     });
@@ -237,7 +237,7 @@ describe('Saya/Sesi — pendaftaran saya', () => {
         });
 
         expect(w.text()).toContain('Foto KK buram');
-        expect(w.find('a[href="/saya.show"]').text()).toContain(
+        expect(w.find('a[href="/me.show"]').text()).toContain(
             'Perbaiki data',
         );
 
@@ -247,7 +247,7 @@ describe('Saya/Sesi — pendaftaran saya', () => {
             .trigger('click');
         await w.find('[data-testid="ok"]').trigger('click');
         expect(routerPost).toHaveBeenCalledWith(
-            '/saya.pendaftaran.ajukan-ulang/9',
+            '/me.registrations.resubmit/9',
             {},
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -262,7 +262,7 @@ describe('Saya/Sesi — pendaftaran saya', () => {
             .trigger('click');
         await w.find('[data-testid="ok"]').trigger('click');
         expect(routerPost).toHaveBeenCalledWith(
-            '/saya.pendaftaran.batal/9',
+            '/me.registrations.cancel/9',
             {},
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -310,7 +310,7 @@ describe('Saya/Sesi — fase 7c', () => {
             const w = mount(Sesi, {
                 props: { ...base, entry: entry({ status }) },
             });
-            expect(w.find('a[href="/saya.tiket/9"]').text()).toContain(
+            expect(w.find('a[href="/me.tickets.show/9"]').text()).toContain(
                 'Lihat tiket',
             );
         }
@@ -322,7 +322,7 @@ describe('Saya/Sesi — fase 7c', () => {
             const w = mount(Sesi, {
                 props: { ...base, entry: entry({ status }) },
             });
-            expect(w.find('a[href="/saya.tiket/9"]').exists()).toBe(false);
+            expect(w.find('a[href="/me.tickets.show/9"]').exists()).toBe(false);
         }
     });
 

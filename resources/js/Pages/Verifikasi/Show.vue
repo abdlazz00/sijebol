@@ -103,7 +103,7 @@ function validate(): boolean {
 }
 
 function send() {
-    form.post(route('verifikasi.decide', props.entry.id), {
+    form.post(route('verifications.decide', props.entry.id), {
         onError: focusFirstInvalid,
     });
 }
@@ -141,7 +141,7 @@ const info = computed(() => [
 ]);
 
 const crumbs = computed(() => [
-    { label: 'Antrean verifikasi', href: route('verifikasi.index') },
+    { label: 'Antrean verifikasi', href: route('verifications.index') },
     { label: props.student.name },
 ]);
 </script>
@@ -307,7 +307,7 @@ const crumbs = computed(() => [
 
                     <div class="flex justify-end gap-2">
                         <Button as-child variant="outline" class="h-10 px-4">
-                            <Link :href="route('verifikasi.index')">Batal</Link>
+                            <Link :href="route('verifications.index')">Batal</Link>
                         </Button>
                         <Button
                             type="submit"

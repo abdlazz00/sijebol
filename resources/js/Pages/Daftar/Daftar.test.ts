@@ -111,6 +111,6 @@ describe('Daftar', () => {
         await w.find('form').trigger('submit');
 
         expect(post).toHaveBeenCalledTimes(1);
-        expect(post.mock.calls[0][0]).toBe('/daftar.store/abc123');
+        expect(post.mock.calls[0][0]).toBe('/register.store/abc123');
     });
 });

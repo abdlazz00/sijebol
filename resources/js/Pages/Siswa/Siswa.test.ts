@@ -120,7 +120,7 @@ describe('Siswa/Show — pendaftaran sesi', () => {
         expect(w.text()).toContain('08.00–12.00');
         expect(w.text()).toContain('Aula SMPN 1');
         expect(w.text()).toContain('Terdaftar');
-        expect(w.find('a[href="/jadwal.show/5"]').exists()).toBe(true);
+        expect(w.find('a[href="/schedules.show/5"]').exists()).toBe(true);
     });
 
     it('tanpa izin jadwal.lihat sesi tampil sebagai teks biasa', () => {
@@ -145,7 +145,7 @@ describe('Siswa/Show — pendaftaran sesi', () => {
         });
 
         expect(w.text()).toContain('Selasa, 20 Okt 2026');
-        expect(w.find('a[href="/jadwal.show/5"]').exists()).toBe(false);
+        expect(w.find('a[href="/schedules.show/5"]').exists()).toBe(false);
     });
 });
 
@@ -182,7 +182,7 @@ describe('Siswa/Form', () => {
         await flushPromises();
 
         expect(put).toHaveBeenCalledTimes(1);
-        expect(put.mock.calls[0][0]).toBe('/siswa.update/7');
+        expect(put.mock.calls[0][0]).toBe('/students.update/7');
     });
 });
 

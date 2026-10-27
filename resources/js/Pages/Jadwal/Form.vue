@@ -83,12 +83,12 @@ function submit() {
 
     const options = { onError: focusFirstInvalid };
     if (props.schedule)
-        form.put(route('jadwal.update', props.schedule.id), options);
-    else form.post(route('jadwal.store'), options);
+        form.put(route('schedules.update', props.schedule.id), options);
+    else form.post(route('schedules.store'), options);
 }
 
 const crumbs = computed(() => [
-    { label: 'Sesi rekaman', href: route('jadwal.index') },
+    { label: 'Sesi rekaman', href: route('schedules.index') },
     { label: title.value },
 ]);
 </script>
@@ -242,8 +242,8 @@ const crumbs = computed(() => [
                     <Link
                         :href="
                             schedule
-                                ? route('jadwal.show', schedule.id)
-                                : route('jadwal.index')
+                                ? route('schedules.show', schedule.id)
+                                : route('schedules.index')
                         "
                         >Batal</Link
                     >

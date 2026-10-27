@@ -94,7 +94,7 @@ function submit() {
     if (!validate()) return focusFirstInvalid();
 
     const firstSave = props.student === null;
-    form.put(route('saya.save'), {
+    form.put(route('me.update'), {
         preserveScroll: true,
         onError: focusFirstInvalid,
         // Langkah berikutnya langsung terlihat setelah data pertama tersimpan.
@@ -344,7 +344,7 @@ function openPreview(type: DocumentType) {
                         hide-download
                         :upload-url="
                             student
-                                ? route('siswa.dokumen.store', [
+                                ? route('students.documents.store', [
                                       student.id,
                                       doc.type,
                                   ])
@@ -352,7 +352,7 @@ function openPreview(type: DocumentType) {
                         "
                         :delete-url="
                             student
-                                ? route('siswa.dokumen.destroy', [
+                                ? route('students.documents.destroy', [
                                       student.id,
                                       doc.type,
                                   ])
@@ -380,7 +380,7 @@ function openPreview(type: DocumentType) {
                     }}
                 </p>
                 <Button as-child class="h-10 self-start px-4">
-                    <Link :href="route('saya.sesi')">{{
+                    <Link :href="route('me.sessions.index')">{{
                         locked ? 'Lihat pendaftaran saya' : 'Pilih sesi rekaman'
                     }}</Link>
                 </Button>

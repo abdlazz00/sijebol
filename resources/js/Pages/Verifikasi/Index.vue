@@ -89,7 +89,7 @@ function toggleAll(on: boolean) {
 
 function approve() {
     router.post(
-        route('verifikasi.setujui'),
+        route('verifications.approve-batch'),
         { entry_ids: selected.value },
         {
             preserveScroll: true,
@@ -259,7 +259,7 @@ const columns = computed(() => [
                     <template #cell-actions="{ row }">
                         <div class="flex justify-end">
                             <Button as-child class="h-9 px-3">
-                                <Link :href="route('verifikasi.show', row.id)">
+                                <Link :href="route('verifications.show', row.id)">
                                     Periksa
                                     <span class="sr-only">{{
                                         row.student.name

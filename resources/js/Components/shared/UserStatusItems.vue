@@ -32,12 +32,12 @@ const canActivate = computed(
 );
 
 function resend() {
-    router.post(route('pengguna.resend', props.user.id));
+    router.post(route('users.resend-activation', props.user.id));
 }
 
 function activate() {
     router.post(
-        route('pengguna.activate', props.user.id),
+        route('users.activate', props.user.id),
         {},
         { preserveScroll: true },
     );

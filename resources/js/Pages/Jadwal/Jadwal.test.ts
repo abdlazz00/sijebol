@@ -256,7 +256,7 @@ describe('Jadwal/Show', () => {
         expect(
             dengan
                 .findAll('a')
-                .some((a) => a.attributes('href') === '/jadwal.pindai.show/5'),
+                .some((a) => a.attributes('href') === '/schedules.scan.show/5'),
         ).toBe(true);
         expect(
             mount(Show, {
@@ -316,7 +316,7 @@ describe('Jadwal/Show', () => {
         await dialog.find('[data-testid="ok"]').trigger('click');
 
         expect(routerPost).toHaveBeenCalledWith(
-            '/jadwal.batalkan/5',
+            '/schedules.cancel/5',
             { note: 'Gedung dipakai ujian.' },
             expect.objectContaining({ preserveScroll: true }),
         );
@@ -334,7 +334,7 @@ describe('Jadwal/Show', () => {
         ).toHaveLength(1);
         await menu.find('button').trigger('click');
         await kosong.find('[data-testid="ok"]').trigger('click');
-        expect(routerDelete).toHaveBeenCalledWith('/jadwal.destroy/5');
+        expect(routerDelete).toHaveBeenCalledWith('/schedules.destroy/5');
 
         const berisi = mount(Show, {
             props: { ...base, participants: [peserta(1, 'ditolak')] },
@@ -395,7 +395,7 @@ describe('Jadwal/Show — pembatalan pendaftaran oleh admin', () => {
         await dialog.find('[data-testid="ok"]').trigger('click');
 
         expect(routerPost).toHaveBeenCalledWith(
-            '/jadwal.peserta.batalkan/5/1',
+            '/schedules.entries.cancel/5/1',
             { note: 'Data ganda dengan pendaftaran lain.' },
             expect.objectContaining({ preserveScroll: true }),
         );

@@ -89,12 +89,12 @@ function submit() {
 
     const options = { onError: focusFirstInvalid };
 
-    if (props.user) form.put(route('pengguna.update', props.user.id), options);
-    else form.post(route('pengguna.store'), options);
+    if (props.user) form.put(route('users.update', props.user.id), options);
+    else form.post(route('users.store'), options);
 }
 
 const crumbs = computed(() => [
-    { label: 'Pengguna', href: route('pengguna.index') },
+    { label: 'Pengguna', href: route('users.index') },
     { label: isEdit.value ? 'Ubah pengguna' : 'Tambah pengguna' },
 ]);
 </script>
@@ -245,7 +245,7 @@ const crumbs = computed(() => [
 
             <div class="mt-6 flex justify-end gap-2">
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link :href="route('pengguna.index')">Batal</Link>
+                    <Link :href="route('users.index')">Batal</Link>
                 </Button>
                 <Button
                     type="submit"

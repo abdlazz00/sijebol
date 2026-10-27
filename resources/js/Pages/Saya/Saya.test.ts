@@ -161,7 +161,7 @@ describe('Saya', () => {
                 eligibility: { eligible: true, reasons: [] },
             },
         });
-        expect(lengkap.find('a[href="/saya.sesi"]').text()).toContain(
+        expect(lengkap.find('a[href="/me.sessions.index"]').text()).toContain(
             'Pilih sesi rekaman',
         );
 
@@ -175,9 +175,9 @@ describe('Saya', () => {
                 },
             },
         });
-        expect(belum.find('a[href="/saya.sesi"]').exists()).toBe(false);
+        expect(belum.find('a[href="/me.sessions.index"]').exists()).toBe(false);
         expect(
-            mount(Saya, { props: base }).find('a[href="/saya.sesi"]').exists(),
+            mount(Saya, { props: base }).find('a[href="/me.sessions.index"]').exists(),
         ).toBe(false);
     });
 
@@ -191,7 +191,7 @@ describe('Saya', () => {
             },
         });
 
-        expect(w.find('a[href="/saya.sesi"]').text()).toContain(
+        expect(w.find('a[href="/me.sessions.index"]').text()).toContain(
             'Lihat pendaftaran saya',
         );
     });

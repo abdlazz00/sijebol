@@ -15,7 +15,7 @@ export function useDeactivateDialog() {
     function confirm() {
         if (target.value)
             router.post(
-                route('pengguna.deactivate', target.value.id),
+                route('users.deactivate', target.value.id),
                 {},
                 { preserveScroll: true },
             );

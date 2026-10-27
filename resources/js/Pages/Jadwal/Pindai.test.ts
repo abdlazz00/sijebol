@@ -168,7 +168,7 @@ describe('Jadwal/Pindai — kamera', () => {
         expect(
             w
                 .findAll('a')
-                .some((a) => a.attributes('href') === '/jadwal.rekaman.show/5'),
+                .some((a) => a.attributes('href') === '/schedules.recording.show/5'),
         ).toBe(true);
     });
 
@@ -186,7 +186,7 @@ describe('Jadwal/Pindai — kamera', () => {
         expect(
             w
                 .findAll('a')
-                .some((a) => a.attributes('href') === '/jadwal.rekaman.show/5'),
+                .some((a) => a.attributes('href') === '/schedules.recording.show/5'),
         ).toBe(true);
     });
 
@@ -204,7 +204,7 @@ describe('Jadwal/Pindai — kamera', () => {
         expect(
             w
                 .findAll('a')
-                .some((a) => a.attributes('href') === '/jadwal.rekaman.show/5'),
+                .some((a) => a.attributes('href') === '/schedules.recording.show/5'),
         ).toBe(true);
     });
 
@@ -227,7 +227,7 @@ describe('Jadwal/Pindai — hasil pindai', () => {
 
         await decode('KODE-1');
 
-        expect(postJson).toHaveBeenCalledWith('/jadwal.pindai.store/5', {
+        expect(postJson).toHaveBeenCalledWith('/schedules.scan.store/5', {
             code: 'KODE-1',
         });
         expect(w.text()).toContain('Budi Santoso');

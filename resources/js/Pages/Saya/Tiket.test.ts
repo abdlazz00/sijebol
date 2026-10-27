@@ -108,7 +108,7 @@ describe('Saya/Tiket', () => {
     it('menyediakan tautan kembali ke halaman sesi', () => {
         const w = mount(Tiket, { props: { ticket: tiket() } });
 
-        expect(w.find('a[href="/saya.sesi"]').text()).toContain(
+        expect(w.find('a[href="/me.sessions.index"]').text()).toContain(
             'Kembali ke sesi saya',
         );
     });

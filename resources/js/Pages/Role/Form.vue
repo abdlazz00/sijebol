@@ -53,7 +53,7 @@ watch(() => form.permissions.length, announce);
 
 const title = computed(() => (isEdit.value ? 'Ubah role' : 'Tambah role'));
 const crumbs = computed(() => [
-    { label: 'Role & Permission', href: route('role.index') },
+    { label: 'Role & Permission', href: route('roles.index') },
     { label: title.value },
 ]);
 
@@ -70,8 +70,8 @@ function submit() {
 
     const options = { onError: focusFirstInvalid };
 
-    if (props.role) form.put(route('role.update', props.role.id), options);
-    else form.post(route('role.store'), options);
+    if (props.role) form.put(route('roles.update', props.role.id), options);
+    else form.post(route('roles.store'), options);
 }
 </script>
 
@@ -218,7 +218,7 @@ function submit() {
                 </p>
                 <div class="flex gap-3 [&>*]:flex-1 sm:[&>*]:flex-none">
                     <Button as-child variant="outline" class="h-10 px-4">
-                        <Link :href="route('role.index')">Batal</Link>
+                        <Link :href="route('roles.index')">Batal</Link>
                     </Button>
                     <Button
                         v-if="!readonly"

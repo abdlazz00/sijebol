@@ -178,7 +178,7 @@ const resubmitOpen = ref(false);
 function register() {
     if (!picked.value) return;
     sendingId.value = picked.value.id;
-    send('saya.sesi.daftar', picked.value.id);
+    send('me.sessions.register', picked.value.id);
 }
 </script>
 
@@ -196,7 +196,7 @@ function register() {
                 Lengkapi data diri dan dokumen dulu sebelum memilih sesi.
             </InlineAlert>
             <Button v-if="!ready" as-child class="h-10 self-start px-4">
-                <Link :href="route('saya.show')">Lengkapi data saya</Link>
+                <Link :href="route('me.show')">Lengkapi data saya</Link>
             </Button>
 
             <section
@@ -284,7 +284,7 @@ function register() {
                     as-child
                     class="h-10 self-start px-4"
                 >
-                    <Link :href="route('saya.tiket', entry.id)"
+                    <Link :href="route('me.tickets.show', entry.id)"
                         >Lihat tiket</Link
                     >
                 </Button>
@@ -299,7 +299,7 @@ function register() {
                         variant="outline"
                         class="h-10 px-4"
                     >
-                        <Link :href="route('saya.show')">Perbaiki data</Link>
+                        <Link :href="route('me.show')">Perbaiki data</Link>
                     </Button>
                     <Button
                         v-if="entry.can_resubmit"
@@ -347,7 +347,7 @@ function register() {
                         </li>
                     </ul>
                     <Link
-                        :href="route('saya.show')"
+                        :href="route('me.show')"
                         class="mt-2 inline-block font-medium underline"
                         >Lengkapi data saya</Link
                     >
@@ -459,7 +459,7 @@ function register() {
             description="Kursi Anda dilepas. Anda dapat mendaftar ke sesi lain selama pendaftarannya masih dibuka."
             confirm-label="Batalkan pendaftaran"
             destructive
-            @confirm="entry && send('saya.pendaftaran.batal', entry.id)"
+            @confirm="entry && send('me.registrations.cancel', entry.id)"
         />
 
         <ConfirmDialog
@@ -467,7 +467,7 @@ function register() {
             title="Ajukan ulang pendaftaran?"
             description="Petugas akan memeriksa data dan dokumen Anda kembali. Data Anda terkunci lagi selama diperiksa."
             confirm-label="Ajukan ulang"
-            @confirm="entry && send('saya.pendaftaran.ajukan-ulang', entry.id)"
+            @confirm="entry && send('me.registrations.resubmit', entry.id)"
         />
     </AppLayout>
 </template>

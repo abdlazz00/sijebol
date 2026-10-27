@@ -91,13 +91,13 @@ function submit() {
     form.clearErrors();
     if (!validate()) return focusFirstInvalid();
 
-    form.put(route('siswa.update', props.student.id), {
+    form.put(route('students.update', props.student.id), {
         onError: focusFirstInvalid,
     });
 }
 
 const crumbs = computed(() => [
-    { label: 'Siswa', href: route('siswa.index') },
+    { label: 'Siswa', href: route('students.index') },
     { label: 'Koreksi data siswa' },
 ]);
 </script>
@@ -253,7 +253,7 @@ const crumbs = computed(() => [
 
             <div class="mt-6 flex justify-end gap-2">
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link :href="route('siswa.show', student.id)">Batal</Link>
+                    <Link :href="route('students.show', student.id)">Batal</Link>
                 </Button>
                 <Button
                     type="submit"

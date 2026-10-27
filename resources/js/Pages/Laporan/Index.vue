@@ -43,9 +43,9 @@ const applied = computed(() =>
         sampai: props.filters.sampai ?? '',
     }),
 );
-const exportHref = computed(() => route('laporan.ekspor', applied.value));
+const exportHref = computed(() => route('reports.export', applied.value));
 const sessionExportHref = computed(() =>
-    route('laporan.ekspor-sesi', applied.value),
+    route('reports.export-sessions', applied.value),
 );
 
 const numeric = 'w-[104px] text-right';
@@ -81,7 +81,7 @@ function sessionCell(row: SessionTableRow, key: string): string {
 }
 
 function apply() {
-    router.get(route('laporan.index'), query(form), { preserveScroll: true });
+    router.get(route('reports.index'), query(form), { preserveScroll: true });
 }
 
 function reset() {

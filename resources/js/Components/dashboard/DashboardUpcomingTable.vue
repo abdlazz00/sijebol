@@ -120,7 +120,7 @@ function statusBadgeClass(status: string): string {
                             </span>
                             <Link
                                 v-if="row.status === 'Hari Ini' && can(PERMISSIONS.RekamanPindai)"
-                                :href="route('jadwal.pindai.show', row.id)"
+                                :href="route('schedules.scan.show', row.id)"
                                 class="inline-flex min-h-9 items-center gap-1.5 text-xs font-semibold text-primary hover:underline"
                             >
                                 <ScanLine class="size-3.5" aria-hidden="true" />

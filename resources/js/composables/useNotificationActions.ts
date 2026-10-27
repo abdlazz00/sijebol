@@ -6,7 +6,7 @@ export function useNotificationActions() {
     const keep = { preserveScroll: true, preserveState: true } as const;
 
     function markRead(id: string) {
-        router.post(route('notifikasi.read', id), {}, keep);
+        router.post(route('notifications.mark-read', id), {}, keep);
     }
 
     // Tandai dibaca dulu, baru pindah: dua visit sekaligus akan saling membatalkan.
@@ -15,7 +15,7 @@ export function useNotificationActions() {
             return router.visit(notification.url);
 
         router.post(
-            route('notifikasi.read', notification.id),
+            route('notifications.mark-read', notification.id),
             {},
             {
                 ...keep,
@@ -25,7 +25,7 @@ export function useNotificationActions() {
     }
 
     function markAllRead() {
-        router.post(route('notifikasi.read-all'), {}, keep);
+        router.post(route('notifications.mark-all-read'), {}, keep);
     }
 
     return { markRead, open, markAllRead };

@@ -28,7 +28,7 @@ function askReset(school: SchoolLink) {
 function reset() {
     if (target.value)
         router.post(
-            route('tautan.reset', target.value.id),
+            route('registration-links.reset', target.value.id),
             {},
             { preserveScroll: true },
         );

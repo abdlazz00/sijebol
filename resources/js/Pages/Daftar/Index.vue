@@ -85,7 +85,7 @@ function submit() {
         // Penyimpanan peramban boleh gagal; formulir tetap berfungsi.
     }
 
-    form.post(route('daftar.store', token), {
+    form.post(route('register.store', token), {
         preserveScroll: true,
         onError: focusFirstInvalid,
         onSuccess: () => {

@@ -77,7 +77,7 @@ const columns = computed(() => [
                     as-child
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.create')">
+                    <Link :href="route('schedules.create')">
                         <Plus class="size-4" aria-hidden="true" />
                         Buat sesi
                     </Link>
@@ -140,7 +140,7 @@ const columns = computed(() => [
                     <template #cell-date="{ row }">
                         <div class="min-w-0">
                             <Link
-                                :href="route('jadwal.show', row.id)"
+                                :href="route('schedules.show', row.id)"
                                 class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ formatDateWithDay(row.date) }}
@@ -203,7 +203,7 @@ const columns = computed(() => [
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('jadwal.show', row.id)">
+                                    <Link :href="route('schedules.show', row.id)">
                                         <Eye
                                             class="size-4"
                                             aria-hidden="true"
@@ -219,7 +219,7 @@ const columns = computed(() => [
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('jadwal.edit', row.id)">
+                                    <Link :href="route('schedules.edit', row.id)">
                                         <Pencil
                                             class="size-4"
                                             aria-hidden="true"
@@ -234,7 +234,7 @@ const columns = computed(() => [
                                 >
                                     <Link
                                         :href="
-                                            route('jadwal.rekaman.show', row.id)
+                                            route('schedules.recording.show', row.id)
                                         "
                                     >
                                         <ClipboardCheck
@@ -274,7 +274,7 @@ const columns = computed(() => [
                                 #action
                             >
                                 <Button as-child class="h-9">
-                                    <Link :href="route('jadwal.create')"
+                                    <Link :href="route('schedules.create')"
                                         >Buat sesi</Link
                                     >
                                 </Button>

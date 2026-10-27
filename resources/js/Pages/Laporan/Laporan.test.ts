@@ -93,10 +93,10 @@ describe('Laporan/Index — kehadiran per sesi', () => {
 
         const hrefs = w.findAll('a').map((a) => a.attributes('href'));
         expect(hrefs).toContain(
-            '/laporan.ekspor-sesi?dari=2026-10-01&sampai=2026-10-31',
+            '/reports.export-sessions?dari=2026-10-01&sampai=2026-10-31',
         );
         expect(hrefs).toContain(
-            '/laporan.ekspor?dari=2026-10-01&sampai=2026-10-31',
+            '/reports.export?dari=2026-10-01&sampai=2026-10-31',
         );
     });
 

@@ -34,7 +34,7 @@ const pageTitle = computed(() =>
     resend.value ? 'Kirim ulang aktivasi' : 'Tambah pengguna',
 );
 const crumbs = computed(() => [
-    { label: 'Pengguna', href: route('pengguna.index') },
+    { label: 'Pengguna', href: route('users.index') },
     { label: pageTitle.value },
     { label: 'Berhasil' },
 ]);
@@ -163,7 +163,7 @@ const crumbs = computed(() => [
 
             <div class="mt-6 flex justify-end">
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link :href="route('pengguna.index')"
+                    <Link :href="route('users.index')"
                         >Kembali ke daftar</Link
                     >
                 </Button>

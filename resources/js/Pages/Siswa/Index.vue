@@ -79,7 +79,7 @@ function askDelete(student: StudentRow) {
 
 function destroy() {
     if (target.value)
-        router.delete(route('siswa.destroy', target.value.id), {
+        router.delete(route('students.destroy', target.value.id), {
             preserveScroll: true,
         });
 }
@@ -155,7 +155,7 @@ function destroy() {
                     <template #cell-name="{ row }">
                         <div class="min-w-0">
                             <Link
-                                :href="route('siswa.show', row.id)"
+                                :href="route('students.show', row.id)"
                                 class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ row.name }}
@@ -229,7 +229,7 @@ function destroy() {
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('siswa.show', row.id)">
+                                    <Link :href="route('students.show', row.id)">
                                         <Eye
                                             class="size-4"
                                             aria-hidden="true"
@@ -242,7 +242,7 @@ function destroy() {
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('siswa.edit', row.id)">
+                                    <Link :href="route('students.edit', row.id)">
                                         <Pencil
                                             class="size-4"
                                             aria-hidden="true"
@@ -288,7 +288,7 @@ function destroy() {
                                 #action
                             >
                                 <Button as-child class="h-9">
-                                    <Link :href="route('tautan.index')"
+                                    <Link :href="route('registration-links.index')"
                                         >Lihat link pendaftaran</Link
                                     >
                                 </Button>

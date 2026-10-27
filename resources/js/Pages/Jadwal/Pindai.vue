@@ -135,7 +135,7 @@ async function onDecode(result: { data: string }) {
     lastAt = Date.now();
     try {
         const { status, data } = await postJson<ScanResponse>(
-            route('jadwal.pindai.store', props.schedule.id),
+            route('schedules.scan.store', props.schedule.id),
             { code },
         );
 
@@ -192,10 +192,10 @@ onBeforeUnmount(() => {
 });
 
 const crumbs = computed(() => [
-    { label: 'Sesi rekaman', href: route('jadwal.index') },
+    { label: 'Sesi rekaman', href: route('schedules.index') },
     {
         label: formatDateWithDay(props.schedule.date),
-        href: route('jadwal.show', props.schedule.id),
+        href: route('schedules.show', props.schedule.id),
     },
     { label: 'Pindai tiket' },
 ]);
@@ -369,7 +369,7 @@ const tone = {
                 variant="outline"
                 class="min-h-11 w-full"
             >
-                <Link :href="route('jadwal.rekaman.show', schedule.id)">
+                <Link :href="route('schedules.recording.show', schedule.id)">
                     <ClipboardCheck class="size-4" aria-hidden="true" />
                     Tandai kehadiran manual
                 </Link>
