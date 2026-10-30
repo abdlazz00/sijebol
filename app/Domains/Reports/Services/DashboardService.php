@@ -5,6 +5,7 @@ namespace App\Domains\Reports\Services;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Reports\Repositories\Contracts\ReportRepositoryInterface;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
@@ -39,33 +40,23 @@ class DashboardService
         $summary = [];
         $actions = [];
 
-        // 1. Backward-compatible summary cards
+        // 1. Kartu ringkasan
         if (! $bound && $user->can('verifikasi.lihat')) {
-            $summary[] = $this->card('Menunggu verifikasi', $n(S::Diajukan), 'Entri berstatus Diajukan', 'clipboard-list');
-        }
-        if ($bound && $user->can('pendaftaran.lihat')) {
-            $summary[] = $this->card('Draf', $n(S::Draf), 'Belum diajukan', 'clipboard-list');
-            $summary[] = $this->card('Perlu perbaikan', $n(S::PerluPerbaikan), 'Menunggu perbaikan sekolah', 'clipboard-list');
+            $summary[] = $this->card('Menunggu verifikasi', $n(S::MenungguVerifikasi), 'Pendaftaran menunggu pemeriksaan', 'clipboard-list');
         }
         if ($user->can('jadwal.lihat')) {
             if (! $bound) {
-                $summary[] = $this->card('Terjadwal', $n(S::Terjadwal), 'Menunggu penandaan rekaman', 'calendar-days');
+                $summary[] = $this->card('Terdaftar', $n(S::Terdaftar), 'Menunggu penandaan rekaman', 'calendar-days');
             }
             $summary[] = $this->card('Sudah rekaman', $n(S::SudahRekaman), 'Sudah direkam', 'clipboard-check');
         }
 
-        // 2. Backward-compatible action items
-        if ($user->can('verifikasi.lihat') && $n(S::Diajukan) > 0) {
-            $actions[] = $this->action($n(S::Diajukan).' entri menunggu verifikasi', 'Periksa data dan dokumen siswa yang diajukan sekolah.', 'Buka antrean', route('verifikasi.index', absolute: false), 'clipboard-list');
+        // 2. Aksi yang perlu ditindaklanjuti
+        if ($user->can('verifikasi.lihat') && $n(S::MenungguVerifikasi) > 0) {
+            $actions[] = $this->action($n(S::MenungguVerifikasi).' pendaftaran menunggu verifikasi', 'Periksa data dan dokumen siswa yang mendaftar sesi rekaman.', 'Buka antrean', route('verifications.index', absolute: false), 'clipboard-list');
         }
-        if ($user->can('jadwal.buat') && $n(S::Terverifikasi) > 0) {
-            $actions[] = $this->action($n(S::Terverifikasi).' siswa terverifikasi belum dijadwalkan', 'Tetapkan jadwal perekaman untuk mereka.', 'Atur jadwal', route('jadwal.index', absolute: false), 'calendar-plus');
-        }
-        if ($bound && $user->can('pendaftaran.lihat') && $n(S::PerluPerbaikan) > 0) {
-            $actions[] = $this->action($n(S::PerluPerbaikan).' entri perlu diperbaiki', 'Perbaiki data atau dokumen, lalu ajukan ulang.', 'Buka pendaftaran', route('pendaftaran.index', absolute: false), 'clipboard-list');
-        }
-        if ($user->can('jadwal.lihat') && ! $user->can('jadwal.buat') && $n(S::Terjadwal) > 0) {
-            $actions[] = $this->action($n(S::Terjadwal).' siswa terjadwal', 'Lihat jadwal perekaman sekolah Anda.', 'Lihat jadwal', route('jadwal.index', absolute: false), 'calendar-plus');
+        if ($user->can('jadwal.lihat') && ! $user->can('jadwal.buat') && $n(S::Terdaftar) > 0) {
+            $actions[] = $this->action($n(S::Terdaftar).' siswa terdaftar', 'Lihat sesi rekaman sekolah Anda.', 'Lihat sesi', route('schedules.index', absolute: false), 'calendar-plus');
         }
 
         return [
@@ -90,58 +81,19 @@ class DashboardService
 
         if ($user->school_id === null) {
             // Staf/Admin Kecamatan (se-kecamatan)
-            $total = array_sum($counts);
-            $scheduled = $n(S::Terjadwal);
+            // Pendaftaran yang sudah gugur (ditolak, dibatalkan, kedaluwarsa) tidak dihitung sebagai pelajar terdaftar.
+            $total = array_sum($counts) - $n(S::Ditolak) - $n(S::Dibatalkan) - $n(S::Kedaluwarsa);
+            $registered = $n(S::Terdaftar);
             $recorded = $n(S::SudahRekaman);
-            $inProcess = $n(S::Terverifikasi);
-            $unscheduled = $n(S::Draf) + $n(S::Diajukan) + $n(S::PerluPerbaikan);
+            $pending = $n(S::MenungguVerifikasi) + $n(S::PerluPerbaikan);
+            $absent = $n(S::TidakHadir) + $n(S::BelumRekaman);
 
             return [
-                [
-                    'key' => 'total_students',
-                    'label' => 'Jumlah Pelajar Terdaftar',
-                    'value' => $total,
-                    'percentage' => null,
-                    'unit' => 'Orang',
-                    'variant' => 'blue',
-                    'icon' => 'users',
-                ],
-                [
-                    'key' => 'scheduled',
-                    'label' => 'Sudah Dijadwalkan',
-                    'value' => $scheduled,
-                    'percentage' => $pct($scheduled, $total),
-                    'unit' => 'Orang',
-                    'variant' => 'green',
-                    'icon' => 'calendar-check',
-                ],
-                [
-                    'key' => 'recorded',
-                    'label' => 'Sudah Melakukan Perekaman',
-                    'value' => $recorded,
-                    'percentage' => $pct($recorded, $total),
-                    'unit' => 'Orang',
-                    'variant' => 'amber',
-                    'icon' => 'id-card',
-                ],
-                [
-                    'key' => 'in_process',
-                    'label' => 'Dalam Proses Jadwal',
-                    'value' => $inProcess,
-                    'percentage' => $pct($inProcess, $total),
-                    'unit' => 'Orang',
-                    'variant' => 'rose',
-                    'icon' => 'clock',
-                ],
-                [
-                    'key' => 'unscheduled',
-                    'label' => 'Belum Dijadwalkan',
-                    'value' => $unscheduled,
-                    'percentage' => $pct($unscheduled, $total),
-                    'unit' => 'Orang',
-                    'variant' => 'slate',
-                    'icon' => 'file-text',
-                ],
+                ['key' => 'total_students', 'label' => 'Jumlah Pelajar Terdaftar', 'value' => $total, 'percentage' => null, 'unit' => 'Orang', 'variant' => 'blue', 'icon' => 'users'],
+                ['key' => 'registered', 'label' => 'Sudah Terdaftar Sesi', 'value' => $registered, 'percentage' => $pct($registered, $total), 'unit' => 'Orang', 'variant' => 'green', 'icon' => 'calendar-check'],
+                ['key' => 'recorded', 'label' => 'Sudah Melakukan Perekaman', 'value' => $recorded, 'percentage' => $pct($recorded, $total), 'unit' => 'Orang', 'variant' => 'amber', 'icon' => 'id-card'],
+                ['key' => 'pending', 'label' => 'Menunggu Verifikasi', 'value' => $pending, 'percentage' => $pct($pending, $total), 'unit' => 'Orang', 'variant' => 'rose', 'icon' => 'clock'],
+                ['key' => 'absent', 'label' => 'Tidak Hadir atau Belum Rekam', 'value' => $absent, 'percentage' => $pct($absent, $total), 'unit' => 'Orang', 'variant' => 'slate', 'icon' => 'file-text'],
             ];
         }
 
@@ -153,7 +105,7 @@ class DashboardService
             ->whereHas('documents', fn ($d) => $d->where('type', 'akta_lahir'))
             ->count();
         $ineligibleCount = max(0, $totalStudents - $eligibleCount);
-        $scheduled = $n(S::Terjadwal);
+        $registered = $n(S::Terdaftar);
         $recorded = $n(S::SudahRekaman);
 
         return [
@@ -185,10 +137,10 @@ class DashboardService
                 'icon' => 'alert-circle',
             ],
             [
-                'key' => 'scheduled',
-                'label' => 'Sudah Masuk Jadwal',
-                'value' => $scheduled,
-                'percentage' => $pct($scheduled, $totalStudents),
+                'key' => 'registered',
+                'label' => 'Sudah Terdaftar Sesi',
+                'value' => $registered,
+                'percentage' => $pct($registered, $totalStudents),
                 'unit' => 'Siswa',
                 'variant' => 'amber',
                 'icon' => 'calendar-check',
@@ -214,31 +166,22 @@ class DashboardService
 
         if ($user->school_id === null) {
             // Staf Kecamatan / Admin
-            if ($user->can('pendaftaran.buat')) {
-                $actions[] = ['label' => 'Tambah Pendaftaran', 'href' => route('pendaftaran.create', absolute: false), 'icon' => 'plus', 'variant' => 'blue'];
-            }
             if ($user->can('jadwal.buat')) {
-                $actions[] = ['label' => 'Buat Jadwal', 'href' => route('jadwal.index', absolute: false), 'icon' => 'calendar-plus', 'variant' => 'green'];
+                $actions[] = ['label' => 'Buat Sesi Rekaman', 'href' => route('schedules.index', absolute: false), 'icon' => 'calendar-plus', 'variant' => 'green'];
             }
-            if ($user->can('rekaman.tambah') || $user->can('jadwal.lihat')) {
-                $actions[] = ['label' => 'Input Hasil Perekaman', 'href' => route('jadwal.index', absolute: false), 'icon' => 'id-card', 'variant' => 'amber'];
+            if ($user->can('rekaman.pindai') && $user->can('jadwal.lihat')) {
+                $actions[] = ['label' => 'Pindai Tiket', 'href' => route('schedules.index', absolute: false), 'icon' => 'scan-line', 'variant' => 'amber'];
             }
             if ($user->can('laporan.ekspor') || $user->can('laporan.lihat')) {
-                $actions[] = ['label' => 'Unduh Laporan', 'href' => route('laporan.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
+                $actions[] = ['label' => 'Unduh Laporan', 'href' => route('reports.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
             }
         } else {
             // Operator Sekolah
-            if ($user->can('siswa.buat')) {
-                $actions[] = ['label' => 'Tambah Siswa', 'href' => route('siswa.create', absolute: false), 'icon' => 'user-plus', 'variant' => 'blue'];
-            }
-            if ($user->can('pendaftaran.buat')) {
-                $actions[] = ['label' => 'Ajukan Pendaftaran', 'href' => route('pendaftaran.create', absolute: false), 'icon' => 'clipboard-check', 'variant' => 'green'];
-            }
             if ($user->can('siswa.lihat')) {
-                $actions[] = ['label' => 'Cek Siswa Memenuhi Syarat', 'href' => route('siswa.index', ['filter' => ['eligible' => 1]], absolute: false), 'icon' => 'shield-check', 'variant' => 'amber'];
+                $actions[] = ['label' => 'Cek Siswa Memenuhi Syarat', 'href' => route('students.index', ['filter' => ['eligible' => 1]], absolute: false), 'icon' => 'shield-check', 'variant' => 'amber'];
             }
             if ($user->can('laporan.lihat')) {
-                $actions[] = ['label' => 'Unduh Rekap Sekolah', 'href' => route('laporan.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
+                $actions[] = ['label' => 'Unduh Rekap Sekolah', 'href' => route('reports.index', absolute: false), 'icon' => 'download', 'variant' => 'rose'];
             }
         }
 
@@ -260,11 +203,11 @@ class DashboardService
         // 1. Donut: Status Perekaman
         $donutSeries = [
             $n(S::SudahRekaman),
-            $n(S::Terjadwal),
-            $n(S::Draf) + $n(S::Diajukan) + $n(S::PerluPerbaikan),
+            $n(S::Terdaftar),
+            $n(S::MenungguVerifikasi) + $n(S::PerluPerbaikan),
         ];
         $recordingStatus = [
-            'labels' => ['Sudah Rekam', 'Dijadwalkan', 'Belum Dijadwalkan'],
+            'labels' => ['Sudah Rekam', 'Terdaftar', 'Menunggu & Perbaikan'],
             'series' => $donutSeries,
             'total' => array_sum($donutSeries),
         ];
@@ -310,21 +253,21 @@ class DashboardService
         // 3. Line: Tren Perekaman Jan - Des Tahun Berjalan
         $year = (int) now()->year;
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
-        $entries = RegistrationStudent::query()->whereYear('created_at', $year)->get(['created_at', 'status', 'updated_at']);
 
+        // Terdaftar: pendaftaran dibuat pada bulan itu. Sudah Rekam: menurut bulan tanggal sesi (updated_at bergeser tiap pembaruan).
         $registered = array_fill(0, 12, 0);
-        $recorded = array_fill(0, 12, 0);
+        RegistrationStudent::query()->whereYear('created_at', $year)
+            ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')->groupBy('month')
+            ->toBase()->get()->each(function ($row) use (&$registered) {
+                $registered[(int) $row->month - 1] = (int) $row->total;
+            });
 
-        foreach ($entries as $e) {
-            if ($e->created_at) {
-                $m = (int) $e->created_at->format('n') - 1;
-                $registered[$m]++;
-            }
-            if ($e->status === S::SudahRekaman && (int) $e->updated_at->year === $year) {
-                $m = (int) $e->updated_at->format('n') - 1;
-                $recorded[$m]++;
-            }
-        }
+        $recorded = array_fill(0, 12, 0);
+        Schedule::query()->whereYear('date', $year)
+            ->withCount(['entries as present_count' => fn ($q) => $q->where('status', S::SudahRekaman->value)])
+            ->get(['id', 'date'])->each(function (Schedule $s) use (&$recorded) {
+                $recorded[(int) $s->date->format('n') - 1] += $s->present_count;
+            });
 
         $monthlyTrend = [
             'categories' => $months,

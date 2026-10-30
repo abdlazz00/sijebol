@@ -3,7 +3,7 @@ import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
 import FormField from '@/Components/shared/FormField.vue';
-import ImportStudentsDialog from '@/Components/shared/ImportStudentsDialog.vue';
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import Pagination from '@/Components/shared/Pagination.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
@@ -16,7 +16,7 @@ import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { Paginator } from '@/types/access';
-import type { ImportStatus, StudentRow } from '@/types/student';
+import type { StudentRow } from '@/types/student';
 import { Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import {
@@ -24,8 +24,6 @@ import {
     Eye,
     GraduationCap,
     Pencil,
-    Plus,
-    Upload,
     Search,
     Trash2,
     X,
@@ -34,7 +32,6 @@ import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     students: Paginator<StudentRow>;
-    recent_import: ImportStatus | null;
     filters: Record<string, string | undefined>;
     schools: { id: number; name: string }[] | null;
 }>();
@@ -73,7 +70,6 @@ const columns = computed(() => [
 ]);
 
 const confirmOpen = ref(false);
-const importOpen = ref(props.recent_import !== null);
 const target = ref<StudentRow | null>(null);
 
 function askDelete(student: StudentRow) {
@@ -83,7 +79,7 @@ function askDelete(student: StudentRow) {
 
 function destroy() {
     if (target.value)
-        router.delete(route('siswa.destroy', target.value.id), {
+        router.delete(route('students.destroy', target.value.id), {
             preserveScroll: true,
         });
 }
@@ -93,31 +89,8 @@ function destroy() {
     <AppLayout title="Siswa">
         <PageHeader
             title="Siswa"
-            description="Kelola data siswa dan kelengkapan dokumennya."
-        >
-            <template #actions>
-                <Button
-                    v-if="can(PERMISSIONS.SiswaImpor)"
-                    type="button"
-                    variant="outline"
-                    class="h-10 px-4"
-                    @click="importOpen = true"
-                >
-                    <Upload class="size-4" aria-hidden="true" />
-                    Impor Excel
-                </Button>
-                <Button
-                    v-if="can(PERMISSIONS.SiswaBuat)"
-                    as-child
-                    class="h-10 px-4"
-                >
-                    <Link :href="route('siswa.create')">
-                        <Plus class="size-4" aria-hidden="true" />
-                        Tambah siswa
-                    </Link>
-                </Button>
-            </template>
-        </PageHeader>
+            description="Pantau siswa yang sudah mendaftar dan kelengkapan datanya."
+        />
 
         <div class="flex flex-col gap-6">
             <div class="grid grid-cols-2 gap-4 lg:flex lg:items-start">
@@ -182,7 +155,7 @@ function destroy() {
                     <template #cell-name="{ row }">
                         <div class="min-w-0">
                             <Link
-                                :href="route('siswa.show', row.id)"
+                                :href="route('students.show', row.id)"
                                 class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ row.name }}
@@ -192,6 +165,7 @@ function destroy() {
                             >
                                 NISN {{ row.nisn }}
                             </p>
+                            <KtpLangsungBadge v-if="row.ktp_langsung" />
                         </div>
                     </template>
                     <template #cell-nik="{ row }">
@@ -238,7 +212,11 @@ function destroy() {
                             "
                             :title="row.reasons.join(' ')"
                         >
-                            {{ row.eligible ? 'Memenuhi syarat' : 'Belum memenuhi syarat' }}
+                            {{
+                                row.eligible
+                                    ? 'Memenuhi syarat'
+                                    : 'Belum memenuhi syarat'
+                            }}
                             <span v-if="!row.eligible" class="sr-only">{{
                                 row.reasons.join(' ')
                             }}</span>
@@ -251,7 +229,7 @@ function destroy() {
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('siswa.show', row.id)">
+                                    <Link :href="route('students.show', row.id)">
                                         <Eye
                                             class="size-4"
                                             aria-hidden="true"
@@ -264,7 +242,7 @@ function destroy() {
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('siswa.edit', row.id)">
+                                    <Link :href="route('students.edit', row.id)">
                                         <Pencil
                                             class="size-4"
                                             aria-hidden="true"
@@ -302,13 +280,16 @@ function destroy() {
                         <EmptyState
                             v-else
                             :icon="GraduationCap"
-                            title="Belum ada siswa"
-                            description="Tambahkan siswa satu per satu agar dapat didaftarkan untuk perekaman."
+                            title="Belum ada siswa yang mengisi data"
+                            description="Siswa mendaftar sendiri lewat link pendaftaran sekolahnya."
                         >
-                            <template v-if="can(PERMISSIONS.SiswaBuat)" #action>
+                            <template
+                                v-if="can(PERMISSIONS.SekolahTautan)"
+                                #action
+                            >
                                 <Button as-child class="h-9">
-                                    <Link :href="route('siswa.create')"
-                                        >Tambah siswa</Link
+                                    <Link :href="route('registration-links.index')"
+                                        >Lihat link pendaftaran</Link
                                     >
                                 </Button>
                             </template>
@@ -318,12 +299,6 @@ function destroy() {
                 <Pagination :paginator="students" />
             </div>
         </div>
-
-        <ImportStudentsDialog
-            v-model:open="importOpen"
-            :schools="schools"
-            :recent-import="recent_import"
-        />
 
         <ConfirmDialog
             v-model:open="confirmOpen"

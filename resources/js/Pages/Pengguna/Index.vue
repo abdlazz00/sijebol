@@ -81,7 +81,7 @@ const dialog = useDeactivateDialog();
         >
             <template v-if="can(PERMISSIONS.UserBuat)" #actions>
                 <Button as-child class="h-9 px-4">
-                    <Link :href="route('pengguna.create')">
+                    <Link :href="route('users.create')">
                         <Plus class="size-4" aria-hidden="true" />
                         Tambah pengguna
                     </Link>
@@ -197,7 +197,7 @@ const dialog = useDeactivateDialog();
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
                                     <Link
-                                        :href="route('pengguna.show', row.id)"
+                                        :href="route('users.show', row.id)"
                                     >
                                         <Eye
                                             class="size-4"
@@ -212,7 +212,7 @@ const dialog = useDeactivateDialog();
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
                                     <Link
-                                        :href="route('pengguna.edit', row.id)"
+                                        :href="route('users.edit', row.id)"
                                     >
                                         <Pencil
                                             class="size-4"
@@ -252,7 +252,7 @@ const dialog = useDeactivateDialog();
                         >
                             <template v-if="can(PERMISSIONS.UserBuat)" #action>
                                 <Button as-child class="h-9">
-                                    <Link :href="route('pengguna.create')"
+                                    <Link :href="route('users.create')"
                                         >Tambah pengguna</Link
                                     >
                                 </Button>

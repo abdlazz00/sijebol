@@ -60,7 +60,7 @@ const columns = computed(() => [
         >
             <template v-if="can(PERMISSIONS.SekolahBuat)" #actions>
                 <Button as-child class="h-10 px-4">
-                    <Link :href="route('sekolah.create')">
+                    <Link :href="route('schools.create')">
                         <Plus class="size-4" aria-hidden="true" />
                         Tambah sekolah
                     </Link>
@@ -137,7 +137,7 @@ const columns = computed(() => [
                                 class="text-primary h-10 min-w-10 px-2"
                             >
                                 <Link
-                                    :href="route('sekolah.edit', row.id)"
+                                    :href="route('schools.edit', row.id)"
                                     :aria-label="`Ubah ${row.name}`"
                                     >Ubah</Link
                                 >
@@ -171,7 +171,7 @@ const columns = computed(() => [
                                 #action
                             >
                                 <Button as-child class="h-9">
-                                    <Link :href="route('sekolah.create')"
+                                    <Link :href="route('schools.create')"
                                         >Tambah sekolah</Link
                                     >
                                 </Button>

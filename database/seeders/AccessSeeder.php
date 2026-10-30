@@ -24,22 +24,13 @@ class AccessSeeder extends Seeder
         // dapat membuat operator sekolah, ia memegang semua izin (tetapi tidak dilindungi seperti super-admin).
         $this->role('admin-kecamatan', 'Admin kecamatan', false, Permission::values());
 
-        $this->role('operator-sekolah', 'Operator sekolah', true, [
-            ...$this->modules(['siswa', 'dokumen', 'pendaftaran']),
-            'jadwal.lihat',
+        $this->role('operator-sekolah', 'Operator sekolah (hanya memantau)', true, [
+            'siswa.lihat', 'jadwal.lihat', 'sekolah.tautan',
         ]);
-    }
 
-    /**
-     * @param  list<string>  $modules
-     * @return list<string>
-     */
-    private function modules(array $modules): array
-    {
-        return array_values(array_filter(
-            Permission::values(),
-            fn (string $name) => in_array(explode('.', $name)[0], $modules, true),
-        ));
+        $this->role(Role::SISWA, 'Siswa pendaftar', true, [
+            'profil.lihat', 'profil.ubah', 'dokumen.lihat', 'dokumen.unggah', 'dokumen.hapus', 'pendaftaran.lihat', 'pendaftaran.buat',
+        ]);
     }
 
     /** @param list<string> $permissions */

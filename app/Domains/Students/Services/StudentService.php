@@ -3,15 +3,26 @@
 namespace App\Domains\Students\Services;
 
 use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\RegistrationNotification;
+use App\Domains\Notifications\Notifications\StudentCorrectedNotification;
+use App\Domains\Notifications\Services\NotificationService;
+use App\Domains\Registrations\Services\RegistrationService;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Repositories\Contracts\StudentRepositoryInterface;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class StudentService
 {
-    public function __construct(private readonly StudentRepositoryInterface $students) {}
+    private const SCHOOL_CHANGED_NOTE = 'Sekolah Anda diganti oleh admin.';
+
+    public function __construct(
+        private readonly StudentRepositoryInterface $students,
+        private readonly RegistrationService $registrations,
+        private readonly NotificationService $notifications,
+    ) {}
 
     /** @return LengthAwarePaginator<int, Student> */
     public function paginate(): LengthAwarePaginator
@@ -19,19 +30,21 @@ class StudentService
         return $this->students->paginate();
     }
 
-    /** @return LengthAwarePaginator<int, Student> */
-    public function candidatesPage(int $schoolId, ?string $q): LengthAwarePaginator
+    /**
+     * Data diri milik akun siswa: dibuat saat disimpan pertama kali (sekolah mengikuti akun), selanjutnya diperbarui.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function saveOwn(User $actor, array $data): Student
     {
-        return $this->students->searchForSchool($schoolId, $q);
-    }
+        // Query langsung, bukan relasi ter-cache, agar tidak basi bila objek user dipakai ulang.
+        $student = $actor->student()->first();
 
-    /** @param array<string, mixed> $data */
-    public function create(array $data, User $actor): Student
-    {
-        // Operator sekolah selalu dikunci ke sekolahnya; staf kecamatan memilih sekolah.
-        $data['school_id'] = $actor->school_id ?? $data['school_id'];
+        if ($student === null) {
+            return $this->students->create([...$data, 'school_id' => $actor->school_id, 'user_id' => $actor->id]);
+        }
 
-        return $this->students->create($data);
+        return $this->update($student, $data);
     }
 
     /** @param array<string, mixed> $data */
@@ -45,6 +58,38 @@ class StudentService
         unset($data['school_id']);
 
         return $this->students->update($student, $data);
+    }
+
+    /**
+     * Koreksi oleh staf: mengabaikan kunci data, wajib bercatatan, tercatat di log, dan siswa diberi tahu.
+     * Sekolah hanya dapat diganti oleh pelaku tanpa sekolah dan bila siswa tidak punya pendaftaran aktif.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    public function correct(Student $student, array $data, string $note, User $actor): Student
+    {
+        $schoolId = $actor->school_id === null ? ($data['school_id'] ?? $student->school_id) : $student->school_id;
+        $schoolChanged = $schoolId !== $student->school_id;
+
+        // Ganti sekolah melepas kursi lama dalam transaksi yang sama: gagal sebagian = tidak ada yang berubah.
+        // Akun siswa ikut pindah: scope sekolah membaca users.school_id, sehingga siswa tidak terkunci dari datanya sendiri.
+        $released = 0;
+        $student = DB::transaction(function () use ($student, $data, $schoolId, $schoolChanged, $actor, $note, &$released) {
+            if ($schoolChanged) {
+                $released = $this->registrations->releaseSeats($student, self::SCHOOL_CHANGED_NOTE." Catatan: {$note}", $actor);
+            }
+            $student = $this->students->update($student, [...$data, 'school_id' => $schoolId]);
+            $student->user?->update(['school_id' => $schoolId]);
+
+            return $student;
+        });
+        activity('siswa')->performedOn($student)->causedBy($actor)->withProperties(['catatan' => $note])->log('siswa.dikoreksi');
+        $student->user?->notify(new StudentCorrectedNotification($note));
+        if ($released > 0) {
+            $this->notifications->toStudent($student, RegistrationNotification::cancelledByStaff(self::SCHOOL_CHANGED_NOTE." Catatan: {$note}"));
+        }
+
+        return $student;
     }
 
     public function delete(Student $student): void

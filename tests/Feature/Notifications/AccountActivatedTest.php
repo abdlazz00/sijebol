@@ -14,7 +14,7 @@ test('pembuat akun diberi tahu saat akun diaktifkan', function () {
     app(ActivationService::class)->complete($token, 'abcd1234');
 
     Notification::assertSentTo($admin, AccountActivatedNotification::class, function ($n) use ($user) {
-        return str_contains($n->body(), $user->name) && $n->url() === "/pengguna/{$user->id}";
+        return str_contains($n->body(), $user->name) && $n->url() === "/users/{$user->id}";
     });
 });
 

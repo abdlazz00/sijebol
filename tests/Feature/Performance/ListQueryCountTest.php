@@ -4,7 +4,6 @@ use App\Domains\Access\Enums\Permission;
 use App\Domains\Access\Models\Role;
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Schools\Models\School;
-use App\Domains\Students\Models\Student;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -22,9 +21,9 @@ function perfSeedRows(string $halaman, int $n, School $school): void
             'pengguna' => User::factory()->create(),
             'role' => Role::create(['name' => 'role-'.Str::random(8), 'guard_name' => 'web']),
             'sekolah' => School::factory()->create(),
-            'siswa' => Student::factory()->for($school)->create(),
-            'pendaftaran', 'verifikasi' => makeEntry(S::Diajukan, $school),
-            'jadwal' => makeScheduledEntry(S::Terjadwal, makeSchedule($school)),
+            'siswa' => makeEntry(S::Terdaftar, $school), // dengan pendaftaran agar N+1 relasi sesi terdeteksi
+            'verifikasi' => makeEntry(S::MenungguVerifikasi, $school),
+            'jadwal' => makeEntry(S::Terdaftar, $school),
             'log' => activity('uji')->log("aksi {$i}"),
             'notifikasi' => DB::table('notifications')->insert([
                 'id' => (string) Str::uuid(), 'type' => 'uji', 'notifiable_type' => User::class,
@@ -32,7 +31,7 @@ function perfSeedRows(string $halaman, int $n, School $school): void
                 'data' => json_encode(['title' => 'T', 'body' => 'B', 'url' => '/dashboard']),
                 'created_at' => now(), 'updated_at' => now(),
             ]),
-            'laporan' => makeEntry(S::Diajukan, School::factory()->create()),
+            'laporan' => makeEntry(S::MenungguVerifikasi, School::factory()->create()),
         };
     }
 }
@@ -63,14 +62,13 @@ test('jumlah query halaman daftar tidak tumbuh menurut jumlah baris', function (
 
     expect($besar)->toBeLessThanOrEqual($kecil, "{$halaman}: {$kecil} query untuk 3 baris, {$besar} untuk 23 baris (N+1)");
 })->with([
-    ['pengguna', '/pengguna'],
-    ['role', '/role'],
-    ['sekolah', '/sekolah'],
-    ['siswa', '/siswa'],
-    ['pendaftaran', '/pendaftaran'],
-    ['verifikasi', '/verifikasi'],
-    ['jadwal', '/jadwal'],
-    ['log', '/log'],
-    ['notifikasi', '/notifikasi'],
-    ['laporan', '/laporan'],
+    ['pengguna', '/users'],
+    ['role', '/roles'],
+    ['sekolah', '/schools'],
+    ['siswa', '/students'],
+    ['verifikasi', '/verifications'],
+    ['jadwal', '/schedules'],
+    ['log', '/audit-logs'],
+    ['notifikasi', '/notifications'],
+    ['laporan', '/reports'],
 ]);

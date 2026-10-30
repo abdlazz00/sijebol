@@ -17,7 +17,7 @@ interface ScheduleRepositoryInterface
     public function paginate(int $perPage = 20): LengthAwarePaginator;
 
     /**
-     * Jadwal hari ini atau setelahnya, terdekat dulu, lengkap dengan sekolah dan jumlah entri.
+     * Sesi hari ini atau setelahnya, terdekat dulu, lengkap dengan sekolah dan `taken_count` (kursi tertahan).
      *
      * @return Collection<int, Schedule>
      */
@@ -30,20 +30,6 @@ interface ScheduleRepositoryInterface
     public function update(Schedule $schedule, array $attributes): Schedule;
 
     public function delete(Schedule $schedule): void;
-
-    /**
-     * Jadwal tujuan pindah: sekolah sama, hari ini atau setelahnya, selain `$current`, tanggal naik.
-     *
-     * @return Collection<int, Schedule>
-     */
-    public function targets(Schedule $current): Collection;
-
-    /**
-     * Entri Terverifikasi sekolah jadwal yang belum punya jadwal, dengan siswa dan pendaftarannya.
-     *
-     * @return Collection<int, RegistrationStudent>
-     */
-    public function candidates(Schedule $schedule): Collection;
 
     /**
      * Mengunci baris entri (urut id) agar dua operasi bersamaan tidak sama-sama lolos.

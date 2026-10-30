@@ -12,7 +12,7 @@ beforeEach(function () {
     $this->seed(AccessSeeder::class);
     $this->service = app(RoleService::class);
     $this->super = User::factory()->create()->assignRole('super-admin');
-    // Penyunting terbatas: tidak memegang siswa.buat dan izin lain di luar daftar ini.
+    // Penyunting terbatas: tidak memegang siswa.hapus dan izin lain di luar daftar ini.
     $this->admin = makeUserWith([
         'role.lihat', 'role.buat', 'role.ubah', 'user.lihat', 'user.buat',
         'verifikasi.lihat', 'verifikasi.putuskan', 'jadwal.lihat', 'siswa.lihat',
@@ -30,28 +30,28 @@ test('membuat role dengan izin yang valid', function () {
 
 test('tidak boleh memberi izin yang tidak dimiliki pembuat', function () {
     expect(fn () => $this->service->create([
-        'name' => 'x', 'is_school_scoped' => false, 'permissions' => ['siswa.buat'],
+        'name' => 'x', 'is_school_scoped' => false, 'permissions' => ['siswa.hapus'],
     ], $this->admin))->toThrow(AccessRuleException::class);
 });
 
 test('update menambah dan mencabut hanya izin milik penyunting, sisanya tidak tersentuh', function () {
     $role = Role::create(['name' => 'campuran']);
-    $role->givePermissionTo(['siswa.buat', 'user.lihat', 'user.buat']); // siswa.buat di luar milik admin
+    $role->givePermissionTo(['siswa.hapus', 'user.lihat', 'user.buat']); // siswa.hapus di luar milik admin
 
     $this->service->update($role, [
         'name' => 'campuran', 'is_school_scoped' => false,
-        'permissions' => ['siswa.buat', 'user.lihat', 'jadwal.lihat'], // cabut user.buat, tambah jadwal.lihat
+        'permissions' => ['siswa.hapus', 'user.lihat', 'jadwal.lihat'], // cabut user.buat, tambah jadwal.lihat
     ], $this->admin);
 
     expect($role->fresh()->permissions->pluck('name')->sort()->values()->all())
-        ->toBe(['jadwal.lihat', 'siswa.buat', 'user.lihat']);
+        ->toBe(['jadwal.lihat', 'siswa.hapus', 'user.lihat']);
 });
 
 test('menambah izin baru di luar milik penyunting ditolak', function () {
     $role = Role::create(['name' => 'r']);
 
     expect(fn () => $this->service->update($role, [
-        'name' => 'r', 'is_school_scoped' => false, 'permissions' => ['siswa.buat'],
+        'name' => 'r', 'is_school_scoped' => false, 'permissions' => ['siswa.hapus'],
     ], $this->admin))->toThrow(AccessRuleException::class);
 });
 
@@ -71,7 +71,7 @@ test('super-admin tidak dapat diubah atau dihapus', function () {
 
 test('role dengan izin di luar milik penyunting tidak dapat dihapus olehnya', function () {
     $tinggi = Role::create(['name' => 'tinggi']);
-    $tinggi->givePermissionTo(['siswa.buat']); // di luar izin penyunting
+    $tinggi->givePermissionTo(['siswa.hapus']); // di luar izin penyunting
 
     expect(fn () => $this->service->delete($tinggi, $this->admin))->toThrow(AccessRuleException::class);
 
@@ -125,7 +125,7 @@ test('katalog menandai izin yang tidak dapat diedit oleh penyunting', function (
     $siswa = $catalog->firstWhere('module', 'siswa')['actions'];
 
     expect(collect($siswa)->firstWhere('value', 'siswa.lihat')['editable'])->toBeTrue()
-        ->and(collect($siswa)->firstWhere('value', 'siswa.buat')['editable'])->toBeFalse();
+        ->and(collect($siswa)->firstWhere('value', 'siswa.hapus')['editable'])->toBeFalse();
 });
 
 test('role terikat sekolah tidak boleh memegang log.lihat (log mencakup seluruh kecamatan)', function () {
@@ -162,4 +162,20 @@ test('role global boleh memegang log.lihat', function () {
     ], $this->super);
 
     expect($role->permissions->pluck('name')->all())->toBe(['log.lihat']);
+});
+
+test('role sistem siswa tidak dapat dihapus atau diganti namanya, tetapi izinnya dapat diubah', function () {
+    $siswa = Role::findByName('siswa');
+
+    expect(fn () => $this->service->delete($siswa, $this->super))->toThrow(AccessRuleException::class)
+        ->and(fn () => $this->service->update($siswa, [
+            'name' => 'murid', 'is_school_scoped' => true, 'permissions' => ['profil.lihat'],
+        ], $this->super))->toThrow(AccessRuleException::class);
+
+    $this->service->update($siswa, [
+        'name' => 'siswa', 'is_school_scoped' => true, 'permissions' => ['profil.lihat', 'profil.ubah'],
+    ], $this->super);
+
+    expect(Role::findByName('siswa')->permissions->pluck('name')->sort()->values()->all())
+        ->toBe(['profil.lihat', 'profil.ubah']);
 });

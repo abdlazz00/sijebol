@@ -79,7 +79,7 @@ class UserController extends Controller
         Gate::authorize('manage-user', $user);
         $this->users->update($user, $request->validated(), $request->user());
 
-        return redirect()->route('pengguna.show', $user)->with('success', 'Pengguna diperbarui.');
+        return redirect()->route('users.show', $user)->with('success', 'Pengguna diperbarui.');
     }
 
     public function deactivate(Request $request, User $user): RedirectResponse
@@ -111,7 +111,7 @@ class UserController extends Controller
         $link = session('activation_link');
 
         if ($link === null) {
-            return redirect()->route('pengguna.show', $user);
+            return redirect()->route('users.show', $user);
         }
 
         return Inertia::render('Pengguna/Berhasil', [
@@ -126,8 +126,8 @@ class UserController extends Controller
 
     private function toSuccess(User $user, string $token, string $mode = 'dibuat'): RedirectResponse
     {
-        return redirect()->route('pengguna.done', $user)
-            ->with('activation_link', route('aktivasi.show', $token))
+        return redirect()->route('users.done', $user)
+            ->with('activation_link', route('activation.show', $token))
             ->with('activation_mode', $mode);
     }
 

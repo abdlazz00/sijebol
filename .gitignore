@@ -27,5 +27,6 @@ Homestead.yaml
 Thumbs.db
 .idea/
 .superpowers/
+.impeccable/
 
 .playwright-mcp/

@@ -5,14 +5,23 @@ namespace App\Http\Controllers;
 use App\Domains\Reports\Services\DashboardService;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schedules\Services\ScheduleService;
+use App\Domains\Students\Services\StudentDashboardService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class DashboardController extends Controller
 {
-    public function __invoke(Request $request, ScheduleService $schedules, DashboardService $dashboard): Response
-    {
+    public function __invoke(
+        Request $request,
+        ScheduleService $schedules,
+        DashboardService $dashboard,
+        StudentDashboardService $studentDashboard
+    ): Response {
+        if ($request->user()->isStudent()) {
+            return Inertia::render('Student/Dashboard', $studentDashboard->forUser($request->user()));
+        }
+
         $canJadwal = $request->user()->can('jadwal.lihat');
 
         return Inertia::render('Dashboard', [
@@ -21,7 +30,7 @@ class DashboardController extends Controller
                     'date' => $s->date->toDateString(),
                     'school' => $s->school?->name,
                     'location' => $s->location,
-                    'participants' => $s->entries_count,
+                    'participants' => $s->taken_count,
                 ])->values()
                 : [],
             'schedules_table' => $canJadwal ? $schedules->upcomingTable(8) : [],

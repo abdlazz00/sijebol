@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ProfileSessionController;
 use Illuminate\Support\Facades\Route;
 
 Route::redirect('/', '/dashboard');
@@ -11,6 +12,7 @@ Route::get('/dashboard', DashboardController::class)->middleware(['auth'])->name
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile/sessions', [ProfileSessionController::class, 'destroy'])->middleware('throttle:6,1')->name('profile.sessions.destroy');
 });
 
 require __DIR__.'/auth.php';

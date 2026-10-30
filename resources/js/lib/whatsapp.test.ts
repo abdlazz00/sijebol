@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { whatsappUrl } from './whatsapp';
+import { whatsappShareUrl, whatsappUrl } from './whatsapp';
 
 describe('whatsappUrl', () => {
     it('mengubah 08… menjadi 62… dan menyertakan pesan', () => {
@@ -25,5 +25,13 @@ describe('whatsappUrl', () => {
         expect(whatsappUrl(null, 'l', 'B')).toBeNull();
         expect(whatsappUrl('', 'l', 'B')).toBeNull();
         expect(whatsappUrl('abc', 'l', 'B')).toBeNull();
+    });
+});
+
+describe('whatsappShareUrl', () => {
+    it('membuat tautan tanpa nomor dengan pesan ter-encode', () => {
+        expect(whatsappShareUrl('Halo & salam')).toBe(
+            'https://wa.me/?text=Halo%20%26%20salam',
+        );
     });
 });

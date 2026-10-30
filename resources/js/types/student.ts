@@ -1,9 +1,12 @@
+import type { RegistrationStatus, SessionBrief } from './registration';
+
 export type StudentRow = {
     id: number;
     name: string;
     nisn: string;
     nik: string;
     age: number;
+    ktp_langsung: boolean;
     school: string | null;
     docs: { kk: boolean; akta_lahir: boolean };
     eligible: boolean;
@@ -11,6 +14,16 @@ export type StudentRow = {
 };
 
 export type StudentDetail = StudentRow & {
+    birth_date: string;
+    gender: 'L' | 'P';
+};
+
+/** Data diri milik siswa yang sedang login (NIK tidak dimasker). */
+export type SelfStudent = {
+    id: number;
+    nik: string;
+    nisn: string;
+    name: string;
     birth_date: string;
     gender: 'L' | 'P';
 };
@@ -26,16 +39,8 @@ export type StudentDocumentRow = {
     mime?: string | null;
 };
 
-export type ImportStatus = {
-    id: number;
-    status: 'antri' | 'berjalan' | 'selesai' | 'gagal';
-    imported: number;
-    failed: { row: number; reason: string }[];
-    error: string | null;
-};
-
 export type StudentRegistrationRef = {
     id: number;
-    title: string;
-    status: string;
+    status: RegistrationStatus;
+    schedule: SessionBrief;
 };

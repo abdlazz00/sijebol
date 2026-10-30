@@ -89,10 +89,7 @@ function selectAll() {
                         item.name
                     }}</span>
                     <span class="text-muted-foreground block text-xs leading-4">
-                        NISN {{ item.nisn
-                        }}<template v-if="item.hint">
-                            · {{ item.hint }}</template
-                        >
+                        NISN {{ item.nisn }}
                     </span>
                 </label>
             </li>

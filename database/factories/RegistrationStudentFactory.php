@@ -3,8 +3,8 @@
 namespace Database\Factories;
 
 use App\Domains\Registrations\Enums\RegistrationStatus;
-use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStudent;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -17,10 +17,10 @@ class RegistrationStudentFactory extends Factory
     public function definition(): array
     {
         return [
-            'registration_id' => Registration::factory(),
+            'schedule_id' => Schedule::factory(),
             'school_id' => School::factory(),
             'student_id' => Student::factory(),
-            'status' => RegistrationStatus::Draf,
+            'status' => RegistrationStatus::MenungguVerifikasi,
         ];
     }
 }

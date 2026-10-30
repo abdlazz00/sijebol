@@ -18,8 +18,8 @@ import type {
     ParticipantRow,
     ScheduleDetail,
 } from '@/types/schedule';
-import { router, useForm } from '@inertiajs/vue3';
-import { LoaderCircle } from '@lucide/vue';
+import { Link, router, useForm } from '@inertiajs/vue3';
+import { LoaderCircle, ScanLine } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
@@ -76,7 +76,7 @@ function submit() {
 }
 
 function save() {
-    form.post(route('jadwal.rekaman.store', props.schedule.id), {
+    form.post(route('schedules.recording.store', props.schedule.id), {
         preserveScroll: true,
         onSuccess: () => form.reset(),
         onError: focusFirstInvalid,
@@ -109,17 +109,17 @@ function startUndo(row: ParticipantRow) {
 function undo() {
     if (!undoing.value) return;
     router.post(
-        route('jadwal.rekaman.batalkan', [props.schedule.id, undoing.value.id]),
+        route('schedules.recording.cancel', [props.schedule.id, undoing.value.id]),
         { note: undoNote.value.trim() },
         { preserveScroll: true },
     );
 }
 
 const crumbs = computed(() => [
-    { label: 'Jadwal', href: route('jadwal.index') },
+    { label: 'Sesi rekaman', href: route('schedules.index') },
     {
         label: formatDateWithDay(props.schedule.date),
-        href: route('jadwal.show', props.schedule.id),
+        href: route('schedules.show', props.schedule.id),
     },
     { label: 'Penandaan rekaman' },
 ]);
@@ -138,6 +138,18 @@ const crumbs = computed(() => [
         </div>
 
         <div class="flex max-w-[720px] flex-col gap-6">
+            <Button
+                v-if="can(PERMISSIONS.RekamanPindai) && !schedule.cancelled"
+                as-child
+                variant="outline"
+                class="h-10 self-start px-4"
+            >
+                <Link :href="route('schedules.scan.show', schedule.id)">
+                    <ScanLine class="size-4" aria-hidden="true" />
+                    Pindai tiket
+                </Link>
+            </Button>
+
             <InlineAlert v-if="!can_mark" variant="warning">
                 Penandaan dibuka pada {{ formatDate(schedule.date) }}.
             </InlineAlert>
@@ -145,7 +157,7 @@ const crumbs = computed(() => [
             <section class="bg-card flex flex-col gap-4 rounded-lg border p-6">
                 <div class="flex flex-col gap-1">
                     <h2 class="text-base leading-6 font-semibold">
-                        Siswa terjadwal
+                        Siswa terdaftar
                     </h2>
                     <p class="text-muted-foreground text-xs leading-4">
                         Pilih siswa, tentukan status, lalu simpan. Status dapat
@@ -318,7 +330,7 @@ const crumbs = computed(() => [
         <ConfirmDialog
             v-model:open="undoOpen"
             :title="`Batalkan penandaan ${undoing?.student.name ?? ''}?`"
-            description="Siswa kembali menjadi Terjadwal pada jadwal ini dan operator sekolah diberi tahu."
+            description="Siswa kembali menjadi Terdaftar pada sesi ini dan operator sekolah diberi tahu."
             confirm-label="Batalkan penandaan"
             destructive
             :confirm-disabled="!undoNote.trim()"

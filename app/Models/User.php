@@ -6,7 +6,9 @@ use App\Domains\Access\Enums\UserStatus;
 use App\Domains\Access\Models\AccountActivation;
 use App\Domains\Access\Models\Role;
 use App\Domains\Schools\Models\School;
+use App\Domains\Students\Models\Student;
 use App\Models\Concerns\ScopedBySchool;
+use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -15,6 +17,7 @@ use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -23,6 +26,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property-read UserStatus $status
+ * @property Carbon|null $last_login_at
  */
 #[Fillable(['name', 'email', 'password', 'phone', 'school_id', 'is_active', 'activated_at', 'created_by'])]
 #[Hidden(['password', 'remember_token'])]
@@ -52,6 +56,12 @@ class User extends Authenticatable
         return $this->belongsTo(School::class);
     }
 
+    /** @return HasOne<Student, $this> */
+    public function student(): HasOne
+    {
+        return $this->hasOne(Student::class);
+    }
+
     /** Satu user satu role; accessor ini mengembalikan model Role kita dengan tipe yang jelas. */
     public function currentRole(): ?Role
     {
@@ -59,6 +69,11 @@ class User extends Authenticatable
         $role = $this->roles->first();
 
         return $role;
+    }
+
+    public function isStudent(): bool
+    {
+        return $this->hasRole(Role::SISWA);
     }
 
     /** @return BelongsTo<User, $this> */

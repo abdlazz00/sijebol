@@ -20,10 +20,8 @@ enum Permission: string
     case SekolahUbah = 'sekolah.ubah';
 
     case SiswaLihat = 'siswa.lihat';
-    case SiswaBuat = 'siswa.buat';
     case SiswaUbah = 'siswa.ubah';
     case SiswaHapus = 'siswa.hapus';
-    case SiswaImpor = 'siswa.impor';
 
     case DokumenLihat = 'dokumen.lihat';
     case DokumenUnggah = 'dokumen.unggah';
@@ -31,7 +29,6 @@ enum Permission: string
 
     case PendaftaranLihat = 'pendaftaran.lihat';
     case PendaftaranBuat = 'pendaftaran.buat';
-    case PendaftaranAjukan = 'pendaftaran.ajukan';
 
     case VerifikasiLihat = 'verifikasi.lihat';
     case VerifikasiPutuskan = 'verifikasi.putuskan';
@@ -42,10 +39,17 @@ enum Permission: string
 
     case RekamanLihat = 'rekaman.lihat';
     case RekamanTandai = 'rekaman.tandai';
+    case RekamanPindai = 'rekaman.pindai';
 
     case LaporanLihat = 'laporan.lihat';
 
     case LogLihat = 'log.lihat';
+
+    case ProfilLihat = 'profil.lihat';
+    case ProfilUbah = 'profil.ubah';
+
+    case SekolahTautan = 'sekolah.tautan';
+    case SekolahResetTautan = 'sekolah.reset-tautan';
 
     /** @return list<string> */
     public static function values(): array

@@ -4,24 +4,35 @@ import DocumentPreviewDialog from '@/Components/shared/DocumentPreviewDialog.vue
 import FormField from '@/Components/shared/FormField.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import StatusTimeline from '@/Components/shared/StatusTimeline.vue';
 import { Button } from '@/Components/ui/button';
 import { Textarea } from '@/Components/ui/textarea';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate } from '@/lib/date';
+import {
+    formatDate,
+    formatDateTime,
+    formatDateWithDay,
+    formatTimeRange,
+} from '@/lib/date';
 import { formatBytes } from '@/lib/files';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { PERMISSIONS } from '@/lib/permissions';
-import type { EntryRow } from '@/types/registration';
+import type { EntryRow, SessionBrief } from '@/types/registration';
 import type { DocumentType, StudentDocumentRow } from '@/types/student';
 import { Link, useForm } from '@inertiajs/vue3';
 import { Download, Eye, LoaderCircle } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
-    entry: EntryRow & { registration: { id: number; title: string } };
+    entry: EntryRow & {
+        session: SessionBrief;
+        can_request_fix: boolean;
+        fix_deadline: string | null;
+        fix_deadline_preview: string | null;
+    };
     student: {
         id: number;
         name: string;
@@ -29,6 +40,7 @@ const props = defineProps<{
         nik: string;
         birth_date: string;
         age: number;
+        ktp_langsung: boolean;
         gender: 'L' | 'P';
         school: string | null;
     };
@@ -47,27 +59,32 @@ function openPreview(type: DocumentType) {
 const { can } = usePermission();
 const canDecide = computed(
     () =>
-        props.entry.status === 'diajukan' &&
+        props.entry.status === 'menunggu_verifikasi' &&
         can(PERMISSIONS.VerifikasiPutuskan),
 );
 
-const decisions = [
+const decisions = computed(() => [
     {
         value: 'approve',
         label: 'Setujui',
-        hint: 'Siswa lanjut ke penjadwalan.',
+        hint: 'Siswa terdaftar di sesi ini.',
+        disabled: false,
     },
     {
         value: 'fix',
         label: 'Minta perbaikan',
-        hint: 'Operator diminta membetulkan data atau dokumen.',
+        hint: props.entry.can_request_fix
+            ? 'Siswa diminta membetulkan data atau dokumen; kursi tetap ditahan sampai batas waktu.'
+            : 'Hanya sampai sehari sebelum sesi.',
+        disabled: !props.entry.can_request_fix,
     },
     {
         value: 'reject',
         label: 'Tolak',
-        hint: 'Siswa tidak dapat didaftarkan pada pendaftaran ini.',
+        hint: 'Pendaftaran ditolak. Kursi dilepas.',
+        disabled: false,
     },
-];
+]);
 
 const form = useForm({ decision: '', note: '' });
 const clientErrors = ref<Record<string, string>>({});
@@ -86,7 +103,7 @@ function validate(): boolean {
 }
 
 function send() {
-    form.post(route('verifikasi.decide', props.entry.id), {
+    form.post(route('verifications.decide', props.entry.id), {
         onError: focusFirstInvalid,
     });
 }
@@ -109,11 +126,22 @@ const info = computed(() => [
         value: props.student.gender === 'L' ? 'Laki-laki' : 'Perempuan',
     },
     { label: 'Sekolah', value: props.student.school },
-    { label: 'Pendaftaran', value: props.entry.registration.title },
+    ...(props.entry.status === 'perlu_perbaikan' && props.entry.fix_deadline
+        ? [
+              {
+                  label: 'Batas perbaikan',
+                  value: formatDateTime(props.entry.fix_deadline),
+              },
+          ]
+        : []),
+    {
+        label: 'Sesi',
+        value: `${formatDateWithDay(props.entry.session.date)} · ${formatTimeRange(props.entry.session.start_time, props.entry.session.end_time)} · ${props.entry.session.location}`,
+    },
 ]);
 
 const crumbs = computed(() => [
-    { label: 'Antrean verifikasi', href: route('verifikasi.index') },
+    { label: 'Antrean verifikasi', href: route('verifications.index') },
     { label: props.student.name },
 ]);
 </script>
@@ -129,7 +157,15 @@ const crumbs = computed(() => [
                     NISN {{ student.nisn }}
                 </p>
                 <StatusBadge :status="entry.status" kind="registration" />
+                <KtpLangsungBadge v-if="student.ktp_langsung" />
             </div>
+            <p
+                v-if="student.ktp_langsung"
+                class="text-muted-foreground text-sm leading-5"
+            >
+                KTP-el dapat langsung diterbitkan: siswa sudah lebih dari 17
+                tahun pada tanggal sesi.
+            </p>
         </div>
 
         <div class="flex max-w-[720px] flex-col gap-6">
@@ -165,7 +201,7 @@ const crumbs = computed(() => [
                             <Button
                                 type="button"
                                 variant="outline"
-                                class="h-9 px-3 gap-1.5"
+                                class="h-9 gap-1.5 px-3"
                                 @click="openPreview(doc.type)"
                             >
                                 <Eye class="size-4" aria-hidden="true" />
@@ -173,7 +209,10 @@ const crumbs = computed(() => [
                             </Button>
                             <Button as-child variant="outline" class="h-9 px-3">
                                 <a :href="doc.url">
-                                    <Download class="size-4" aria-hidden="true" />
+                                    <Download
+                                        class="size-4"
+                                        aria-hidden="true"
+                                    />
                                     Unduh
                                     <span class="sr-only">{{ doc.name }}</span>
                                 </a>
@@ -213,6 +252,7 @@ const crumbs = computed(() => [
                                 type="radio"
                                 name="decision"
                                 :value="d.value"
+                                :disabled="d.disabled"
                                 class="accent-primary mt-1 size-4"
                                 :aria-invalid="!!error('decision')"
                             />
@@ -223,6 +263,21 @@ const crumbs = computed(() => [
                                 <span class="text-muted-foreground text-xs">{{
                                     d.hint
                                 }}</span>
+                                <span
+                                    v-if="
+                                        d.value === 'fix' &&
+                                        form.decision === 'fix' &&
+                                        entry.fix_deadline_preview
+                                    "
+                                    class="mt-1 block text-xs leading-4 font-medium"
+                                >
+                                    Siswa diberi batas sampai
+                                    {{
+                                        formatDateTime(
+                                            entry.fix_deadline_preview,
+                                        )
+                                    }}.
+                                </span>
                             </span>
                         </label>
                         <p
@@ -252,7 +307,7 @@ const crumbs = computed(() => [
 
                     <div class="flex justify-end gap-2">
                         <Button as-child variant="outline" class="h-10 px-4">
-                            <Link :href="route('verifikasi.index')">Batal</Link>
+                            <Link :href="route('verifications.index')">Batal</Link>
                         </Button>
                         <Button
                             type="submit"
@@ -288,7 +343,7 @@ const crumbs = computed(() => [
         <ConfirmDialog
             v-model:open="rejectOpen"
             title="Tolak siswa ini?"
-            description="Siswa tidak dapat didaftarkan pada pendaftaran ini. Operator diberi tahu beserta catatan Anda."
+            description="Pendaftaran siswa ditolak dan kursinya dilepas. Catatan Anda tersimpan di riwayat."
             confirm-label="Tolak"
             destructive
             @confirm="send"

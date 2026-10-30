@@ -13,12 +13,12 @@ export const PERMISSIONS = {
     SekolahLihat: 'sekolah.lihat',
     SekolahBuat: 'sekolah.buat',
     SekolahUbah: 'sekolah.ubah',
+    SekolahTautan: 'sekolah.tautan',
+    SekolahResetTautan: 'sekolah.reset-tautan',
 
     SiswaLihat: 'siswa.lihat',
-    SiswaBuat: 'siswa.buat',
     SiswaUbah: 'siswa.ubah',
     SiswaHapus: 'siswa.hapus',
-    SiswaImpor: 'siswa.impor',
 
     DokumenLihat: 'dokumen.lihat',
     DokumenUnggah: 'dokumen.unggah',
@@ -26,7 +26,6 @@ export const PERMISSIONS = {
 
     PendaftaranLihat: 'pendaftaran.lihat',
     PendaftaranBuat: 'pendaftaran.buat',
-    PendaftaranAjukan: 'pendaftaran.ajukan',
 
     VerifikasiLihat: 'verifikasi.lihat',
     VerifikasiPutuskan: 'verifikasi.putuskan',
@@ -37,10 +36,14 @@ export const PERMISSIONS = {
 
     RekamanLihat: 'rekaman.lihat',
     RekamanTandai: 'rekaman.tandai',
+    RekamanPindai: 'rekaman.pindai',
 
     LaporanLihat: 'laporan.lihat',
 
     LogLihat: 'log.lihat',
+
+    ProfilLihat: 'profil.lihat',
+    ProfilUbah: 'profil.ubah',
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Route;
 /** Rute publik yang sah (tanpa login). Menambah entri di sini harus terlihat di diff dan ditinjau. */
 function auditPublicNames(): array
 {
-    return ['aktivasi.show', 'aktivasi.store', 'password.request', 'password.email', 'password.reset', 'password.store'];
+    return ['activation.show', 'activation.store', 'password.request', 'password.email', 'password.reset', 'password.store', 'register.show', 'register.store'];
 }
 
 /** Rute publik tak bernama: `/` hanya mengalihkan ke /dashboard yang sendirinya ber-auth. */
@@ -18,7 +18,7 @@ function auditPublicUris(): array
 /** Rute ber-auth tanpa `can:` karena hanya menyentuh akun atau notifikasi pengguna sendiri. */
 function auditOwnAccountNames(): array
 {
-    return ['dashboard', 'logout', 'password.update', 'profile.edit', 'profile.update', 'notifikasi.index', 'notifikasi.read', 'notifikasi.read-all'];
+    return ['dashboard', 'logout', 'password.update', 'profile.edit', 'profile.update', 'profile.sessions.destroy', 'notifications.index', 'notifications.mark-read', 'notifications.mark-all-read'];
 }
 
 /** @return list<LaravelRoute> */

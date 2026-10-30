@@ -34,7 +34,7 @@ class ActivationController extends Controller
         try {
             $user = $this->activations->complete($token, $request->validated('password'));
         } catch (InvalidActivationException) {
-            return redirect()->route('aktivasi.show', $token);
+            return redirect()->route('activation.show', $token);
         }
 
         Auth::login($user);

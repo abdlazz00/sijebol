@@ -33,7 +33,7 @@ class CreateSuperAdmin extends Command
         $user->assignRole($role);
 
         $this->info('Super-admin dibuat. Kirim link ini (berlaku 3 hari):');
-        $this->line(route('aktivasi.show', $activations->issue($user)));
+        $this->line(route('activation.show', $activations->issue($user)));
 
         return self::SUCCESS;
     }

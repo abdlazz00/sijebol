@@ -41,7 +41,13 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
 
     public function upcoming(int $limit): Collection
     {
-        return Schedule::query()->with('school')->withCount('entries')
+        return Schedule::query()->with('school')
+            ->withCount([
+                'entries as taken_count' => fn (Builder $q) => $q->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat())),
+                'entries as waiting_count' => fn (Builder $q) => $q->where('status', RegistrationStatus::MenungguVerifikasi->value),
+                'entries as present_count' => fn (Builder $q) => $q->where('status', RegistrationStatus::SudahRekaman->value),
+            ])
+            ->whereNull('cancelled_at')
             ->where('date', '>=', Schedule::today())->orderBy('date')->orderBy('id')->limit($limit)->get();
     }
 
@@ -60,22 +66,6 @@ class EloquentScheduleRepository implements ScheduleRepositoryInterface
     public function delete(Schedule $schedule): void
     {
         $schedule->delete();
-    }
-
-    public function targets(Schedule $current): Collection
-    {
-        return Schedule::query()
-            ->where('school_id', $current->school_id)->where('id', '!=', $current->id)
-            ->where('date', '>=', Schedule::today())->orderBy('date')->orderBy('id')->get();
-    }
-
-    public function candidates(Schedule $schedule): Collection
-    {
-        return RegistrationStudent::query()->with(['student', 'registration'])
-            ->where('school_id', $schedule->school_id)
-            ->where('status', RegistrationStatus::Terverifikasi->value)
-            ->whereNull('schedule_id')
-            ->orderBy('id')->get();
     }
 
     public function lockEntries(array $ids): Collection

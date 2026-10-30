@@ -85,3 +85,28 @@ export function formatWhen(value: DateInput, now: Date = new Date()): string {
         ? relativeTime(d, now)
         : formatDateTime(d);
 }
+
+/** "08:00" -> "08.00" (jam dari server berbentuk HH:MM, bukan tanggal). */
+export function formatClock(value: string | null | undefined): string {
+    return value ? value.replace(':', '.') : EMPTY;
+}
+
+/** "08.00–12.00". */
+export function formatTimeRange(
+    start: string | null | undefined,
+    end: string | null | undefined,
+): string {
+    return `${formatClock(start)}–${formatClock(end)}`;
+}
+
+const monthFmt = new Intl.DateTimeFormat('id-ID', {
+    month: 'long',
+    year: 'numeric',
+    timeZone: TZ,
+});
+
+/** "Oktober 2026" dari tanggal Y-m-d. */
+export function formatMonth(value: DateInput): string {
+    const d = toDate(value);
+    return d ? monthFmt.format(d) : EMPTY;
+}

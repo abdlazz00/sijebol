@@ -1,20 +1,28 @@
 export type RegistrationStatus =
-    | 'draf'
-    | 'diajukan'
+    | 'menunggu_verifikasi'
     | 'perlu_perbaikan'
-    | 'terverifikasi'
-    | 'terjadwal'
+    | 'terdaftar'
     | 'sudah_rekaman'
     | 'tidak_hadir'
     | 'belum_rekaman'
-    | 'ditolak';
+    | 'ditolak'
+    | 'dibatalkan'
+    | 'kedaluwarsa';
 
 export type HistoryRow = {
-    from: RegistrationStatus;
+    from: RegistrationStatus | null;
     to: RegistrationStatus;
     by: string;
     note: string | null;
     at: string;
+};
+
+export type SessionBrief = {
+    id: number;
+    date: string;
+    start_time: string;
+    end_time: string;
+    location: string;
 };
 
 export type EntryRow = {
@@ -26,36 +34,49 @@ export type EntryRow = {
     history: HistoryRow[];
 };
 
-export type RegistrationRow = {
-    id: number;
-    title: string;
-    school: string | null;
-    created_at: string;
-    submitted_at: string | null;
-    students_count: number;
-    counts: Partial<Record<RegistrationStatus, number>>;
-};
-
-export type RegistrationDetail = RegistrationRow & {
-    expected_count: number | null;
-    created_by: string | null;
-};
-
-export type CandidateRow = {
-    id: number;
-    name: string;
-    nisn: string;
-    age: number;
-    eligible: boolean;
-    reasons: string[];
-    missing_docs: boolean;
-    selected: boolean;
-};
-
 export type QueueRow = {
     id: number;
-    student: { id: number; name: string; nisn: string };
+    student: {
+        id: number;
+        name: string;
+        nisn: string;
+        ktp_langsung: boolean;
+    };
     school: string | null;
-    registration: string;
+    session: SessionBrief;
     since: string;
+};
+
+/** Pendaftaran milik akun siswa (halaman Sesi rekaman). */
+export type SelfEntry = {
+    id: number;
+    status: RegistrationStatus;
+    note: string | null;
+    can_cancel: boolean;
+    can_resubmit: boolean;
+    fix_deadline?: string | null;
+    schedule: SessionBrief;
+};
+
+/** Sesi yang dapat dipilih siswa; kelayakan dihitung pada tanggal sesi itu. */
+export type OpenSchedule = SessionBrief & {
+    quota: number;
+    taken: number;
+    full: boolean;
+    eligible: boolean;
+    reasons: string[];
+};
+
+/** Opsi filter sesi di antrean verifikasi. */
+export type QueueSession = SessionBrief & { school: string | null };
+
+/** Tiket Terdaftar (dengan kode QR) atau Sudah rekaman (tanpa kode). */
+export type Ticket = {
+    entry_id: number;
+    status: 'terdaftar' | 'sudah_rekaman';
+    code: string | null;
+    student_name: string;
+    ktp_langsung: boolean;
+    school: string;
+    schedule: SessionBrief;
 };

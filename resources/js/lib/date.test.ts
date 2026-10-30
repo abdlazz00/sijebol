@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+    formatClock,
     formatDate,
     formatDateTime,
     formatDateWithDay,
+    formatMonth,
     formatTime,
+    formatTimeRange,
     formatWhen,
     relativeTime,
 } from './date';
@@ -53,5 +56,20 @@ describe('date', () => {
             '5 Okt 2026 · 08.00',
         );
         expect(formatWhen(null, now)).toBe('—');
+    });
+});
+
+describe('jam sesi', () => {
+    it('memformat jam HH:MM dan rentangnya', () => {
+        expect(formatClock('08:00')).toBe('08.00');
+        expect(formatClock(null)).toBe('—');
+        expect(formatTimeRange('08:00', '12:30')).toBe('08.00–12.30');
+    });
+});
+
+describe('bulan sesi', () => {
+    it('memformat nama bulan dan tahun', () => {
+        expect(formatMonth('2026-10-20')).toBe('Oktober 2026');
+        expect(formatMonth(null)).toBe('—');
     });
 });

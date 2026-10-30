@@ -10,16 +10,18 @@ class EligibilityService
 {
     public const MIN_AGE = 16;
 
+    private const DIRECT_KTP_AGE = 17;
+
     private const ZONE = 'Asia/Jakarta';
 
     /** @return array{eligible: bool, reasons: list<string>} */
-    public function check(Student $student, ?CarbonInterface $on = null, ?int $exceptRegistrationId = null): array
+    public function check(Student $student, ?CarbonInterface $on = null, ?int $exceptEntryId = null): array
     {
         $reasons = [];
         $age = $this->age($student, $on);
 
         if ($age < self::MIN_AGE) {
-            $reasons[] = "Umur minimal 16 tahun (umur sekarang {$age}).";
+            $reasons[] = "Umur minimal 16 tahun (umur {$age}).";
         }
 
         $types = $student->documents->pluck('type')->all();
@@ -31,10 +33,10 @@ class EligibilityService
         }
 
         $busy = $student->registrationEntries->contains(
-            fn ($entry) => $entry->status->isActive() && $entry->registration_id !== $exceptRegistrationId
+            fn ($entry) => $entry->status->isActive() && $entry->id !== $exceptEntryId
         );
         if ($busy) {
-            $reasons[] = 'Siswa sudah terdaftar di pendaftaran lain.';
+            $reasons[] = 'Sudah memiliki pendaftaran sesi yang aktif.';
         }
 
         return ['eligible' => $reasons === [], 'reasons' => $reasons];
@@ -43,6 +45,24 @@ class EligibilityService
     public function age(Student $student, ?CarbonInterface $on = null): int
     {
         return (int) $student->birth_date->copy()->startOfDay()->diffInYears($this->day($on)->startOfDay(), true);
+    }
+
+    /**
+     * Penanda informasi: sudah lewat ulang tahun ke-17 pada tanggal acuan (17 tahun lebih 1 hari), sehingga KTP-el dapat langsung terbit.
+     * Lahir 29 Februari dihitung berulang tahun 28 Februari pada tahun biasa.
+     */
+    public function directKtp(Student $student, ?CarbonInterface $on = null): bool
+    {
+        // Dibandingkan sebagai tanggal (Y-m-d): tanggal lahir tersimpan tanpa zona, tanggal acuan di zona Jakarta.
+        $seventeenth = $student->birth_date->copy()->addYearsNoOverflow(self::DIRECT_KTP_AGE)->toDateString();
+
+        return $this->day($on)->toDateString() > $seventeenth;
+    }
+
+    /** Tanggal sesi pendaftaran aktif siswa (butuh `registrationEntries.schedule` termuat); null bila tidak ada. */
+    public function activeSessionDate(Student $student): ?Carbon
+    {
+        return $student->registrationEntries->first(fn ($entry) => $entry->status->isActive())?->schedule->date;
     }
 
     /**

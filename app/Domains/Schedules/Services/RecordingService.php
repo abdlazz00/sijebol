@@ -17,7 +17,7 @@ use Illuminate\Validation\ValidationException;
 
 class RecordingService
 {
-    /** Status kehadiran yang boleh ditandai; ketiganya dapat dibatalkan kembali ke Terjadwal. */
+    /** Status kehadiran yang boleh ditandai; ketiganya dapat dibatalkan kembali ke Terdaftar. */
     private const MARKS = [RegistrationStatus::SudahRekaman, RegistrationStatus::TidakHadir, RegistrationStatus::BelumRekaman];
 
     public function __construct(
@@ -27,24 +27,24 @@ class RecordingService
     ) {}
 
     /**
-     * Menandai siswa Terjadwal pada jadwal ini; seluruhnya berhasil atau seluruhnya gagal.
+     * Menandai siswa Terdaftar pada sesi ini; seluruhnya berhasil atau seluruhnya gagal.
      *
      * @param  list<int>  $entryIds
      */
     public function mark(Schedule $schedule, array $entryIds, RegistrationStatus $to, ?string $note, User $actor): void
     {
-        // Tanpa guard ini, Terverifikasi (transisi sah dari Terjadwal) menjadi "keluarkan" tanpa mengosongkan schedule_id.
+        // Tanpa guard ini, Dibatalkan (transisi sah dari Terdaftar) lolos sebagai "penandaan".
         if (! in_array($to, self::MARKS, true)) {
             throw new AccessRuleException('Status penandaan tidak valid.');
         }
         if (! $schedule->isOpenForMarking()) {
-            throw new AccessRuleException('Penandaan baru dapat dilakukan pada atau setelah tanggal jadwal.');
+            throw new AccessRuleException('Penandaan baru dapat dilakukan pada atau setelah tanggal sesi.');
         }
 
         $count = DB::transaction(function () use ($schedule, $entryIds, $to, $note, $actor) {
             $entries = $this->schedules->lockEntries($entryIds);
             $invalid = $entries->count() !== count(array_unique($entryIds))
-                || $entries->contains(fn (RegistrationStudent $e) => $e->schedule_id !== $schedule->id || $e->status !== RegistrationStatus::Terjadwal);
+                || $entries->contains(fn (RegistrationStudent $e) => $e->schedule_id !== $schedule->id || $e->status !== RegistrationStatus::Terdaftar);
             if ($invalid) {
                 throw ValidationException::withMessages(['entry_ids' => 'Sebagian siswa tidak dapat ditandai; muat ulang halaman lalu coba lagi.']);
             }
@@ -65,10 +65,10 @@ class RecordingService
         );
     }
 
-    /** Membatalkan penandaan satu siswa: kembali ke Terjadwal pada jadwal yang sama, dengan catatan. */
+    /** Membatalkan penandaan satu siswa: kembali ke Terdaftar pada sesi yang sama, dengan catatan. */
     public function undo(RegistrationStudent $entry, string $note, User $actor): void
     {
-        if (! in_array($entry->status, self::MARKS, true) || $entry->schedule_id === null) {
+        if (! in_array($entry->status, self::MARKS, true)) {
             throw new AccessRuleException('Hanya siswa yang sudah ditandai yang dapat dibatalkan penandaannya.');
         }
         $previous = $entry->status;
@@ -86,7 +86,15 @@ class RecordingService
                     throw new AccessRuleException($conflict);
                 }
 
-                $this->transitions->move($entry, RegistrationStatus::Terjadwal, $actor, $note);
+                // Tidak hadir tidak menahan kursi; mengembalikannya harus tetap muat dalam kuota (di bawah kunci sesi).
+                if (! $previous->isActive() && $previous !== RegistrationStatus::BelumRekaman) {
+                    $locked = Schedule::query()->whereKey($schedule->id)->lockForUpdate()->firstOrFail();
+                    if ($locked->seatsTaken() >= $locked->quota) {
+                        throw new AccessRuleException('Kuota sesi sudah penuh; penandaan Tidak hadir tidak dapat dibatalkan.');
+                    }
+                }
+
+                $this->transitions->move($entry, RegistrationStatus::Terdaftar, $actor, $note, ['scanned_at' => null]);
                 activity('jadwal')->performedOn($schedule)->causedBy($actor)
                     ->withProperties(['status_lama' => $previous->value, 'siswa_id' => $entry->student_id])->log('rekaman.dibatalkan');
             });

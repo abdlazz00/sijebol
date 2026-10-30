@@ -2,7 +2,6 @@
 
 use App\Domains\Access\Models\Role;
 use App\Domains\Registrations\Enums\RegistrationStatus;
-use App\Domains\Registrations\Models\Registration;
 use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
@@ -45,19 +44,17 @@ function makeUserWith(array $permissions = [], ?School $school = null, bool $sco
     return $user;
 }
 
-/** Entri pendaftaran dengan status tertentu; siswa dan sekolah dibuat bila tidak diberikan. */
-function makeEntry(RegistrationStatus $status = RegistrationStatus::Draf, ?School $school = null, ?Student $student = null): RegistrationStudent
+/** Pendaftaran sesi dengan status tertentu; sekolah, siswa, dan sesi dibuat bila tidak diberikan (satu sekolah). */
+function makeEntry(RegistrationStatus $status = RegistrationStatus::MenungguVerifikasi, ?School $school = null, ?Student $student = null, ?Schedule $schedule = null): RegistrationStudent
 {
-    $school ??= $student?->school ?? School::factory()->create();
+    $school ??= $student?->school ?? $schedule?->school ?? School::factory()->create();
     $student ??= Student::factory()->for($school)->create();
-    $registration = Registration::factory()->for($school)->create([
-        'submitted_at' => $status === RegistrationStatus::Draf ? null : now(),
-    ]);
+    $schedule ??= makeSchedule($school);
 
     return RegistrationStudent::factory()->create([
-        'registration_id' => $registration->id,
         'school_id' => $school->id,
         'student_id' => $student->id,
+        'schedule_id' => $schedule->id,
         'status' => $status,
     ]);
 }
@@ -73,18 +70,18 @@ function eligibleStudent(?School $school = null): Student
     return $student->load('documents');
 }
 
-/** Jadwal untuk sekolah (default: sekolah baru) pada tanggal tertentu (default: 7 hari lagi). */
+/** Sesi untuk sekolah (default: sekolah baru) pada tanggal tertentu (default: 7 hari lagi); kuota 30, 08:00-12:00. */
 function makeSchedule(?School $school = null, ?string $date = null): Schedule
 {
     return Schedule::factory()->for($school ?? School::factory()->create())->create(array_filter(['date' => $date]));
 }
 
-/** Entri bersekolah sama dengan jadwal dan sudah terkait ke jadwal itu. */
-function makeScheduledEntry(RegistrationStatus $status = RegistrationStatus::Terjadwal, ?Schedule $schedule = null): RegistrationStudent
+/** Akun siswa + baris siswa lengkap (KK, akta, umur 16+) di sekolah tertentu. @return array{0: User, 1: Student} */
+function siswaLengkap(School $school): array
 {
-    $schedule ??= makeSchedule();
-    $entry = makeEntry($status, $schedule->school);
-    $entry->update(['schedule_id' => $schedule->id]);
+    $user = makeUserWith(['pendaftaran.lihat', 'pendaftaran.buat'], $school, true, 'siswa');
+    $student = eligibleStudent($school);
+    $student->update(['user_id' => $user->id]);
 
-    return $entry;
+    return [$user, $student];
 }

@@ -17,7 +17,14 @@ describe('validateFile', () => {
     it('menolak ukuran di atas 5 MB tetapi menerima tepat 5 MB', () => {
         expect(
             validateFile({ type: 'application/pdf', size: MAX_BYTES + 1 }),
-        ).toBe('Ukuran berkas maksimal 5 MB.');
+        ).toBe(
+            'Berkas 5,0 MB terlalu besar (maksimal 5 MB). Pilih PDF yang lebih kecil.',
+        );
+        expect(
+            validateFile({ type: 'image/jpeg', size: 7.2 * 1024 * 1024 }),
+        ).toBe(
+            'Berkas 7,2 MB terlalu besar (maksimal 5 MB). Ambil ulang dengan resolusi lebih rendah, atau pilih PDF.',
+        );
         expect(
             validateFile({ type: 'application/pdf', size: MAX_BYTES }),
         ).toBeNull();

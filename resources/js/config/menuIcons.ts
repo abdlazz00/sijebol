@@ -6,6 +6,7 @@ import {
     FileSpreadsheet,
     GraduationCap,
     Home,
+    Link2,
     School,
     ScrollText,
     ShieldCheck,
@@ -24,6 +25,7 @@ const icons: Record<string, Component> = {
     'badge-check': BadgeCheck,
     'calendar-days': CalendarDays,
     'file-spreadsheet': FileSpreadsheet,
+    link: Link2,
 };
 
 /** Kunci ikon datang dari server (`MenuService`); kunci tak dikenal tidak boleh merusak sidebar. */

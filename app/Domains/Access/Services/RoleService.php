@@ -46,6 +46,9 @@ class RoleService
         if ($role->isProtected()) {
             throw new AccessRuleException('Role super-admin dilindungi dan tidak dapat diubah.');
         }
+        if ($role->name === Role::SISWA && $data['name'] !== Role::SISWA) {
+            throw new AccessRuleException('Role siswa adalah role sistem; nama tidak dapat diubah.');
+        }
         if ((bool) $data['is_school_scoped'] !== (bool) $role->is_school_scoped && $this->roles->userCount($role) > 0) {
             throw new AccessRuleException('Pengaturan "terikat sekolah" tidak dapat diubah selama role masih dipakai pengguna.');
         }
@@ -78,6 +81,9 @@ class RoleService
     {
         if ($role->isProtected()) {
             throw new AccessRuleException('Role super-admin dilindungi dan tidak dapat dihapus.');
+        }
+        if ($role->isSystem()) {
+            throw new AccessRuleException('Role sistem tidak dapat di hapus.');
         }
         if (! AccessGuard::canGrantRole($actor, $role)) {
             throw new AccessRuleException('Anda tidak dapat menghapus role dengan izin di luar izin Anda.');

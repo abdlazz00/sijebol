@@ -27,7 +27,7 @@ function submit() {
         return focusFirstInvalid();
     }
 
-    form.post(route('aktivasi.store', token), {
+    form.post(route('activation.store', token), {
         onError: focusFirstInvalid,
         onFinish: () => form.reset('password', 'password_confirmation'),
     });
@@ -101,8 +101,10 @@ function submit() {
                     Link aktivasi tidak berlaku
                 </h1>
                 <p class="text-muted-foreground text-sm leading-5">
-                    Link ini sudah kedaluwarsa atau sudah dipakai. Hubungi admin
-                    kecamatan untuk meminta link baru.
+                    Link ini sudah kedaluwarsa atau sudah dipakai. Bila akun
+                    sudah aktif, silakan masuk. Bila belum, buka lagi link
+                    pendaftaran dari sekolah Anda dan buat akun dengan email
+                    yang sama untuk menerima link baru.
                 </p>
             </div>
             <Button as-child variant="outline" class="h-10 px-4">

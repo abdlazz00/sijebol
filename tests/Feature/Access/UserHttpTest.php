@@ -17,34 +17,34 @@ test('daftar pengguna dengan filter status dan pencarian', function () {
     User::factory()->create(['name' => 'Siti', 'email' => 'siti@x.test'])->assignRole('operator-sekolah');
     User::factory()->inactive()->create(['name' => 'Off'])->assignRole('operator-sekolah');
 
-    $this->actingAs($this->admin)->get('/pengguna?filter[status]=nonaktif')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->admin)->get('/users?filter[status]=nonaktif')->assertInertia(fn (Assert $p) => $p
         ->component('Pengguna/Index')
         ->has('users.data', 1)
         ->where('users.data.0.name', 'Off')
         ->where('users.data.0.status', 'nonaktif'));
 
-    $this->get('/pengguna?filter[search]=siti')->assertInertia(fn (Assert $p) => $p->has('users.data', 1));
+    $this->get('/users?filter[search]=siti')->assertInertia(fn (Assert $p) => $p->has('users.data', 1));
 });
 
 test('buat pengguna mengarah ke halaman berhasil yang menampilkan link sekali saja', function () {
-    $response = $this->actingAs($this->admin)->post('/pengguna', [
+    $response = $this->actingAs($this->admin)->post('/users', [
         'name' => 'Budi', 'email' => 'budi@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id,
     ]);
     $user = User::firstWhere('email', 'budi@x.test');
-    $response->assertRedirect("/pengguna/{$user->id}/berhasil");
+    $response->assertRedirect("/users/{$user->id}/done");
 
-    $this->get("/pengguna/{$user->id}/berhasil")->assertInertia(fn (Assert $p) => $p
+    $this->get("/users/{$user->id}/done")->assertInertia(fn (Assert $p) => $p
         ->component('Pengguna/Berhasil')
         ->where('user.name', 'Budi')
-        ->where('link', fn ($link) => str_contains($link, '/aktivasi/')));
+        ->where('link', fn ($link) => str_contains($link, '/activation/')));
 
-    $this->get("/pengguna/{$user->id}/berhasil")->assertRedirect("/pengguna/{$user->id}");
+    $this->get("/users/{$user->id}/done")->assertRedirect("/users/{$user->id}");
 });
 
 test('validasi: email unik tanpa memandang huruf besar, sekolah menurut role', function () {
     User::factory()->create(['email' => 'ada@x.test']);
 
-    $this->actingAs($this->admin)->post('/pengguna', [
+    $this->actingAs($this->admin)->post('/users', [
         'name' => 'X', 'email' => 'ADA@x.test', 'role_id' => $this->operatorRole->id,
     ])->assertSessionHasErrors(['email', 'school_id']);
 });
@@ -53,21 +53,21 @@ test('ubah pengguna dan kirim ulang aktivasi', function () {
     $user = User::factory()->pending()->create(['email' => 'p@x.test'])->assignRole('operator-sekolah');
     $user->update(['school_id' => $this->school->id]);
 
-    $this->actingAs($this->admin)->put("/pengguna/{$user->id}", [
+    $this->actingAs($this->admin)->put("/users/{$user->id}", [
         'name' => 'Baru', 'email' => 'p@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id,
-    ])->assertRedirect("/pengguna/{$user->id}");
+    ])->assertRedirect("/users/{$user->id}");
     expect($user->fresh()->name)->toBe('Baru');
 
-    $this->post("/pengguna/{$user->id}/kirim-ulang-aktivasi")->assertRedirect("/pengguna/{$user->id}/berhasil");
+    $this->post("/users/{$user->id}/resend-activation")->assertRedirect("/users/{$user->id}/done");
 });
 
 test('nonaktifkan dan aktifkan', function () {
     $user = User::factory()->create()->assignRole('operator-sekolah');
 
-    $this->actingAs($this->admin)->post("/pengguna/{$user->id}/nonaktifkan")->assertRedirect();
+    $this->actingAs($this->admin)->post("/users/{$user->id}/deactivate")->assertRedirect();
     expect($user->fresh()->is_active)->toBeFalse();
 
-    $this->post("/pengguna/{$user->id}/aktifkan")->assertRedirect();
+    $this->post("/users/{$user->id}/activate")->assertRedirect();
     expect($user->fresh()->is_active)->toBeTrue();
 });
 
@@ -75,10 +75,10 @@ test('akun berhak lebih tinggi tidak dapat diubah oleh admin biasa (403) tetapi 
     $super = User::factory()->create()->assignRole('super-admin');
 
     $this->actingAs($this->admin);
-    $this->get("/pengguna/{$super->id}")->assertOk();
-    $this->get("/pengguna/{$super->id}/ubah")->assertForbidden();
-    $this->post("/pengguna/{$super->id}/nonaktifkan")->assertForbidden();
-    $this->post("/pengguna/{$super->id}/kirim-ulang-aktivasi")->assertForbidden();
+    $this->get("/users/{$super->id}")->assertOk();
+    $this->get("/users/{$super->id}/edit")->assertForbidden();
+    $this->post("/users/{$super->id}/deactivate")->assertForbidden();
+    $this->post("/users/{$super->id}/resend-activation")->assertForbidden();
 });
 
 test('operator tidak dapat membuka pengguna sekolah lain (404)', function () {
@@ -87,9 +87,9 @@ test('operator tidak dapat membuka pengguna sekolah lain (404)', function () {
     $opB = makeUserWith([], $b, true, 'opB');
 
     $this->actingAs($opA);
-    $this->get("/pengguna/{$opB->id}")->assertNotFound();
-    $this->get("/pengguna/{$opB->id}/ubah")->assertNotFound();
-    $this->get('/pengguna')->assertInertia(fn (Assert $p) => $p->has('users.data', 1));
+    $this->get("/users/{$opB->id}")->assertNotFound();
+    $this->get("/users/{$opB->id}/edit")->assertNotFound();
+    $this->get('/users')->assertInertia(fn (Assert $p) => $p->has('users.data', 1));
 });
 
 test('aksi nonaktifkan, aktifkan, dan kirim ulang pada pengguna sekolah lain mengembalikan 404', function () {
@@ -98,9 +98,9 @@ test('aksi nonaktifkan, aktifkan, dan kirim ulang pada pengguna sekolah lain men
     $targetB = User::factory()->pending()->create(['school_id' => $b->id])->assignRole('operator-sekolah');
 
     $this->actingAs($opA);
-    $this->post("/pengguna/{$targetB->id}/nonaktifkan")->assertNotFound();
-    $this->post("/pengguna/{$targetB->id}/aktifkan")->assertNotFound();
-    $this->post("/pengguna/{$targetB->id}/kirim-ulang-aktivasi")->assertNotFound();
+    $this->post("/users/{$targetB->id}/deactivate")->assertNotFound();
+    $this->post("/users/{$targetB->id}/activate")->assertNotFound();
+    $this->post("/users/{$targetB->id}/resend-activation")->assertNotFound();
 
     expect($targetB->fresh()->is_active)->toBeTrue()
         ->and($targetB->activations()->count())->toBe(0);
@@ -110,20 +110,20 @@ test('baris daftar memuat can_manage dan halaman berhasil memuat mode', function
     $super = User::factory()->create()->assignRole('super-admin');
     User::factory()->create()->assignRole('operator-sekolah');
 
-    $this->actingAs($this->admin)->get('/pengguna')->assertInertia(fn (Assert $p) => $p
+    $this->actingAs($this->admin)->get('/users')->assertInertia(fn (Assert $p) => $p
         ->where('users.data', fn ($rows) => collect($rows)->firstWhere('id', $super->id)['can_manage'] === false
             && collect($rows)->firstWhere('role', 'operator-sekolah')['can_manage'] === true));
 
     $target = User::factory()->pending()->create(['school_id' => $this->school->id])->assignRole('operator-sekolah');
-    $this->post("/pengguna/{$target->id}/kirim-ulang-aktivasi");
-    $this->get("/pengguna/{$target->id}/berhasil")->assertInertia(fn (Assert $p) => $p->where('mode', 'ulang'));
+    $this->post("/users/{$target->id}/resend-activation");
+    $this->get("/users/{$target->id}/done")->assertInertia(fn (Assert $p) => $p->where('mode', 'ulang'));
 
-    $this->post('/pengguna', ['name' => 'Baru', 'email' => 'baru@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]);
+    $this->post('/users', ['name' => 'Baru', 'email' => 'baru@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]);
     $baru = User::firstWhere('email', 'baru@x.test');
-    $this->get("/pengguna/{$baru->id}/berhasil")->assertInertia(fn (Assert $p) => $p->where('mode', 'dibuat'));
+    $this->get("/users/{$baru->id}/done")->assertInertia(fn (Assert $p) => $p->where('mode', 'dibuat'));
 });
 
 test('pelanggaran aturan bisnis menjadi flash error', function () {
-    $this->actingAs($this->admin)->from('/pengguna')->post("/pengguna/{$this->admin->id}/nonaktifkan")
-        ->assertRedirect('/pengguna')->assertSessionHas('error');
+    $this->actingAs($this->admin)->from('/users')->post("/users/{$this->admin->id}/deactivate")
+        ->assertRedirect('/users')->assertSessionHas('error');
 });

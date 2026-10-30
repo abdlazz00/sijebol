@@ -93,7 +93,7 @@ if (summary.value !== null) usePoll(60_000, { only: ['notifications'] });
 
             <div class="border-t p-2 text-center">
                 <Link
-                    :href="route('notifikasi.index')"
+                    :href="route('notifications.index')"
                     class="text-primary inline-flex h-10 items-center px-3 text-sm font-medium hover:underline"
                 >
                     Lihat semua

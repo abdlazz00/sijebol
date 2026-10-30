@@ -44,7 +44,6 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
                 'error' => fn () => $request->session()->get('error'),
-                'import' => fn () => $request->session()->get('import'),
             ],
             'menu' => fn () => app(MenuService::class)->forUser($user),
             'notifications' => fn () => $user ? app(NotificationService::class)->summary($user) : null,

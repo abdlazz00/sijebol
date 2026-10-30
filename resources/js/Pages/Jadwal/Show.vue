@@ -1,158 +1,162 @@
 <script setup lang="ts">
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
-import EntryChecklist from '@/Components/shared/EntryChecklist.vue';
-import InfoList from '@/Components/shared/InfoList.vue';
 import FormField from '@/Components/shared/FormField.vue';
+import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
-import SelectField from '@/Components/shared/SelectField.vue';
+import RowActions from '@/Components/shared/RowActions.vue';
 import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import { Button } from '@/Components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from '@/Components/ui/dialog';
+import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
+import { Textarea } from '@/Components/ui/textarea';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate, formatDateWithDay } from '@/lib/date';
+import { formatDate, formatDateWithDay, formatTimeRange } from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
-import type {
-    ChecklistItem,
-    ParticipantRow,
-    ScheduleDetail,
-    ScheduleTarget,
-} from '@/types/schedule';
+import { registrationStatus } from '@/lib/status';
+import type { ParticipantRow, ScheduleDetail } from '@/types/schedule';
 import { Link, router } from '@inertiajs/vue3';
-import {
-    ClipboardCheck,
-    MoveRight,
-    Pencil,
-    Trash2,
-    UserPlus,
-} from '@lucide/vue';
+import { Ban, ClipboardCheck, Pencil, ScanLine, Trash2 } from '@lucide/vue';
 import { computed, ref } from 'vue';
 
 const props = defineProps<{
     schedule: ScheduleDetail;
     participants: ParticipantRow[];
-    candidates: ChecklistItem[];
-    targets: ScheduleTarget[];
 }>();
 
 const { can } = usePermission();
 const canEdit = computed(() => can(PERMISSIONS.JadwalUbah));
-const canAssign = computed(() => canEdit.value && !props.schedule.is_past);
-
-const info = computed(() => [
-    { label: 'Tanggal', value: formatDateWithDay(props.schedule.date) },
-    { label: 'Lokasi', value: props.schedule.location },
-    { label: 'Sekolah', value: props.schedule.school },
-    { label: 'Dibuat oleh', value: props.schedule.created_by ?? null },
-]);
-
-const columns = computed(() => [
-    { key: 'student', label: 'Siswa' },
-    { key: 'status', label: 'Status', class: 'w-[176px]' },
-    ...(canEdit.value
-        ? [{ key: 'actions', label: 'Aksi', class: 'w-[220px] text-right' }]
-        : []),
-]);
-
-const addOpen = ref(false);
-const picked = ref<number[]>([]);
-const assigning = ref(false);
-const assignError = ref<string | null>(null);
-
-function openAdd() {
-    picked.value = [];
-    assignError.value = null;
-    addOpen.value = true;
-}
-
-function assign() {
-    router.post(
-        route('jadwal.siswa.store', props.schedule.id),
-        { entry_ids: picked.value },
-        {
-            preserveScroll: true,
-            onStart: () => (assigning.value = true),
-            onFinish: () => (assigning.value = false),
-            onSuccess: () => (addOpen.value = false),
-            onError: (errors) =>
-                (assignError.value = errors.entry_ids ?? 'Gagal menjadwalkan.'),
-        },
-    );
-}
-
-const removing = ref<ParticipantRow | null>(null);
-const removeOpen = computed({
-    get: () => removing.value !== null,
-    set: (open: boolean) => {
-        if (!open) removing.value = null;
-    },
-});
-
-function remove() {
-    if (removing.value)
-        router.delete(
-            route('jadwal.siswa.destroy', [
-                props.schedule.id,
-                removing.value.id,
-            ]),
-            { preserveScroll: true },
-        );
-}
-
+const canCancel = computed(
+    () => canEdit.value && !props.schedule.cancelled && !props.schedule.is_past,
+);
 const canDelete = computed(
     () => canEdit.value && props.participants.length === 0,
 );
-const deleteOpen = ref(false);
 
-function destroy() {
-    router.delete(route('jadwal.destroy', props.schedule.id));
-}
-
-const moving = ref<ParticipantRow | null>(null);
-const targetId = ref<number | null>(null);
-const moveOpen = computed({
-    get: () => moving.value !== null,
-    set: (open: boolean) => {
-        if (!open) moving.value = null;
-    },
-});
-const targetOptions = computed(() =>
-    props.targets.map((t) => ({
-        value: t.id,
-        label: `${formatDate(t.date)} · ${t.location}`,
-    })),
+// Pendaftaran yang ikut dibatalkan saat sesi dibatalkan (belum sampai hari kehadiran).
+const CANCELLABLE = ['menunggu_verifikasi', 'perlu_perbaikan', 'terdaftar'];
+const affected = computed(
+    () =>
+        props.participants.filter((p) => CANCELLABLE.includes(p.status)).length,
 );
 
-function startMove(row: ParticipantRow) {
-    targetId.value = null;
-    moving.value = row;
+// Rincian kursi tertahan menurut status, tertulis (bukan hanya angka).
+const HOLDING = [
+    'menunggu_verifikasi',
+    'perlu_perbaikan',
+    'terdaftar',
+    'sudah_rekaman',
+    'belum_rekaman',
+];
+const seatBreakdown = computed(() =>
+    HOLDING.map((status) => ({
+        status,
+        total: props.participants.filter((p) => p.status === status).length,
+    }))
+        .filter((s) => s.total > 0)
+        .map(
+            (s) =>
+                `${s.total} ${registrationStatus(s.status).label.toLowerCase()}`,
+        )
+        .join(' · '),
+);
+
+const info = computed(() => [
+    { label: 'Tanggal', value: formatDateWithDay(props.schedule.date) },
+    {
+        label: 'Jam',
+        value: formatTimeRange(
+            props.schedule.start_time,
+            props.schedule.end_time,
+        ),
+    },
+    { label: 'Lokasi', value: props.schedule.location },
+    { label: 'Sekolah', value: props.schedule.school },
+    {
+        label: 'Kuota',
+        value: `${props.schedule.taken} dari ${props.schedule.quota} kursi${
+            seatBreakdown.value ? ` (${seatBreakdown.value})` : ''
+        }`,
+    },
+    {
+        label: 'Pendaftaran',
+        value: props.schedule.cancelled
+            ? 'Ditutup (sesi dibatalkan)'
+            : `Dibuka sampai ${formatDate(props.schedule.last_registration_day)}`,
+    },
+    { label: 'Dibuat oleh', value: props.schedule.created_by ?? null },
+]);
+
+// Pembatalan pendaftaran oleh admin: server menentukan baris mana yang boleh (can_cancel); izin dicek di sini.
+const canCancelEntries = computed(
+    () =>
+        can(PERMISSIONS.VerifikasiPutuskan) &&
+        props.participants.some((p) => p.can_cancel),
+);
+const columns = computed(() => [
+    { key: 'student', label: 'Siswa' },
+    { key: 'status', label: 'Status', class: 'w-[176px]' },
+    ...(canCancelEntries.value
+        ? [{ key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' }]
+        : []),
+]);
+
+const cancelling = ref<ParticipantRow | null>(null);
+const entryNote = ref('');
+const entryOpen = computed({
+    get: () => cancelling.value !== null,
+    set: (open: boolean) => {
+        if (!open) cancelling.value = null;
+    },
+});
+
+function startCancelEntry(row: ParticipantRow) {
+    entryNote.value = '';
+    cancelling.value = row;
 }
 
-function move() {
-    if (!moving.value || targetId.value === null) return;
+function cancelEntry() {
+    if (!cancelling.value) return;
     router.post(
-        route('jadwal.siswa.pindah', [props.schedule.id, moving.value.id]),
-        { target_schedule_id: targetId.value },
+        route('schedules.entries.cancel', [
+            props.schedule.id,
+            cancelling.value.id,
+        ]),
+        { note: entryNote.value.trim() },
         { preserveScroll: true },
     );
 }
 
+const cancelOpen = ref(false);
+const cancelNote = ref('');
+
+function startCancel() {
+    cancelNote.value = '';
+    cancelOpen.value = true;
+}
+
+function cancelSession() {
+    router.post(
+        route('schedules.cancel', props.schedule.id),
+        { note: cancelNote.value.trim() },
+        { preserveScroll: true },
+    );
+}
+
+const deleteOpen = ref(false);
+
+function destroy() {
+    router.delete(route('schedules.destroy', props.schedule.id));
+}
+
 const crumbs = computed(() => [
-    { label: 'Jadwal', href: route('jadwal.index') },
+    { label: 'Sesi rekaman', href: route('schedules.index') },
     { label: formatDateWithDay(props.schedule.date) },
 ]);
 </script>
 
 <template>
-    <AppLayout title="Detail jadwal" :breadcrumbs="crumbs">
+    <AppLayout title="Detail sesi rekaman" :breadcrumbs="crumbs">
         <div
             class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
         >
@@ -161,8 +165,11 @@ const crumbs = computed(() => [
                     {{ schedule.location }}
                 </h1>
                 <p class="text-muted-foreground text-sm leading-5">
-                    {{ formatDateWithDay(schedule.date)
-                    }}<template v-if="schedule.is_past">
+                    {{ formatDateWithDay(schedule.date) }} ·
+                    {{ formatTimeRange(schedule.start_time, schedule.end_time)
+                    }}<template v-if="schedule.cancelled">
+                        · Dibatalkan</template
+                    ><template v-else-if="schedule.is_past">
                         · Sudah lewat</template
                     >
                 </p>
@@ -171,25 +178,25 @@ const crumbs = computed(() => [
                 class="flex w-full items-center gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none"
             >
                 <Button
-                    v-if="canEdit"
+                    v-if="canEdit && !schedule.cancelled"
                     as-child
                     variant="outline"
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.edit', schedule.id)">
+                    <Link :href="route('schedules.edit', schedule.id)">
                         <Pencil class="size-4" aria-hidden="true" />
                         Ubah
                     </Link>
                 </Button>
                 <Button
-                    v-if="canDelete"
-                    type="button"
-                    variant="outline"
+                    v-if="can(PERMISSIONS.RekamanPindai) && !schedule.cancelled"
+                    as-child
                     class="h-10 px-4"
-                    @click="deleteOpen = true"
                 >
-                    <Trash2 class="size-4" aria-hidden="true" />
-                    Hapus
+                    <Link :href="route('schedules.scan.show', schedule.id)">
+                        <ScanLine class="size-4" aria-hidden="true" />
+                        Pindai tiket
+                    </Link>
                 </Button>
                 <Button
                     v-if="can(PERMISSIONS.RekamanLihat)"
@@ -197,33 +204,50 @@ const crumbs = computed(() => [
                     variant="outline"
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.rekaman.show', schedule.id)">
+                    <Link :href="route('schedules.recording.show', schedule.id)">
                         <ClipboardCheck class="size-4" aria-hidden="true" />
                         Penandaan rekaman
                     </Link>
                 </Button>
+                <Button
+                    v-if="canCancel"
+                    type="button"
+                    variant="outline"
+                    class="text-danger h-10 px-4"
+                    @click="startCancel"
+                >
+                    <Ban class="size-4" aria-hidden="true" />
+                    Batalkan sesi
+                </Button>
+                <RowActions
+                    v-if="canDelete"
+                    label="Aksi lainnya untuk sesi ini"
+                    outlined
+                >
+                    <DropdownMenuItem
+                        class="text-danger h-10 gap-3 px-3 text-sm font-medium"
+                        @select="deleteOpen = true"
+                    >
+                        <Trash2 class="size-4" aria-hidden="true" />
+                        Hapus sesi
+                    </DropdownMenuItem>
+                </RowActions>
             </div>
         </div>
 
         <div class="flex flex-col gap-6">
+            <InlineAlert v-if="schedule.cancelled" variant="warning">
+                Sesi ini dibatalkan. Pendaftaran yang belum sampai hari
+                kehadiran ikut dibatalkan dan sesi tidak dapat diubah lagi.
+            </InlineAlert>
+
             <section class="bg-card flex flex-col gap-4 rounded-lg border p-6">
                 <h2 class="text-base leading-6 font-semibold">Informasi</h2>
                 <InfoList :items="info" />
             </section>
 
             <section class="flex flex-col gap-4">
-                <div class="flex items-center justify-between gap-3">
-                    <h2 class="text-base leading-6 font-semibold">Peserta</h2>
-                    <Button
-                        v-if="canAssign"
-                        type="button"
-                        class="h-10 px-4"
-                        @click="openAdd"
-                    >
-                        <UserPlus class="size-4" aria-hidden="true" />
-                        Tambah siswa
-                    </Button>
-                </div>
+                <h2 class="text-base leading-6 font-semibold">Peserta</h2>
                 <p
                     class="text-muted-foreground flex items-center gap-2 text-xs leading-4 md:hidden"
                 >
@@ -231,16 +255,16 @@ const crumbs = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
-                    label="Peserta jadwal"
+                    label="Peserta sesi"
                     :columns="columns"
                     :rows="participants"
                     row-class="h-16"
-                    table-class="min-w-[640px]"
+                    table-class="min-w-[560px]"
                 >
                     <template #cell-student="{ row }">
                         <div class="min-w-0">
                             <Link
-                                :href="route('siswa.show', row.student.id)"
+                                :href="route('students.show', row.student.id)"
                                 class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ row.student.name }}
@@ -256,108 +280,87 @@ const crumbs = computed(() => [
                         <StatusBadge :status="row.status" kind="registration" />
                     </template>
                     <template #cell-actions="{ row }">
-                        <div class="flex justify-end gap-1">
-                            <Button
-                                v-if="
-                                    row.status === 'terjadwal' && targets.length
-                                "
-                                type="button"
-                                variant="ghost"
-                                class="h-9 px-3"
-                                @click="startMove(row)"
+                        <div v-if="row.can_cancel" class="flex justify-end">
+                            <RowActions
+                                :label="`Aksi untuk ${row.student.name}`"
                             >
-                                <MoveRight class="size-4" aria-hidden="true" />
-                                Pindahkan
-                                <span class="sr-only">{{
-                                    row.student.name
-                                }}</span>
-                            </Button>
-                            <Button
-                                v-if="row.status === 'terjadwal'"
-                                type="button"
-                                variant="ghost"
-                                class="h-9 px-3"
-                                @click="removing = row"
-                            >
-                                Keluarkan
-                                <span class="sr-only"
-                                    >{{ row.student.name }} dari jadwal</span
+                                <DropdownMenuItem
+                                    class="text-danger h-10 gap-3 px-3 text-sm font-medium"
+                                    @select="startCancelEntry(row)"
                                 >
-                            </Button>
+                                    <Ban class="size-4" aria-hidden="true" />
+                                    Batalkan pendaftaran
+                                    <span class="sr-only">{{
+                                        row.student.name
+                                    }}</span>
+                                </DropdownMenuItem>
+                            </RowActions>
                         </div>
                     </template>
                     <template #empty>
                         <p class="text-muted-foreground p-6 text-sm">
-                            Belum ada siswa di jadwal ini.
+                            Belum ada siswa yang mendaftar di sesi ini.
                         </p>
                     </template>
                 </DataTable>
             </section>
         </div>
 
-        <Dialog v-model:open="addOpen">
-            <DialogContent class="max-h-[90vh] overflow-y-auto rounded-xl">
-                <DialogHeader>
-                    <DialogTitle>Tambah siswa ke jadwal</DialogTitle>
-                    <DialogDescription>
-                        Siswa Terverifikasi dari sekolah ini yang belum
-                        dijadwalkan. Operator sekolah akan diberi tahu.
-                    </DialogDescription>
-                </DialogHeader>
-                <InlineAlert v-if="assignError">{{ assignError }}</InlineAlert>
-                <EntryChecklist
-                    v-model="picked"
-                    :items="candidates"
-                    empty-text="Belum ada siswa terverifikasi yang belum dijadwalkan."
-                />
-                <DialogFooter>
-                    <Button variant="outline" @click="addOpen = false"
-                        >Batal</Button
-                    >
-                    <Button
-                        :disabled="!picked.length || assigning"
-                        @click="assign"
-                    >
-                        Jadwalkan {{ picked.length }} siswa
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-
         <ConfirmDialog
-            v-model:open="removeOpen"
-            :title="`Keluarkan ${removing?.student.name ?? ''}?`"
-            description="Siswa kembali menjadi Terverifikasi dan dapat dijadwalkan ulang."
-            confirm-label="Keluarkan"
+            v-model:open="cancelOpen"
+            :title="`Batalkan sesi ${schedule.location}?`"
+            :description="`${affected} pendaftaran akan dibatalkan dan kursinya dilepas. Siswa dapat mendaftar sesi lain. Sesi yang dibatalkan tidak dapat dibuka kembali.`"
+            confirm-label="Batalkan sesi"
             destructive
-            @confirm="remove"
-        />
-
-        <ConfirmDialog
-            v-model:open="deleteOpen"
-            title="Hapus jadwal ini?"
-            description="Jadwal tanpa peserta dihapus permanen dan tercatat di log aktivitas."
-            confirm-label="Hapus jadwal"
-            destructive
-            @confirm="destroy"
-        />
-
-        <ConfirmDialog
-            v-model:open="moveOpen"
-            :title="`Pindahkan ${moving?.student.name ?? ''}?`"
-            description="Siswa dipindahkan ke jadwal lain milik sekolah ini dan operator sekolah diberi tahu."
-            confirm-label="Pindahkan"
-            :confirm-disabled="targetId === null"
-            @confirm="move"
+            :confirm-disabled="cancelNote.trim().length < 5"
+            @confirm="cancelSession"
         >
-            <FormField v-slot="{ id }" label="Jadwal tujuan">
-                <SelectField
+            <FormField
+                v-slot="{ id, describedBy }"
+                label="Catatan"
+                hint="Wajib, minimal 5 karakter; jelaskan alasan pembatalan."
+            >
+                <Textarea
                     :id="id"
-                    v-model="targetId"
-                    :options="targetOptions"
-                    placeholder="Pilih jadwal tujuan"
+                    v-model="cancelNote"
+                    rows="3"
+                    maxlength="500"
+                    :aria-describedby="describedBy"
                 />
             </FormField>
         </ConfirmDialog>
+
+        <ConfirmDialog
+            v-model:open="entryOpen"
+            :title="`Batalkan pendaftaran ${cancelling?.student.name ?? ''}?`"
+            description="Pendaftaran dibatalkan, kursi dilepas, dan siswa diberi tahu. Siswa dapat mendaftar ke sesi lain."
+            confirm-label="Batalkan pendaftaran"
+            destructive
+            :confirm-disabled="entryNote.trim().length < 5"
+            @confirm="cancelEntry"
+        >
+            <FormField
+                v-slot="{ id, describedBy }"
+                label="Catatan"
+                hint="Wajib, minimal 5 karakter; dikirim ke siswa."
+            >
+                <Textarea
+                    :id="id"
+                    v-model="entryNote"
+                    rows="3"
+                    maxlength="500"
+                    :aria-describedby="describedBy"
+                />
+            </FormField>
+        </ConfirmDialog>
+
+        <ConfirmDialog
+            v-model:open="deleteOpen"
+            title="Hapus sesi ini?"
+            description="Sesi tanpa peserta dihapus permanen dan tercatat di log aktivitas."
+            confirm-label="Hapus sesi"
+            destructive
+            @confirm="destroy"
+        />
     </AppLayout>
 </template>

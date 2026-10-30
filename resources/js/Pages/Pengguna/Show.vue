@@ -64,7 +64,7 @@ const note = (a: ActivityRow) => {
 };
 
 const crumbs = [
-    { label: 'Pengguna', href: route('pengguna.index') },
+    { label: 'Pengguna', href: route('users.index') },
     { label: 'Detail pengguna' },
 ];
 </script>
@@ -111,7 +111,7 @@ const crumbs = [
                         variant="outline"
                         class="h-10 px-4"
                     >
-                        <Link :href="route('pengguna.edit', user.id)">
+                        <Link :href="route('users.edit', user.id)">
                             <Pencil class="size-4" aria-hidden="true" />
                             Ubah
                         </Link>
@@ -146,7 +146,7 @@ const crumbs = [
                     <Link
                         v-if="can(PERMISSIONS.LogLihat)"
                         :href="
-                            route('log.index', { filter: { user: user.id } })
+                            route('audit-logs.index', { filter: { user: user.id } })
                         "
                         class="text-primary text-sm font-medium hover:underline"
                     >

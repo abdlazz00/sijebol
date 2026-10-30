@@ -18,7 +18,7 @@ class EloquentStudentRepository implements StudentRepositoryInterface
 
     public function paginate(int $perPage = 20): LengthAwarePaginator
     {
-        $base = Student::query()->with(['school', 'documents', 'registrationEntries'])->orderBy('name')->orderBy('id');
+        $base = Student::query()->with(['school', 'documents', 'registrationEntries.schedule'])->orderBy('name')->orderBy('id');
 
         return QueryBuilder::for($base)
             ->allowedFilters(
@@ -50,18 +50,6 @@ class EloquentStudentRepository implements StudentRepositoryInterface
             )
             ->paginate($perPage)
             ->withQueryString();
-    }
-
-    public function searchForSchool(int $schoolId, ?string $q, int $perPage = 20): LengthAwarePaginator
-    {
-        $like = $q === null || trim($q) === ''
-            ? null
-            : '%'.str_replace(['\\', '%', '_'], ['\\\\', '\\%', '\\_'], trim($q)).'%';
-
-        return Student::query()->where('school_id', $schoolId)
-            ->when($like !== null, fn (Builder $b) => $b->where(fn (Builder $w) => $w->where('name', 'like', $like)->orWhere('nisn', 'like', $like)))
-            ->with(['documents', 'registrationEntries'])->orderBy('name')->orderBy('id')
-            ->paginate($perPage)->withQueryString();
     }
 
     public function create(array $attributes): Student

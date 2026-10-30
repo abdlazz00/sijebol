@@ -60,12 +60,12 @@ function submit() {
     const options = { onError: focusFirstInvalid };
 
     if (props.school)
-        form.put(route('sekolah.update', props.school.id), options);
-    else form.post(route('sekolah.store'), options);
+        form.put(route('schools.update', props.school.id), options);
+    else form.post(route('schools.store'), options);
 }
 
 const crumbs = computed(() => [
-    { label: 'Sekolah', href: route('sekolah.index') },
+    { label: 'Sekolah', href: route('schools.index') },
     { label: title.value },
 ]);
 </script>
@@ -168,7 +168,7 @@ const crumbs = computed(() => [
 
             <div class="mt-6 flex justify-end gap-2">
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link :href="route('sekolah.index')">Batal</Link>
+                    <Link :href="route('schools.index')">Batal</Link>
                 </Button>
                 <Button
                     type="submit"

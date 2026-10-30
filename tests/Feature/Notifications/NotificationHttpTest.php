@@ -22,8 +22,8 @@ class NotifikasiHttpUji extends BaseNotification
 }
 
 test('tamu diarahkan ke login', function () {
-    $this->get('/notifikasi')->assertRedirect('/login');
-    $this->post('/notifikasi/baca-semua')->assertRedirect('/login');
+    $this->get('/notifications')->assertRedirect('/login');
+    $this->post('/notifications/mark-all-read')->assertRedirect('/login');
 });
 
 test('daftar menampilkan notifikasi sendiri dan filter belum dibaca', function () {
@@ -32,10 +32,10 @@ test('daftar menampilkan notifikasi sendiri dan filter belum dibaca', function (
     $user->notify(new NotifikasiHttpUji);
     $user->notifications()->first()->markAsRead();
 
-    $this->actingAs($user)->get('/notifikasi')
+    $this->actingAs($user)->get('/notifications')
         ->assertInertia(fn ($p) => $p->component('Notifikasi/Index')->has('items.data', 2));
 
-    $this->actingAs($user)->get('/notifikasi?filter[status]=unread')
+    $this->actingAs($user)->get('/notifications?filter[status]=unread')
         ->assertInertia(fn ($p) => $p->has('items.data', 1));
 });
 
@@ -45,10 +45,10 @@ test('tandai satu dan semua dibaca', function () {
     $user->notify(new NotifikasiHttpUji);
     $id = $user->notifications()->first()->id;
 
-    $this->actingAs($user)->post("/notifikasi/{$id}/baca")->assertRedirect();
+    $this->actingAs($user)->post("/notifications/{$id}/mark-read")->assertRedirect();
     expect($user->unreadNotifications()->count())->toBe(1);
 
-    $this->actingAs($user)->post('/notifikasi/baca-semua')->assertRedirect();
+    $this->actingAs($user)->post('/notifications/mark-all-read')->assertRedirect();
     expect($user->unreadNotifications()->count())->toBe(0);
 });
 
@@ -57,14 +57,14 @@ test('notifikasi milik orang lain tidak bisa ditandai (404)', function () {
     $lain = User::factory()->create();
     $pemilik->notify(new NotifikasiHttpUji);
 
-    $this->actingAs($lain)->post('/notifikasi/'.$pemilik->notifications()->first()->id.'/baca')->assertNotFound();
+    $this->actingAs($lain)->post('/notifications/'.$pemilik->notifications()->first()->id.'/mark-read')->assertNotFound();
 });
 
 test('prop halaman tidak menimpa shared prop notifications di halaman notifikasi', function () {
     $user = User::factory()->create();
     $user->notify(new NotifikasiHttpUji);
 
-    $this->actingAs($user)->get('/notifikasi')
+    $this->actingAs($user)->get('/notifications')
         ->assertInertia(fn ($p) => $p->where('notifications.unread_count', 1)->has('notifications.latest', 1)->has('items.data', 1));
 });
 

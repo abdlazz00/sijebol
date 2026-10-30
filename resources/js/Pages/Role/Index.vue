@@ -47,7 +47,7 @@ function askDelete(role: RoleRow) {
 
 function destroy() {
     if (target.value)
-        router.delete(route('role.destroy', target.value.id), {
+        router.delete(route('roles.destroy', target.value.id), {
             preserveScroll: true,
         });
 }
@@ -61,7 +61,7 @@ function destroy() {
         >
             <template v-if="can(PERMISSIONS.RoleBuat)" #actions>
                 <Button as-child class="h-10 px-4">
-                    <Link :href="route('role.create')">
+                    <Link :href="route('roles.create')">
                         <Plus class="size-4" aria-hidden="true" />
                         Tambah role
                     </Link>
@@ -127,7 +127,7 @@ function destroy() {
                             class="text-primary h-10 min-w-10 px-2"
                         >
                             <Link
-                                :href="route('role.edit', row.id)"
+                                :href="route('roles.edit', row.id)"
                                 :aria-label="`Ubah role ${row.name}`"
                                 >Ubah</Link
                             >

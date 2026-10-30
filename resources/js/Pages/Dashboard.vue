@@ -80,20 +80,6 @@ const actionIcons = {
     'calendar-plus': CalendarPlus,
 } as const;
 
-// Fallback for schedules table
-const displaySchedulesTable = computed<UpcomingScheduleRow[]>(() => {
-    if (props.schedules_table && props.schedules_table.length > 0) {
-        return props.schedules_table;
-    }
-    return props.schedules.map((s, idx) => ({
-        id: idx + 1,
-        date: s.date,
-        school_name: s.school,
-        participants: s.participants,
-        location: s.location,
-        status: 'Dijadwalkan',
-    }));
-});
 </script>
 
 <template>
@@ -151,7 +137,7 @@ const displaySchedulesTable = computed<UpcomingScheduleRow[]>(() => {
             <div class="grid grid-cols-1 gap-6 lg:grid-cols-12">
                 <!-- Kolom Kiri: Tabel Jadwal Terdekat (~60% / 7 cols) -->
                 <div class="flex flex-col gap-6 lg:col-span-7">
-                    <DashboardUpcomingTable :schedules="displaySchedulesTable" />
+                    <DashboardUpcomingTable :schedules="schedules_table" />
 
                     <!-- Perlu Tindakan (Jika Ada) -->
                     <SectionCard v-if="actions.length" title="Perlu tindakan">

@@ -50,7 +50,7 @@ const tab =
         <div class="flex flex-col gap-4">
             <nav class="flex gap-2" aria-label="Filter notifikasi">
                 <Link
-                    :href="route('notifikasi.index')"
+                    :href="route('notifications.index')"
                     :class="[
                         tab,
                         !unreadOnly
@@ -63,7 +63,7 @@ const tab =
                 </Link>
                 <Link
                     :href="
-                        route('notifikasi.index', {
+                        route('notifications.index', {
                             filter: { status: 'unread' },
                         })
                     "

@@ -20,6 +20,6 @@ class AccountActivatedNotification extends BaseNotification
 
     public function url(): string
     {
-        return "/pengguna/{$this->activated->id}";
+        return "/users/{$this->activated->id}";
     }
 }

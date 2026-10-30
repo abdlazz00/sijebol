@@ -11,8 +11,10 @@ import type {
     QuickActionItem,
     UpcomingScheduleRow,
 } from '@/types/dashboard';
-import { flushPromises, mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { config, flushPromises, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const { permissions } = vi.hoisted(() => ({ permissions: [] as string[] }));
 
 vi.mock('@/Components/shared/ApexChart.vue', () => ({
     default: {
@@ -29,8 +31,12 @@ vi.mock('@inertiajs/vue3', () => ({
         props: ['href'],
         template: '<a :href="href"><slot /></a>',
     },
-    usePage: () => ({ props: { auth: { user: null } } }),
+    usePage: () => ({ props: { auth: { user: null, permissions } } }),
 }));
+
+beforeEach(() => {
+    permissions.length = 0;
+});
 
 describe('DashboardKpiCards', () => {
     it('merender 5 kartu KPI dengan label, format angka, dan badge persentase', () => {
@@ -115,6 +121,23 @@ describe('DashboardQuickActions', () => {
         expect(links[1].attributes('href')).toBe('/jadwal/buat');
     });
 
+    it('aksi Pindai Tiket memakai ikon scan-line yang terpetakan', () => {
+        const wrapper = mount(DashboardQuickActions, {
+            props: {
+                items: [
+                    {
+                        label: 'Pindai Tiket',
+                        href: '/jadwal',
+                        icon: 'scan-line',
+                        variant: 'amber',
+                    },
+                ],
+            },
+        });
+
+        expect(wrapper.find('a svg').attributes('class')).toMatch(/scan-line/);
+    });
+
     it('tidak merender apapun jika items kosong', () => {
         const wrapper = mount(DashboardQuickActions, { props: { items: [] } });
         expect(wrapper.find('[role="region"]').exists()).toBe(false);
@@ -184,6 +207,9 @@ describe('DashboardUpcomingTable', () => {
                 date: '2026-10-14',
                 school_name: 'SMAN 16 Batam',
                 participants: 45,
+                quota: 50,
+                waiting: 3,
+                present: 12,
                 location: 'Aula SMAN 16',
                 status: 'Hari Ini',
             },
@@ -192,6 +218,9 @@ describe('DashboardUpcomingTable', () => {
                 date: '2026-10-18',
                 school_name: 'SMKN 5 Batam',
                 participants: 60,
+                quota: 80,
+                waiting: 0,
+                present: 0,
                 location: 'Ruang Serbaguna',
                 status: 'Dijadwalkan',
             },
@@ -201,16 +230,53 @@ describe('DashboardUpcomingTable', () => {
 
         expect(wrapper.text()).toContain('Jadwal Perekaman Terdekat');
         expect(wrapper.text()).toContain('SMAN 16 Batam');
-        expect(wrapper.text()).toContain('45 peserta');
+        expect(wrapper.text()).toContain('45/50 kursi');
+        expect(wrapper.text()).toContain('3 menunggu verifikasi');
+        expect(wrapper.text()).toContain('12 sudah rekaman');
+        expect(wrapper.text()).toContain('60/80 kursi');
         expect(wrapper.text()).toContain('Hari Ini');
         expect(wrapper.text()).toContain('SMKN 5 Batam');
         expect(wrapper.text()).toContain('Dijadwalkan');
     });
 
-    it('merender empty state jika tidak ada jadwal', () => {
-        const wrapper = mount(DashboardUpcomingTable, { props: { schedules: [] } });
+    it('tautan Pindai hanya pada baris Hari Ini bagi pemegang rekaman.pindai', () => {
+        const baris = (id: number, status: string): UpcomingScheduleRow => ({
+            id,
+            date: '2026-10-14',
+            school_name: 'SMAN 16',
+            participants: 1,
+            quota: 30,
+            waiting: 0,
+            present: 0,
+            location: 'Aula',
+            status,
+        });
+        const schedules = [baris(1, 'Hari Ini'), baris(2, 'Dijadwalkan')];
+        const route = (name: string, id?: number) => `/${name}/${id}`;
+        vi.stubGlobal('route', route);
+        config.global.mocks = { route };
 
-        expect(wrapper.text()).toContain('Belum ada jadwal perekaman mendatang');
+        const tanpa = mount(DashboardUpcomingTable, { props: { schedules } });
+        expect(tanpa.text()).not.toContain('Pindai');
+
+        permissions.push('rekaman.pindai');
+        const dengan = mount(DashboardUpcomingTable, { props: { schedules } });
+        const tautan = dengan
+            .findAll('a')
+            .filter((a) => a.text().includes('Pindai'));
+        expect(tautan).toHaveLength(1);
+        expect(tautan[0].attributes('href')).toBe('/schedules.scan.show/1');
+        vi.unstubAllGlobals();
+    });
+
+    it('merender empty state jika tidak ada jadwal', () => {
+        const wrapper = mount(DashboardUpcomingTable, {
+            props: { schedules: [] },
+        });
+
+        expect(wrapper.text()).toContain(
+            'Belum ada jadwal perekaman mendatang',
+        );
     });
 });
 
@@ -231,8 +297,12 @@ describe('DashboardMiniCalendar & Dialog', () => {
         const wrapper = mount(DashboardMiniCalendar, { props: { events } });
 
         expect(wrapper.text()).toContain('Kalender Kegiatan');
-        expect(wrapper.find('button[aria-label="Bulan sebelumnya"]').exists()).toBe(true);
-        expect(wrapper.find('button[aria-label="Bulan berikutnya"]').exists()).toBe(true);
+        expect(
+            wrapper.find('button[aria-label="Bulan sebelumnya"]').exists(),
+        ).toBe(true);
+        expect(
+            wrapper.find('button[aria-label="Bulan berikutnya"]').exists(),
+        ).toBe(true);
     });
 
     it('merender dialog rincian agenda ketika dibuka', async () => {

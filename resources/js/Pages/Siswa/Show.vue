@@ -2,6 +2,7 @@
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DocumentPreviewDialog from '@/Components/shared/DocumentPreviewDialog.vue';
 import FileUpload from '@/Components/shared/FileUpload.vue';
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import InfoList from '@/Components/shared/InfoList.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
@@ -11,7 +12,7 @@ import { Button } from '@/Components/ui/button';
 import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate } from '@/lib/date';
+import { formatDate, formatDateWithDay, formatTimeRange } from '@/lib/date';
 import { initials } from '@/lib/format';
 import { PERMISSIONS } from '@/lib/permissions';
 import type {
@@ -63,11 +64,11 @@ const existing = (type: DocumentType) =>
     props.documents.find((d) => d.type === type) ?? null;
 
 function destroy() {
-    router.delete(route('siswa.destroy', props.student.id));
+    router.delete(route('students.destroy', props.student.id));
 }
 
 const crumbs = [
-    { label: 'Siswa', href: route('siswa.index') },
+    { label: 'Siswa', href: route('students.index') },
     { label: 'Detail siswa' },
 ];
 </script>
@@ -83,8 +84,13 @@ const crumbs = [
 
         <div class="flex flex-col gap-6">
             <InlineAlert v-if="locked" variant="warning">
-                Data siswa dikunci karena pendaftarannya sedang diproses.
-                Perubahan dibuka kembali bila petugas meminta perbaikan.
+                <template v-if="can(PERMISSIONS.SiswaUbah)">
+                    Terkunci untuk siswa. Anda tetap dapat mengoreksi; siswa
+                    akan diberi tahu.
+                </template>
+                <template v-else>
+                    Data tidak dapat diubah selama pendaftaran diproses.
+                </template>
             </InlineAlert>
 
             <section
@@ -106,6 +112,14 @@ const crumbs = [
                         </h2>
                         <p class="text-muted-foreground text-sm leading-5">
                             NISN {{ student.nisn }}
+                        </p>
+                        <KtpLangsungBadge v-if="student.ktp_langsung" />
+                        <p
+                            v-if="student.ktp_langsung"
+                            class="text-muted-foreground text-sm leading-5"
+                        >
+                            KTP-el dapat langsung diterbitkan: siswa sudah lebih
+                            dari 17 tahun.
                         </p>
                         <span
                             class="inline-flex h-6 items-center rounded-full px-2.5 text-xs font-medium whitespace-nowrap"
@@ -136,14 +150,14 @@ const crumbs = [
                 </div>
                 <div class="flex items-start gap-2">
                     <Button
-                        v-if="can(PERMISSIONS.SiswaUbah) && !locked"
+                        v-if="can(PERMISSIONS.SiswaUbah)"
                         as-child
                         variant="outline"
                         class="h-10 px-4"
                     >
-                        <Link :href="route('siswa.edit', student.id)">
+                        <Link :href="route('students.edit', student.id)">
                             <Pencil class="size-4" aria-hidden="true" />
-                            Ubah
+                            Koreksi data
                         </Link>
                     </Button>
                     <RowActions
@@ -172,7 +186,10 @@ const crumbs = [
                 <InfoList :items="info" />
             </section>
 
-            <section class="bg-card flex flex-col gap-4 rounded-lg border p-6">
+            <section
+                v-if="can(PERMISSIONS.DokumenLihat)"
+                class="bg-card flex flex-col gap-4 rounded-lg border p-6"
+            >
                 <div class="flex flex-col gap-1">
                     <h2 class="text-base leading-6 font-semibold">Dokumen</h2>
                     <p class="text-muted-foreground text-xs leading-4">
@@ -189,10 +206,10 @@ const crumbs = [
                         :can-upload="can(PERMISSIONS.DokumenUnggah) && !locked"
                         :can-delete="can(PERMISSIONS.DokumenHapus) && !locked"
                         :upload-url="
-                            route('siswa.dokumen.store', [student.id, doc.type])
+                            route('students.documents.store', [student.id, doc.type])
                         "
                         :delete-url="
-                            route('siswa.dokumen.destroy', [
+                            route('students.documents.destroy', [
                                 student.id,
                                 doc.type,
                             ])
@@ -210,14 +227,29 @@ const crumbs = [
                         :key="r.id"
                         class="flex flex-wrap items-center justify-between gap-2 text-sm"
                     >
-                        <Link
-                            v-if="can(PERMISSIONS.PendaftaranLihat)"
-                            :href="route('pendaftaran.show', r.id)"
-                            class="font-medium hover:underline"
+                        <component
+                            :is="can(PERMISSIONS.JadwalLihat) ? Link : 'span'"
+                            :href="
+                                can(PERMISSIONS.JadwalLihat)
+                                    ? route('schedules.show', r.schedule.id)
+                                    : undefined
+                            "
+                            class="font-medium"
+                            :class="
+                                can(PERMISSIONS.JadwalLihat)
+                                    ? 'hover:underline'
+                                    : ''
+                            "
                         >
-                            {{ r.title }}
-                        </Link>
-                        <span v-else class="font-medium">{{ r.title }}</span>
+                            {{ formatDateWithDay(r.schedule.date) }} ·
+                            {{
+                                formatTimeRange(
+                                    r.schedule.start_time,
+                                    r.schedule.end_time,
+                                )
+                            }}
+                            · {{ r.schedule.location }}
+                        </component>
                         <StatusBadge :status="r.status" kind="registration" />
                     </li>
                 </ul>

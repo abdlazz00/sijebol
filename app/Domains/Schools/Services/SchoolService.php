@@ -2,6 +2,7 @@
 
 namespace App\Domains\Schools\Services;
 
+use App\Domains\Access\Exceptions\AccessRuleException;
 use App\Domains\Schools\Models\School;
 use App\Domains\Schools\Repositories\Contracts\SchoolRepositoryInterface;
 use App\Models\User;
@@ -42,5 +43,38 @@ class SchoolService
     public function update(School $school, array $data): School
     {
         return $this->schools->update($school, $data);
+    }
+
+    /**
+     * Link pendaftaran per sekolah: operator hanya sekolahnya, staf tanpa sekolah semuanya.
+     *
+     * @return list<array{id: int, name: string, npsn: string, url: string, students_count: int}>
+     */
+    public function linksFor(User $actor): array
+    {
+        return $this->schools->withStudentCount($actor->school_id)->map(fn (School $s) => [
+            'id' => $s->id,
+            'name' => $s->name,
+            'npsn' => $s->npsn,
+            'url' => $s->registrationUrl(),
+            'students_count' => (int) $s->students_count,
+        ])->values()->all();
+    }
+
+    public function resetRegistrationToken(School $school, User $actor): School
+    {
+        if ($actor->school_id !== null && $actor->school_id !== $school->id) {
+            throw new AccessRuleException('Anda hanya dapat mengelola link sekolah Anda sendiri.');
+        }
+
+        $school->resetRegistrationToken();
+        activity('akses')->performedOn($school)->causedBy($actor)->log('sekolah.tautan_direset');
+
+        return $school;
+    }
+
+    public function findByRegistrationToken(string $token): ?School
+    {
+        return $this->schools->findByRegistrationToken($token);
     }
 }

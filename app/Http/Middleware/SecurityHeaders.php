@@ -43,7 +43,7 @@ class SecurityHeaders
 
     private function allowsSameOriginFraming(Request $request): bool
     {
-        return $request->routeIs('siswa.dokumen.preview');
+        return $request->routeIs('students.documents.preview');
     }
 
     private function cspEnabled(): bool

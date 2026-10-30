@@ -20,7 +20,7 @@ function contohNotifikasi(): BaseNotification
 
         public function url(): string
         {
-            return '/pengguna/5';
+            return '/users/5';
         }
     };
 }
@@ -36,7 +36,7 @@ test('notifikasi dasar antre dengan channel database dan mail', function () {
 
 test('toArray memuat title, body, dan url', function () {
     expect(contohNotifikasi()->toArray(new User))->toBe([
-        'title' => 'Judul', 'body' => 'Isi pesan.', 'url' => '/pengguna/5',
+        'title' => 'Judul', 'body' => 'Isi pesan.', 'url' => '/users/5',
     ]);
 });
 
@@ -48,5 +48,5 @@ test('email berbahasa Indonesia dengan tautan absolut', function () {
         ->and($mail->greeting)->toBe('Halo, Sari.')
         ->and($mail->introLines)->toBe(['Isi pesan.'])
         ->and($mail->actionText)->toBe('Buka di SIJEBOL')
-        ->and($mail->actionUrl)->toBe(url('/pengguna/5'));
+        ->and($mail->actionUrl)->toBe(url('/users/5'));
 });

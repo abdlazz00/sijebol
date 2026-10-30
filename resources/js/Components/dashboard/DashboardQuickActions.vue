@@ -7,6 +7,7 @@ import {
     Download,
     IdCard,
     Plus,
+    ScanLine,
     UserPlus,
     Zap,
 } from '@lucide/vue';
@@ -23,6 +24,7 @@ const iconMap: Record<string, Component> = {
     download: Download,
     'user-plus': UserPlus,
     'clipboard-check': ClipboardCheck,
+    'scan-line': ScanLine,
 };
 
 const variantClasses: Record<QuickActionItem['variant'], string> = {

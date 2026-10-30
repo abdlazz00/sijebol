@@ -517,3 +517,134 @@ Untuk melihat dan mengelola database `sijebol_prod` dan `sijebol_uat` langsung d
   systemctl restart ssh
   ufw enable
   ```
+
+## 9. Catatan Alur Mandiri Siswa (Fase 7a)
+
+### Batas unggah dokumen
+
+Aplikasi menyatakan berkas dokumen maksimal 5 MB sah, jadi server harus menerima minimal 6 MB:
+
+- PHP: `upload_max_filesize` dan `post_max_size` minimal `6M`.
+- Nginx (termasuk Nginx Proxy Manager): `client_max_body_size` minimal `6m`.
+
+Foto dari kamera HP dikecilkan otomatis di peramban sebelum diunggah, tetapi PDF tidak.
+
+### Memulai dari data kosong (sekali jalan)
+
+Menghapus semua data siswa, pendaftaran, jadwal, dan berkas dokumen. Akun pengguna, sekolah, dan log aktivitas tidak tersentuh.
+
+```bash
+php artisan sijebol:bersihkan-data-siswa          # meminta konfirmasi
+php artisan sijebol:bersihkan-data-siswa --force  # tanpa konfirmasi
+```
+
+Jalankan hanya sebelum rilis, dan cadangkan database lebih dulu.
+
+### Link pendaftaran sekolah
+
+Setiap sekolah mendapat token otomatis. Operator menyalin link dari menu **Link pendaftaran**; admin dapat mereset bila link bocor. Pendaftaran akun memakai email, jadi pengiriman email (SMTP produksi) harus sudah berfungsi sebelum siswa mendaftar.
+
+### Wajib setelah migrasi: jalankan ulang seeder role
+
+Role di database yang sudah ada tidak berubah sendiri. Tanpa langkah ini, role `siswa` belum ada (pendaftaran akun gagal) dan operator sekolah masih memegang hak ubah/hapus siswa yang seharusnya dicabut.
+
+```bash
+php artisan migrate --force
+php artisan db:seed --class=AccessSeeder --force
+```
+
+Seeder menyetel ulang izin tiga role bawaan (`admin-kecamatan`, `operator-sekolah`, `siswa`); perubahan izin yang pernah dibuat lewat UI pada role-role itu ikut tertimpa.
+
+## 10. Catatan Sesi Rekaman Berkuota (Fase 7b)
+
+### Urutan wajib saat memasang fase 7b
+
+Migrasi fase 7b mengubah `schedules` menjadi sesi (jam, kuota) dan `registration_students` menjadi pendaftaran sesi per siswa, serta **menghapus** tabel `registrations`. Migrasi ini satu arah dan menolak berjalan bila `schedules` atau `registration_students` masih berisi data lama.
+
+```bash
+# 0. Cadangkan database lebih dulu.
+php artisan sijebol:bersihkan-data-siswa      # data siswa, pendaftaran, jadwal lama dihapus
+php artisan migrate --force
+php artisan db:seed --class=AccessSeeder --force   # izin pendaftaran.lihat/buat untuk role siswa; pendaftaran.ajukan dicabut
+```
+
+Bila `migrate` berhenti dengan pesan "Data lama masih ada", jalankan perintah pembersihan di atas lalu ulangi migrasi.
+
+### Konfigurasi
+
+`config/sijebol.php` memuat `registration_close_days` (nilai awal `2`): pendaftaran sesi ditutup sekian hari sebelum tanggal sesi (hari terakhir mendaftar = tanggal sesi dikurangi nilai ini, inklusif). Siswa dapat membatalkan atau mengajukan ulang sampai sehari sebelum sesi.
+
+### Belum tersedia sampai fase 7c
+
+Notifikasi ke siswa (disetujui, perlu perbaikan, ditolak, sesi diubah atau dibatalkan), tiket dan QR, serta batas waktu perbaikan belum ada. Selama itu siswa hanya melihat status di halaman **Sesi rekaman**. Jangan dirilis ke siswa sungguhan sebelum fase 7c.
+
+## 11. Catatan Fase 7c (tiket, notifikasi siswa, scheduler)
+
+### Pemasangan
+
+```bash
+php artisan migrate --force      # hanya menambah kolom (ticket_code, tenggat, penanda pengingat) dan melonggarkan by_user_id; aman pada data yang ada
+npm ci && npm run build          # paket baru: qrcode (QR digambar di peramban)
+php artisan queue:restart
+```
+
+### Wajib hidup di server
+
+- **Cron `schedule:run` setiap menit** dan **worker antrean**. Dua perintah berjalan tiap jam: `sijebol:kedaluwarsakan` (melepas kursi yang lewat batas perbaikan atau sesinya sudah berakhir) dan `sijebol:kirim-pengingat` (pengingat batas perbaikan dan sesi H-1 sejak pukul 08.00 WIB). Tanpa cron, kursi tidak pernah dilepas otomatis dan pengingat tidak terkirim. Detail di `docs/operasional-queue.md`.
+- **Email**: semua keputusan, perubahan sesi, dan pengingat dikirim ke email siswa lewat antrean. SMTP produksi atau domain terverifikasi harus siap sebelum rilis (lihat catatan Resend free tier di spec bagian 11).
+- **HTTPS** untuk produksi (kamera pemindai di fase 7d membutuhkannya; halaman tiket sebaiknya juga lewat HTTPS).
+
+### Konfigurasi (`config/sijebol.php`)
+
+| Kunci | Nilai awal | Arti |
+|---|---|---|
+| `registration_close_days` | 2 | Pendaftaran sesi ditutup sekian hari sebelum sesi |
+| `fix_window_hours` | 48 | Batas perbaikan: sekian jam sejak diminta, tidak melewati akhir hari sebelum sesi |
+| `reminder_hour` | 8 | Pengingat sesi H-1 dikirim sejak jam ini (WIB) |
+
+### Gerbang rilis
+
+Dengan fase 7c, syarat rilis 7b terpenuhi (siswa diberi tahu atas keputusan, kursi dilepas otomatis). Pastikan penelusuran manual pada rencana 7c (Task 8) sudah dijalankan di DB dev, termasuk kode QR terbaca oleh pemindai QR di HP.
+
+## 12. Catatan Fase 7d (pindai QR, kehadiran otomatis, beranda, laporan)
+
+### Pemasangan
+
+```bash
+php artisan migrate --force                        # hanya menambah kolom registration_students.scanned_at; aman pada data yang ada
+php artisan db:seed --class=AccessSeeder --force   # WAJIB: membuat izin rekaman.pindai dan memberikannya ke super-admin dan admin-kecamatan
+npm ci && npm run build                            # paket baru: qr-scanner (pembaca QR dari kamera)
+php artisan queue:restart
+```
+
+Tanpa seeder, tombol **Pindai tiket** tidak muncul untuk siapa pun dan rute pindai menjawab 403. Operator sekolah dan siswa tidak diberi izin ini. Pemegang `rekaman.tandai` saja tidak dapat memindai: izin memindai dan izin menandai/membatalkan penandaan terpisah (atur di menu **Role**).
+
+### Wajib hidup di server
+
+- **HTTPS**: kamera peramban hanya bekerja lewat HTTPS (atau `localhost`). Halaman Pindai menjelaskan hal ini bila kamera tidak tersedia dan menautkan ke penandaan manual.
+- **Cron `schedule:run` setiap menit**: perintah baru `sijebol:tandai-tidak-hadir` berjalan tiap jam. Tanpa cron, siswa yang tidak datang tetap berstatus Terdaftar dan kursinya tidak dilepas.
+
+### Perilaku yang perlu diketahui petugas
+
+- Pemindaian dibuka pada **tanggal sesi saja**, mulai 60 menit sebelum jam mulai sampai 60 menit setelah jam selesai (`scan_tolerance_minutes`). Di luar itu tiket ditolak dengan pesan jam dibuka; penandaan manual tetap tersedia pada hari sesi.
+- Siswa **Terdaftar yang tidak terpindai** otomatis menjadi **Tidak hadir** mulai **hari setelah sesi** (bukan begitu jam selesai lewat), sehingga seluruh hari-H masih dapat dipakai untuk penandaan manual. Kursi dilepas dan siswa dapat mendaftar sesi lain keesokan harinya. Tidak ada notifikasi untuk status ini.
+- **Batalkan penandaan** (Penandaan rekaman) mengembalikan siswa ke Terdaftar dan mengosongkan waktu pindai, sehingga tiket dapat dipindai lagi.
+- Penandaan manual tidak mengisi waktu pindai; tiket yang ditandai manual dijawab "Siswa sudah ditandai sudah rekaman."
+- Setiap pindaian sukses dan setiap penolakan atas tiket yang dikenal tercatat di **Log aktivitas** (`Tiket dipindai`, `Pindai tiket ditolak`). Kode yang tidak dikenal tidak dicatat. Pindaian tidak mengirim notifikasi ke operator sekolah.
+
+### Konfigurasi (`config/sijebol.php`)
+
+| Kunci | Nilai awal | Arti |
+|---|---|---|
+| `scan_tolerance_minutes` | 60 | Pemindaian dibuka sekian menit sebelum jam mulai dan ditutup sekian menit setelah jam selesai |
+
+### Beranda dan Laporan
+
+- Sesi yang **dibatalkan** tidak lagi tampil di Jadwal terdekat, tabel jadwal, dan kalender beranda. Tabel jadwal menampilkan kursi terisi/kuota, jumlah menunggu verifikasi, dan jumlah sudah rekaman; sesi **Hari Ini** punya tautan **Pindai** bagi pemegang izin.
+- Tren bulanan **Sudah Rekam** memakai bulan **tanggal sesi** (sebelumnya bulan terakhir data diubah). Angka historis dapat bergeser setelah rilis ini.
+- Aksi cepat **Input Hasil Perekaman** diganti **Pindai Tiket**.
+- Halaman **Laporan** mendapat tabel **Kehadiran per sesi** (menurut tanggal sesi) dan ekspor Excel kedua (`rekap-kehadiran-sesi.xlsx`). Rekap pendaftaran per sekolah tetap menurut tanggal pendaftaran. Kehadiran = (Sudah rekaman + Belum rekaman) dibagi (Sudah rekaman + Belum rekaman + Tidak hadir).
+
+### Gerbang rilis
+
+Penelusuran manual pada rencana 7d (Task 8) harus lulus di DB dev sebelum rilis: pindai QR dari HP lain lewat HTTPS, pindai ulang, tiket sesi lain, batalkan penandaan lalu pindai lagi, jalankan `sijebol:tandai-tidak-hadir` setelah menggeser tanggal sesi, periksa label KTP-el langsung, beranda, dan kedua ekspor.

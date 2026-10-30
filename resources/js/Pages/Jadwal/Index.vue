@@ -12,7 +12,7 @@ import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { useDataTable } from '@/composables/useDataTable';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDateWithDay } from '@/lib/date';
+import { formatDateWithDay, formatTimeRange } from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
 import { registrationStatus } from '@/lib/status';
 import type { Paginator } from '@/types/access';
@@ -57,26 +57,29 @@ const schoolOptions = computed(() =>
 );
 
 const columns = computed(() => [
-    { key: 'date', label: 'Jadwal', class: 'w-[280px]' },
+    { key: 'date', label: 'Sesi', class: 'w-[300px]' },
     ...(props.schools ? [{ key: 'school', label: 'Sekolah' }] : []),
-    { key: 'participants_count', label: 'Peserta', class: 'w-[96px]' },
+    { key: 'quota', label: 'Kuota', class: 'w-[140px]' },
     { key: 'counts', label: 'Ringkasan status' },
     { key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' },
 ]);
 </script>
 
 <template>
-    <AppLayout title="Jadwal">
-        <PageHeader title="Jadwal" description="Jadwal perekaman per sekolah.">
+    <AppLayout title="Sesi rekaman">
+        <PageHeader
+            title="Sesi rekaman"
+            description="Sesi perekaman per sekolah, lengkap dengan kuota."
+        >
             <template #actions>
                 <Button
                     v-if="can(PERMISSIONS.JadwalBuat)"
                     as-child
                     class="h-10 px-4"
                 >
-                    <Link :href="route('jadwal.create')">
+                    <Link :href="route('schedules.create')">
                         <Plus class="size-4" aria-hidden="true" />
-                        Buat jadwal
+                        Buat sesi
                     </Link>
                 </Button>
             </template>
@@ -86,7 +89,7 @@ const columns = computed(() => [
             <div class="grid grid-cols-2 gap-4 lg:flex lg:items-start">
                 <FormField
                     v-slot="{ id }"
-                    label="Cari jadwal"
+                    label="Cari sesi"
                     class="col-span-2 lg:flex-1"
                 >
                     <SearchInput
@@ -127,17 +130,17 @@ const columns = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
-                    label="Daftar jadwal"
+                    label="Daftar sesi rekaman"
                     :columns="columns"
                     :rows="schedules.data"
                     :loading="loading"
                     row-class="h-16"
-                    table-class="min-w-[800px]"
+                    table-class="min-w-[880px]"
                 >
                     <template #cell-date="{ row }">
                         <div class="min-w-0">
                             <Link
-                                :href="route('jadwal.show', row.id)"
+                                :href="route('schedules.show', row.id)"
                                 class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
                             >
                                 {{ formatDateWithDay(row.date) }}
@@ -145,14 +148,30 @@ const columns = computed(() => [
                             <p
                                 class="text-muted-foreground truncate text-xs leading-4"
                             >
-                                {{ row.location
-                                }}<template v-if="row.is_past">
+                                {{
+                                    formatTimeRange(
+                                        row.start_time,
+                                        row.end_time,
+                                    )
+                                }}<template v-if="row.cancelled">
+                                    · Dibatalkan</template
+                                ><template v-else-if="row.is_past">
                                     · Sudah lewat</template
                                 >
+                            </p>
+                            <p
+                                class="text-muted-foreground truncate text-xs leading-4"
+                            >
+                                {{ row.location }}
                             </p>
                         </div>
                     </template>
                     <template #cell-school="{ row }">{{ row.school }}</template>
+                    <template #cell-quota="{ row }">
+                        <span class="text-sm"
+                            >{{ row.taken }} dari {{ row.quota }} kursi</span
+                        >
+                    </template>
                     <template #cell-counts="{ row }">
                         <p
                             v-if="!row.participants_count"
@@ -178,13 +197,13 @@ const columns = computed(() => [
                     <template #cell-actions="{ row }">
                         <div class="flex justify-end">
                             <RowActions
-                                :label="`Aksi untuk jadwal ${row.location}`"
+                                :label="`Aksi untuk sesi ${row.location}`"
                             >
                                 <DropdownMenuItem
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('jadwal.show', row.id)">
+                                    <Link :href="route('schedules.show', row.id)">
                                         <Eye
                                             class="size-4"
                                             aria-hidden="true"
@@ -193,11 +212,14 @@ const columns = computed(() => [
                                     </Link>
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
-                                    v-if="can(PERMISSIONS.JadwalUbah)"
+                                    v-if="
+                                        can(PERMISSIONS.JadwalUbah) &&
+                                        !row.cancelled
+                                    "
                                     as-child
                                     class="h-10 gap-3 px-3 text-sm font-medium"
                                 >
-                                    <Link :href="route('jadwal.edit', row.id)">
+                                    <Link :href="route('schedules.edit', row.id)">
                                         <Pencil
                                             class="size-4"
                                             aria-hidden="true"
@@ -212,7 +234,7 @@ const columns = computed(() => [
                                 >
                                     <Link
                                         :href="
-                                            route('jadwal.rekaman.show', row.id)
+                                            route('schedules.recording.show', row.id)
                                         "
                                     >
                                         <ClipboardCheck
@@ -230,7 +252,7 @@ const columns = computed(() => [
                             v-if="hasFilters"
                             :icon="Search"
                             title="Tidak ada hasil"
-                            description="Tidak ada jadwal yang sesuai dengan pencarian atau filter Anda."
+                            description="Tidak ada sesi yang sesuai dengan pencarian atau filter Anda."
                         >
                             <template #action>
                                 <Button
@@ -244,16 +266,16 @@ const columns = computed(() => [
                         <EmptyState
                             v-else
                             :icon="CalendarDays"
-                            title="Belum ada jadwal"
-                            description="Jadwal perekaman akan muncul di sini setelah dibuat oleh admin kecamatan."
+                            title="Belum ada sesi"
+                            description="Sesi rekaman akan muncul di sini setelah dibuat oleh admin kecamatan."
                         >
                             <template
                                 v-if="can(PERMISSIONS.JadwalBuat)"
                                 #action
                             >
                                 <Button as-child class="h-9">
-                                    <Link :href="route('jadwal.create')"
-                                        >Buat jadwal</Link
+                                    <Link :href="route('schedules.create')"
+                                        >Buat sesi</Link
                                     >
                                 </Button>
                             </template>

@@ -2,7 +2,8 @@
 
 namespace App\Domains\Registrations\Services;
 
-use App\Domains\Notifications\Notifications\EntryDecidedNotification;
+use App\Domains\Access\Exceptions\AccessRuleException;
+use App\Domains\Notifications\Notifications\RegistrationNotification;
 use App\Domains\Notifications\Services\NotificationService;
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Registrations\Models\RegistrationStudent;
@@ -11,13 +12,14 @@ use App\Domains\Students\Services\EligibilityService;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 
 class VerificationService
 {
     /** Kata keputusan di request -> status tujuan. */
     private const DECISIONS = [
-        'approve' => RegistrationStatus::Terverifikasi,
+        'approve' => RegistrationStatus::Terdaftar,
         'fix' => RegistrationStatus::PerluPerbaikan,
         'reject' => RegistrationStatus::Ditolak,
     ];
@@ -25,8 +27,8 @@ class VerificationService
     public function __construct(
         private readonly RegistrationRepositoryInterface $registrations,
         private readonly StatusTransitioner $transitions,
-        private readonly NotificationService $notifications,
         private readonly EligibilityService $eligibility,
+        private readonly NotificationService $notifications,
     ) {}
 
     /** @return LengthAwarePaginator<int, RegistrationStudent> */
@@ -35,27 +37,54 @@ class VerificationService
         return $this->registrations->queue();
     }
 
-    /** @param 'approve'|'fix'|'reject' $decision */
+    /**
+     * Keputusan satu pendaftaran. Setujui menerbitkan kode tiket; minta perbaikan memberi tenggat dan hanya boleh
+     * sampai sehari sebelum sesi. Siswa diberi tahu setelah transaksi selesai.
+     *
+     * @param  'approve'|'fix'|'reject'  $decision
+     */
     public function decide(RegistrationStudent $entry, string $decision, ?string $note, User $actor): void
     {
         $to = self::DECISIONS[$decision];
+        $schedule = $entry->schedule;
 
-        DB::transaction(function () use ($entry, $to, $note, $actor) {
-            $this->transitions->move($entry, $to, $actor, $note);
-            activity('pendaftaran')->performedOn($entry->registration)->causedBy($actor)
+        if ($schedule->isPast()) {
+            throw new AccessRuleException('Sesi sudah lewat; pendaftaran ini akan kedaluwarsa.');
+        }
+        if ($to === RegistrationStatus::PerluPerbaikan && $schedule->isOpenForMarking()) {
+            throw new AccessRuleException('Permintaan perbaikan hanya dapat dibuat sampai sehari sebelum sesi; pada hari sesi pilih Setujui atau Tolak.');
+        }
+
+        $attributes = match ($to) {
+            RegistrationStatus::Terdaftar => $this->ticketAttributes(),
+            RegistrationStatus::PerluPerbaikan => ['fix_deadline_at' => $schedule->fixDeadlineFrom(now()), 'fix_reminded_at' => null],
+            default => [],
+        };
+
+        DB::transaction(function () use ($entry, $to, $note, $actor, $attributes, $schedule) {
+            if ($to === RegistrationStatus::Terdaftar) {
+                $check = $this->eligibility->check($entry->student()->with(['documents', 'registrationEntries'])->firstOrFail(), $schedule->date, $entry->id);
+                if (! $check['eligible']) {
+                    throw new AccessRuleException(implode(' ', $check['reasons']));
+                }
+            }
+
+            $this->transitions->move($entry, $to, $actor, $note, $attributes);
+            activity('pendaftaran')->performedOn($entry)->causedBy($actor)
                 ->withProperties(['siswa_id' => $entry->student_id, 'keputusan' => $to->value])->log('pendaftaran.diputuskan');
         });
 
-        $this->notifications->toSchool(
-            'pendaftaran.lihat',
-            new EntryDecidedNotification($to, $entry->student->name, $entry->registration_id, $note),
-            $entry->school_id,
-        );
+        $this->notifications->toStudent($entry->student, match ($to) {
+            RegistrationStatus::Terdaftar => $this->approvedNotification($entry),
+            RegistrationStatus::PerluPerbaikan => RegistrationNotification::needsFix($note ?? '', $attributes['fix_deadline_at']),
+            default => RegistrationNotification::rejected($note ?? ''),
+        });
     }
 
     /**
-     * Menyetujui banyak entri sekaligus: seluruhnya berhasil atau seluruhnya gagal. Kelayakan diperiksa ulang
-     * per entri (umur pada tanggal pengajuan, dokumen, entri aktif lain).
+     * Menyetujui banyak pendaftaran sekaligus: seluruhnya berhasil atau seluruhnya gagal. Kelayakan diperiksa ulang
+     * per pendaftaran pada tanggal sesinya (umur, dokumen, pendaftaran aktif lain). Tiket terbit per pendaftaran dan
+     * setiap siswa mendapat satu notifikasi setelah transaksi.
      *
      * @param  list<int>  $entryIds
      */
@@ -63,47 +92,46 @@ class VerificationService
     {
         $approved = DB::transaction(function () use ($entryIds, $actor) {
             $entries = $this->registrations->lockEntries($entryIds);
-            if ($entries->count() !== count(array_unique($entryIds)) || $entries->contains(fn (RegistrationStudent $e) => $e->status !== RegistrationStatus::Diajukan)) {
-                throw ValidationException::withMessages(['entry_ids' => 'Sebagian entri sudah diputuskan; muat ulang halaman lalu coba lagi.']);
+            if ($entries->count() !== count(array_unique($entryIds)) || $entries->contains(fn (RegistrationStudent $e) => $e->status !== RegistrationStatus::MenungguVerifikasi)) {
+                throw ValidationException::withMessages(['entry_ids' => 'Sebagian pendaftaran sudah diputuskan; muat ulang halaman lalu coba lagi.']);
             }
 
             foreach ($entries as $entry) {
-                $check = $this->eligibility->check($entry->student, $entry->registration->submitted_at, $entry->registration_id);
+                if ($entry->schedule->isPast()) {
+                    throw ValidationException::withMessages(['entry_ids' => "{$entry->student->name} tidak dapat disetujui: sesinya sudah lewat."]);
+                }
+                $check = $this->eligibility->check($entry->student, $entry->schedule->date, $entry->id);
                 if (! $check['eligible']) {
                     throw ValidationException::withMessages(['entry_ids' => "{$entry->student->name} tidak dapat disetujui: {$check['reasons'][0]}"]);
                 }
             }
 
             foreach ($entries as $entry) {
-                $this->transitions->move($entry, RegistrationStatus::Terverifikasi, $actor);
-                activity('pendaftaran')->performedOn($entry->registration)->causedBy($actor)
-                    ->withProperties(['siswa_id' => $entry->student_id, 'keputusan' => RegistrationStatus::Terverifikasi->value, 'massal' => true])->log('pendaftaran.diputuskan');
+                $this->transitions->move($entry, RegistrationStatus::Terdaftar, $actor, null, $this->ticketAttributes());
+                activity('pendaftaran')->performedOn($entry)->causedBy($actor)
+                    ->withProperties(['siswa_id' => $entry->student_id, 'keputusan' => RegistrationStatus::Terdaftar->value, 'massal' => true])->log('pendaftaran.diputuskan');
             }
 
             return $entries;
         });
 
-        // Satu notifikasi per pendaftaran, bukan per siswa.
-        foreach ($approved->groupBy('registration_id') as $registrationId => $group) {
-            $this->notifications->toSchool(
-                'pendaftaran.lihat',
-                new EntryDecidedNotification(RegistrationStatus::Terverifikasi, self::summary($group->map(fn (RegistrationStudent $e) => $e->student->name)->all()), (int) $registrationId, null),
-                $group->first()->school_id,
-            );
+        foreach ($approved as $entry) {
+            $this->notifications->toStudent($entry->student, $this->approvedNotification($entry));
         }
 
         return $approved->count();
     }
 
-    /** @param list<string> $names */
-    private static function summary(array $names): string
+    /** @return array<string, mixed> */
+    private function ticketAttributes(): array
     {
-        $n = count($names);
+        return ['ticket_code' => Str::random(32), 'fix_deadline_at' => null, 'fix_reminded_at' => null];
+    }
 
-        return match (true) {
-            $n === 1 => $names[0],
-            $n <= 3 => "{$n} siswa: ".implode(', ', $names).'.',
-            default => "{$n} siswa: {$names[0]}, {$names[1]}, dan ".($n - 2).' lainnya.',
-        };
+    private function approvedNotification(RegistrationStudent $entry): RegistrationNotification
+    {
+        $schedule = $entry->schedule;
+
+        return RegistrationNotification::approved($entry->id, $schedule->date->toDateString(), $schedule->start_time, $schedule->end_time, $schedule->location);
     }
 }

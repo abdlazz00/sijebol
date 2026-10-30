@@ -13,3 +13,8 @@ test('rute verifikasi email tidak ada', function () {
 test('halaman utama mengalihkan ke dashboard', function () {
     $this->get('/')->assertRedirect('/dashboard');
 });
+
+test('halaman daftar tanpa token yang dikenal tampil sebagai tidak berlaku, bukan 404', function () {
+    $this->get('/register/token-acak')->assertOk()
+        ->assertInertia(fn ($page) => $page->component('Daftar/Index')->where('valid', false));
+});

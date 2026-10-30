@@ -100,8 +100,8 @@ class StudentDocumentService
             'name' => $this->fileName($student, $d),
             'size' => $d->size,
             'mime' => $d->mime,
-            'url' => route('siswa.dokumen.download', [$student, $d->type]),
-            'preview_url' => route('siswa.dokumen.preview', [$student, $d->type]),
+            'url' => route('students.documents.download', [$student, $d->type]),
+            'preview_url' => route('students.documents.preview', [$student, $d->type]),
         ])->values()->all();
     }
 

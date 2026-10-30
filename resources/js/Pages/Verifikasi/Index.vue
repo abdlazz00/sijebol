@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
 import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
@@ -13,10 +14,15 @@ import { Checkbox } from '@/Components/ui/checkbox';
 import { useDataTable } from '@/composables/useDataTable';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatWhen } from '@/lib/date';
+import {
+    formatDate,
+    formatDateWithDay,
+    formatTimeRange,
+    formatWhen,
+} from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { Paginator } from '@/types/access';
-import type { QueueRow } from '@/types/registration';
+import type { QueueRow, QueueSession } from '@/types/registration';
 import { Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { BadgeCheck, Search } from '@lucide/vue';
@@ -26,14 +32,16 @@ const props = defineProps<{
     queue: Paginator<QueueRow>;
     filters: Record<string, string | undefined>;
     schools: { id: number; name: string }[] | null;
+    sessions: QueueSession[];
 }>();
 
 const { filters, loading, apply, reset } = useDataTable('/verifikasi', {
     search: props.filters.search ?? '',
     school_id: props.filters.school_id ?? '',
+    schedule_id: props.filters.schedule_id ?? '',
 });
 
-watch(() => filters.school_id, apply);
+watch(() => [filters.school_id, filters.schedule_id], apply);
 watch(() => filters.search, useDebounceFn(apply, 300));
 
 const hasFilters = computed(() =>
@@ -41,6 +49,12 @@ const hasFilters = computed(() =>
 );
 const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
+);
+const sessionOptions = computed(() =>
+    props.sessions.map((s) => ({
+        value: s.id,
+        label: `${formatDate(s.date)} · ${formatTimeRange(s.start_time, s.end_time)} · ${s.location}${s.school ? ` (${s.school})` : ''}`,
+    })),
 );
 
 const { can } = usePermission();
@@ -75,7 +89,7 @@ function toggleAll(on: boolean) {
 
 function approve() {
     router.post(
-        route('verifikasi.setujui'),
+        route('verifications.approve-batch'),
         { entry_ids: selected.value },
         {
             preserveScroll: true,
@@ -97,8 +111,8 @@ const columns = computed(() => [
         : []),
     { key: 'student', label: 'Siswa', class: 'w-[240px]' },
     ...(props.schools ? [{ key: 'school', label: 'Sekolah' }] : []),
-    { key: 'registration', label: 'Pendaftaran' },
-    { key: 'since', label: 'Diajukan', class: 'w-[160px]' },
+    { key: 'session', label: 'Sesi' },
+    { key: 'since', label: 'Mendaftar', class: 'w-[160px]' },
     { key: 'actions', label: 'Aksi', class: 'w-[120px] text-right' },
 ]);
 </script>
@@ -107,7 +121,7 @@ const columns = computed(() => [
     <AppLayout title="Antrean verifikasi">
         <PageHeader
             title="Antrean verifikasi"
-            description="Periksa siswa yang diajukan sekolah; putuskan satu per satu atau setujui beberapa sekaligus."
+            description="Periksa siswa yang mendaftar sesi rekaman; putuskan satu per satu atau setujui beberapa sekaligus."
         />
 
         <div class="flex flex-col gap-6">
@@ -122,6 +136,19 @@ const columns = computed(() => [
                         :model-value="String(filters.search ?? '')"
                         placeholder="Cari nama atau NISN"
                         @update:model-value="filters.search = $event"
+                    />
+                </FormField>
+                <FormField
+                    v-if="sessions.length"
+                    v-slot="{ id }"
+                    label="Sesi rekaman"
+                    class="col-span-2 lg:w-[320px]"
+                >
+                    <SelectField
+                        :id="id"
+                        v-model="filters.schedule_id"
+                        :options="sessionOptions"
+                        all-label="Semua sesi"
                     />
                 </FormField>
                 <FormField
@@ -205,6 +232,25 @@ const columns = computed(() => [
                             >
                                 NISN {{ row.student.nisn }}
                             </p>
+                            <KtpLangsungBadge v-if="row.student.ktp_langsung" />
+                        </div>
+                    </template>
+                    <template #cell-session="{ row }">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm leading-5 font-medium">
+                                {{ formatDateWithDay(row.session.date) }}
+                            </p>
+                            <p
+                                class="text-muted-foreground truncate text-xs leading-4"
+                            >
+                                {{
+                                    formatTimeRange(
+                                        row.session.start_time,
+                                        row.session.end_time,
+                                    )
+                                }}
+                                · {{ row.session.location }}
+                            </p>
                         </div>
                     </template>
                     <template #cell-since="{ row }">{{
@@ -213,7 +259,7 @@ const columns = computed(() => [
                     <template #cell-actions="{ row }">
                         <div class="flex justify-end">
                             <Button as-child class="h-9 px-3">
-                                <Link :href="route('verifikasi.show', row.id)">
+                                <Link :href="route('verifications.show', row.id)">
                                     Periksa
                                     <span class="sr-only">{{
                                         row.student.name
@@ -242,7 +288,7 @@ const columns = computed(() => [
                             v-else
                             :icon="BadgeCheck"
                             title="Tidak ada antrean verifikasi"
-                            description="Siswa yang diajukan sekolah akan muncul di sini."
+                            description="Siswa yang mendaftar sesi rekaman akan muncul di sini."
                         />
                     </template>
                 </DataTable>
