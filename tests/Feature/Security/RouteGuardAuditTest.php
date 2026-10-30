@@ -18,7 +18,7 @@ function auditPublicUris(): array
 /** Rute ber-auth tanpa `can:` karena hanya menyentuh akun atau notifikasi pengguna sendiri. */
 function auditOwnAccountNames(): array
 {
-    return ['dashboard', 'logout', 'password.update', 'profile.edit', 'profile.update', 'notifications.index', 'notifications.mark-read', 'notifications.mark-all-read'];
+    return ['dashboard', 'logout', 'password.update', 'profile.edit', 'profile.update', 'profile.sessions.destroy', 'notifications.index', 'notifications.mark-read', 'notifications.mark-all-read'];
 }
 
 /** @return list<LaravelRoute> */

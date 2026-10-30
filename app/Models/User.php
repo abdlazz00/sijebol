@@ -8,6 +8,7 @@ use App\Domains\Access\Models\Role;
 use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use App\Models\Concerns\ScopedBySchool;
+use Carbon\Carbon;
 use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
@@ -25,6 +26,7 @@ use Spatie\Permission\Traits\HasRoles;
 
 /**
  * @property-read UserStatus $status
+ * @property Carbon|null $last_login_at
  */
 #[Fillable(['name', 'email', 'password', 'phone', 'school_id', 'is_active', 'activated_at', 'created_by'])]
 #[Hidden(['password', 'remember_token'])]

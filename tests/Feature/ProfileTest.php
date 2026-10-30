@@ -1,6 +1,9 @@
 <?php
 
+use App\Domains\Schools\Models\School;
+use App\Domains\Students\Models\Student;
 use App\Models\User;
+use App\Support\Nik;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -51,4 +54,55 @@ test('nomor HP kosong disimpan sebagai null', function () {
     $this->actingAs($user)->patch('/profile', ['name' => 'X', 'phone' => ''])->assertSessionHasNoErrors();
 
     expect($user->fresh()->phone)->toBeNull();
+});
+
+test('identitas siswa memuat data siswa dengan NIK dimasker dan umur', function () {
+    $school = School::factory()->create();
+    $akun = makeUserWith(['profil.lihat'], $school, true, 'siswa');
+    $siswa = Student::factory()->for($school)->create(['user_id' => $akun->id]);
+
+    $this->actingAs($akun)->get('/profile')
+        ->assertInertia(fn ($page) => $page->component('Profile/Edit')
+            ->where('identity.student.nik', Nik::mask($siswa->nik))
+            ->where('identity.student.nisn', $siswa->nisn)
+            ->where('identity.student.age', $siswa->birth_date->age)
+            ->where('identity.student.gender', $siswa->gender)
+            ->where('identity.school', $school->name)
+            ->where('identity.can_open_student_data', true));
+});
+
+test('identitas siswa tanpa baris Student tetap valid', function () {
+    $school = School::factory()->create();
+    $akun = makeUserWith(['profil.lihat'], $school, true, 'siswa');
+
+    $this->actingAs($akun)->get('/profile')
+        ->assertInertia(fn ($page) => $page
+            ->where('identity.student', null)
+            ->where('identity.school', $school->name)
+            ->where('identity.can_open_student_data', true));
+});
+
+test('identitas operator memuat sekolah dan deskripsi role', function () {
+    $school = School::factory()->create();
+    $operator = makeUserWith([], $school, true, 'operator-sekolah');
+    $operator->currentRole()->update(['description' => 'Memantau siswa dan sesi di sekolah']);
+
+    $this->actingAs($operator->fresh())->get('/profile')
+        ->assertInertia(fn ($page) => $page
+            ->where('identity.student', null)
+            ->where('identity.school', $school->name)
+            ->where('identity.access', 'Memantau siswa dan sesi di sekolah')
+            ->where('identity.can_open_student_data', false));
+});
+
+test('identitas admin tanpa sekolah dan tanpa login terakhir', function () {
+    $admin = makeUserWith([], roleName: 'admin-kecamatan');
+
+    $this->actingAs($admin)->get('/profile')
+        ->assertInertia(fn ($page) => $page
+            ->where('identity.school', null)
+            ->where('identity.access', null)
+            ->where('identity.last_login_at', null)
+            ->where('identity.can_open_student_data', false)
+            ->where('identity.created_at', fn ($v) => is_string($v) && $v !== ''));
 });

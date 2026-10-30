@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import LogoutOtherDevicesDialog from '@/Components/profile/LogoutOtherDevicesDialog.vue';
+import ProfileIdentityCard from '@/Components/profile/ProfileIdentityCard.vue';
 import FormField from '@/Components/shared/FormField.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import PasswordInput from '@/Components/shared/PasswordInput.vue';
@@ -8,6 +10,7 @@ import { Input } from '@/Components/ui/input';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { humanize } from '@/lib/format';
+import type { ProfileIdentity } from '@/types/profile';
 import { useForm } from '@inertiajs/vue3';
 import { LoaderCircle, Lock } from '@lucide/vue';
 import { ref } from 'vue';
@@ -19,6 +22,7 @@ const props = defineProps<{
         phone: string | null;
         role: string | null;
     };
+    identity: ProfileIdentity;
 }>();
 
 const info = useForm({
@@ -65,155 +69,200 @@ function savePassword() {
         onSuccess: () => password.reset(),
     });
 }
+
+const devicesOpen = ref(false);
 </script>
 
 <template>
     <AppLayout title="Profil">
         <PageHeader
             title="Profil"
-            description="Kelola informasi akun dan password Anda."
+            description="Kelola informasi akun dan keamanan Anda."
         />
 
-        <div class="flex max-w-[720px] flex-col gap-6">
-            <form
-                class="bg-card flex flex-col gap-4 rounded-lg border p-6"
-                novalidate
-                @submit.prevent="saveInfo"
-            >
-                <h2 class="text-base leading-6 font-semibold">
-                    Informasi profil
-                </h2>
+        <div
+            class="grid items-start gap-6 xl:grid-cols-[320px_minmax(0,720px)]"
+        >
+            <ProfileIdentityCard
+                :name="profile.name"
+                :role="profile.role"
+                :identity="identity"
+            />
 
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Nama lengkap"
-                    required
-                    :error="infoErrors.name ?? info.errors.name"
+            <div class="flex min-w-0 flex-col gap-6">
+                <form
+                    class="bg-card flex flex-col gap-4 rounded-lg border p-6"
+                    novalidate
+                    @submit.prevent="saveInfo"
                 >
-                    <Input
-                        :id="id"
-                        v-model="info.name"
-                        class="h-10"
-                        autocomplete="name"
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
+                    <h2 class="text-base leading-6 font-semibold">
+                        Informasi kontak
+                    </h2>
 
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Nomor HP"
-                    optional
-                    hint="Gunakan nomor yang diawali 08."
-                    :error="infoErrors.phone ?? info.errors.phone"
-                >
-                    <Input
-                        :id="id"
-                        v-model="info.phone"
-                        class="h-10"
-                        inputmode="tel"
-                        placeholder="08xxxxxxxxxx"
-                        autocomplete="tel"
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
-
-                <FormField
-                    v-slot="{ id, describedBy }"
-                    label="Email"
-                    hint="Email tidak dapat diubah."
-                >
-                    <div class="relative">
+                    <FormField
+                        v-slot="{ id, describedBy, invalid }"
+                        label="Nama lengkap"
+                        required
+                        :error="infoErrors.name ?? info.errors.name"
+                    >
                         <Input
                             :id="id"
-                            :model-value="profile.email"
-                            class="bg-secondary h-10 pr-10 disabled:opacity-100"
-                            disabled
+                            v-model="info.name"
+                            class="h-10"
+                            autocomplete="name"
+                            :aria-invalid="invalid"
                             :aria-describedby="describedBy"
                         />
-                        <Lock
-                            class="text-muted-foreground pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
-                            aria-hidden="true"
+                    </FormField>
+
+                    <FormField
+                        v-slot="{ id, describedBy, invalid }"
+                        label="Nomor HP"
+                        optional
+                        hint="Gunakan nomor yang diawali 08."
+                        :error="infoErrors.phone ?? info.errors.phone"
+                    >
+                        <Input
+                            :id="id"
+                            v-model="info.phone"
+                            class="h-10"
+                            inputmode="tel"
+                            placeholder="08xxxxxxxxxx"
+                            autocomplete="tel"
+                            :aria-invalid="invalid"
+                            :aria-describedby="describedBy"
                         />
+                    </FormField>
+
+                    <FormField
+                        v-slot="{ id, describedBy }"
+                        label="Email"
+                        hint="Email tidak dapat diubah."
+                    >
+                        <div class="relative">
+                            <Input
+                                :id="id"
+                                :model-value="profile.email"
+                                class="bg-secondary h-10 pr-10 disabled:opacity-100"
+                                disabled
+                                :aria-describedby="describedBy"
+                            />
+                            <Lock
+                                class="text-muted-foreground pointer-events-none absolute top-1/2 right-3 size-4 -translate-y-1/2"
+                                aria-hidden="true"
+                            />
+                        </div>
+                    </FormField>
+
+                    <FormField v-slot="{ id }" label="Role">
+                        <Input
+                            :id="id"
+                            :model-value="humanize(profile.role)"
+                            class="bg-secondary h-10 disabled:opacity-100"
+                            disabled
+                        />
+                    </FormField>
+
+                    <div class="flex justify-end">
+                        <Button
+                            type="submit"
+                            class="h-10 w-full px-4 sm:w-auto"
+                            :disabled="info.processing"
+                        >
+                            <LoaderCircle
+                                v-if="info.processing"
+                                class="size-4 animate-spin"
+                                aria-hidden="true"
+                            />
+                            {{ info.processing ? 'Menyimpan…' : 'Simpan' }}
+                        </Button>
                     </div>
-                </FormField>
+                </form>
 
-                <FormField v-slot="{ id }" label="Role">
-                    <Input
-                        :id="id"
-                        :model-value="humanize(profile.role)"
-                        class="bg-secondary h-10 disabled:opacity-100"
-                        disabled
-                    />
-                </FormField>
-
-                <div class="flex justify-end">
-                    <Button
-                        type="submit"
-                        class="h-10 px-4"
-                        :disabled="info.processing"
-                    >
-                        <LoaderCircle
-                            v-if="info.processing"
-                            class="size-4 animate-spin"
-                            aria-hidden="true"
-                        />
-                        {{ info.processing ? 'Menyimpan…' : 'Simpan' }}
-                    </Button>
-                </div>
-            </form>
-
-            <form
-                class="bg-card flex flex-col gap-4 rounded-lg border p-6"
-                novalidate
-                @submit.prevent="savePassword"
-            >
-                <h2 class="text-base leading-6 font-semibold">Ubah password</h2>
-
-                <FormField
-                    v-slot="{ id, describedBy, invalid }"
-                    label="Password saat ini"
-                    :error="
-                        passwordErrors.current_password ??
-                        password.errors.current_password
-                    "
+                <section
+                    class="bg-card flex flex-col gap-4 rounded-lg border p-6"
                 >
-                    <PasswordInput
-                        :id="id"
-                        v-model="password.current_password"
-                        autocomplete="current-password"
-                        :aria-invalid="invalid"
-                        :aria-describedby="describedBy"
-                    />
-                </FormField>
+                    <h2 class="text-base leading-6 font-semibold">Keamanan</h2>
 
-                <NewPasswordFields
-                    v-model:password="password.password"
-                    v-model:confirmation="password.password_confirmation"
-                    :error="password.errors.password"
-                    :confirmation-error="passwordErrors.password_confirmation"
-                />
-
-                <div class="flex justify-end">
-                    <Button
-                        type="submit"
-                        class="h-10 px-4"
-                        :disabled="password.processing"
+                    <form
+                        class="flex flex-col gap-4"
+                        novalidate
+                        @submit.prevent="savePassword"
                     >
-                        <LoaderCircle
-                            v-if="password.processing"
-                            class="size-4 animate-spin"
-                            aria-hidden="true"
+                        <FormField
+                            v-slot="{ id, describedBy, invalid }"
+                            label="Password saat ini"
+                            :error="
+                                passwordErrors.current_password ??
+                                password.errors.current_password
+                            "
+                        >
+                            <PasswordInput
+                                :id="id"
+                                v-model="password.current_password"
+                                autocomplete="current-password"
+                                :aria-invalid="invalid"
+                                :aria-describedby="describedBy"
+                            />
+                        </FormField>
+
+                        <NewPasswordFields
+                            v-model:password="password.password"
+                            v-model:confirmation="
+                                password.password_confirmation
+                            "
+                            :error="password.errors.password"
+                            :confirmation-error="
+                                passwordErrors.password_confirmation
+                            "
                         />
-                        {{
-                            password.processing
-                                ? 'Menyimpan…'
-                                : 'Perbarui password'
-                        }}
-                    </Button>
-                </div>
-            </form>
+
+                        <div class="flex justify-end">
+                            <Button
+                                type="submit"
+                                class="h-10 w-full px-4 sm:w-auto"
+                                :disabled="password.processing"
+                            >
+                                <LoaderCircle
+                                    v-if="password.processing"
+                                    class="size-4 animate-spin"
+                                    aria-hidden="true"
+                                />
+                                {{
+                                    password.processing
+                                        ? 'Menyimpan…'
+                                        : 'Perbarui password'
+                                }}
+                            </Button>
+                        </div>
+                    </form>
+
+                    <div
+                        class="flex flex-col gap-3 border-t pt-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+                    >
+                        <div class="flex flex-col gap-1">
+                            <p class="text-sm leading-5 font-medium">
+                                Keluar dari perangkat lain
+                            </p>
+                            <p class="text-muted-foreground text-xs leading-4">
+                                Akhiri sesi di semua perangkat selain yang
+                                sedang dipakai. Cocok jika HP hilang atau
+                                dipinjam.
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            class="h-10 w-full px-4 sm:w-auto sm:shrink-0"
+                            @click="devicesOpen = true"
+                        >
+                            Keluar dari perangkat lain
+                        </Button>
+                    </div>
+                </section>
+            </div>
         </div>
+
+        <LogoutOtherDevicesDialog v-model:open="devicesOpen" />
     </AppLayout>
 </template>

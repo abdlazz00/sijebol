@@ -167,9 +167,14 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - **Item notifikasi** (dropdown dan halaman): titik biru 8 px untuk belum dibaca (item belum dibaca juga berjudul tebal dan berlatar `primary-soft` tipis), judul satu baris, deskripsi satu baris, waktu relatif. Tombol ikon centang **tandai dibaca** per item: muncul saat hover di desktop, selalu tampil di mobile; item sudah dibaca tidak memiliki tombol itu. Klik badan item membuka halaman terkait dan menandainya dibaca.
 - **Halaman penuh** `/notifikasi`: header "Notifikasi" dan tombol **Tandai semua dibaca**; segmen **Semua / Belum dibaca**; daftar dengan item yang sama; paginasi. Empty state "Tidak ada notifikasi".
 
-### 5.15 Profil `/profil`
-- Kartu **Informasi profil**: Nama dan Nomor HP dapat diubah; Email dan Role hanya baca. Tombol Simpan.
-- Kartu **Ubah password**: Password saat ini, Password baru, Konfirmasi, aturan password (seperti 5.3), tombol Perbarui password.
+### 5.15 Profil `/profile`
+Rancangan lengkap: `2026-10-28-halaman-profil-design.md`. Satu halaman untuk semua role; hanya login yang dibutuhkan (tanpa permission khusus).
+- **Susunan:** dua kolom hanya di ≥ 1280 px (kartu identitas 320 px di kiri dan melekat saat digulir, kolom kanan maks 720 px). Di bawahnya satu kolom: kartu identitas menjadi header ringkas dan bagian **Data diri** dilipat (tombol `aria-expanded`); tautan ke Data saya tetap di luar lipatan.
+- **Kartu identitas** (baca saja): avatar inisial, nama (judul kartu), lencana role, sekolah. Baris menurut data akun: siswa dengan data diri → NIK (dimasker), NISN, Tanggal lahir · umur, Jenis kelamin, Login terakhir, tautan "Lihat dan lengkapi data saya →" (`/me`) dan catatan bahwa data tidak diubah di sini; punya sekolah → Sekolah, Akses (deskripsi role, hilang bila kosong), Akun dibuat, Login terakhir; tanpa sekolah → Wilayah ("Seluruh sekolah di Kec. Sungai Beduk"), Akun dibuat, Login terakhir. Login terakhir "—" bila belum pernah.
+- Kartu **Informasi kontak**: Nama dan Nomor HP dapat diubah; Email dan Role hanya baca. Tombol Simpan.
+- Kartu **Keamanan**: form ubah password (Password saat ini, Password baru, Konfirmasi, aturan password seperti 5.3, tombol Perbarui password), lalu baris **Keluar dari perangkat lain** dengan tombol sekunder yang membuka dialog (meminta Password saat ini; aksi destruktif; sesi dan perangkat saat ini tetap masuk; sukses = toast "Perangkat lain sudah dikeluarkan.").
+- Di HP (< 640 px) tombol Simpan, Perbarui password, dan Keluar dari perangkat lain berlebar penuh.
+- Menyusul (spec yang sama): kartu **Notifikasi** (saklar email) dan tombol **Ubah email** dengan verifikasi.
 
 ### 5.16 Halaman error
 - 403 ("Anda tidak memiliki akses ke halaman ini"), 404 ("Halaman tidak ditemukan"), 500 ("Terjadi kesalahan"). Dalam layout shell (jika sudah login) atau pola auth (jika belum): ikon besar sederhana, judul, satu kalimat, tombol "Kembali ke beranda".
