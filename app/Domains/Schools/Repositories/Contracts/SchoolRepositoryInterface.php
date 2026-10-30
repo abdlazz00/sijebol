@@ -20,6 +20,8 @@ interface SchoolRepositoryInterface
     /** @param array<string, mixed> $attributes */
     public function update(School $school, array $attributes): School;
 
+    public function delete(School $school): void;
+
     public function findByRegistrationToken(string $token): ?School;
 
     /**

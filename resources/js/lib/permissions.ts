@@ -13,6 +13,7 @@ export const PERMISSIONS = {
     SekolahLihat: 'sekolah.lihat',
     SekolahBuat: 'sekolah.buat',
     SekolahUbah: 'sekolah.ubah',
+    SekolahHapus: 'sekolah.hapus',
     SekolahTautan: 'sekolah.tautan',
     SekolahResetTautan: 'sekolah.reset-tautan',
 

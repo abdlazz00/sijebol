@@ -3,6 +3,7 @@
 namespace App\Domains\Schools\Models;
 
 use App\Domains\Registrations\Models\RegistrationStudent;
+use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Students\Models\Student;
 use App\Models\User;
 use Database\Factories\SchoolFactory;
@@ -49,6 +50,12 @@ class School extends Model
     public function students(): HasMany
     {
         return $this->hasMany(Student::class);
+    }
+
+    /** @return HasMany<Schedule, $this> */
+    public function schedules(): HasMany
+    {
+        return $this->hasMany(Schedule::class);
     }
 
     /** @return HasMany<RegistrationStudent, $this> */

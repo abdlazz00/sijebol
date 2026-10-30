@@ -159,7 +159,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 - Hapus role: dialog konfirmasi; jika masih ada pengguna, tampil pesan "Role masih dipakai {n} pengguna" dan tombol hapus nonaktif.
 
 ### 5.13 Sekolah `/sekolah` (`sekolah.lihat`)
-- Daftar: Nama sekolah, NPSN, Jenjang (SMA/SMK/MA), Jumlah operator, Aksi (Ubah). Tombol **+ Tambah sekolah**. Filter cari dan jenjang.
+- Daftar: Nama sekolah, NPSN, Jenjang (SMA/SMK/MA), Jumlah operator, Aksi (Ubah bila memiliki `sekolah.ubah`; Hapus bila memiliki `sekolah.hapus`, dialog konfirmasi destruktif dinonaktifkan bila sekolah masih memiliki data terkait). Tombol **+ Tambah sekolah** (`sekolah.buat`). Filter cari dan jenjang.
 - Form tambah/ubah (halaman terpisah, pola 5.8): Nama sekolah, NPSN, Jenjang, Alamat (opsional).
 
 ### 5.14 Notifikasi

@@ -14,7 +14,7 @@ class EloquentSchoolRepository implements SchoolRepositoryInterface
 {
     public function paginate(int $perPage = 20): LengthAwarePaginator
     {
-        return QueryBuilder::for(School::query()->withCount('users')->orderBy('name'))
+        return QueryBuilder::for(School::query()->withCount(['users', 'students', 'schedules'])->orderBy('name'))
             ->allowedFilters(
                 AllowedFilter::callback('search', fn (Builder $q, $value) => $q->where(
                     fn (Builder $w) => $w->where('name', 'like', "%{$value}%")->orWhere('npsn', 'like', "%{$value}%")
@@ -40,6 +40,11 @@ class EloquentSchoolRepository implements SchoolRepositoryInterface
         $school->update($attributes);
 
         return $school;
+    }
+
+    public function delete(School $school): void
+    {
+        $school->delete();
     }
 
     public function withStudentCount(?int $schoolId): Collection

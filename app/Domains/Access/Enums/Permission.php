@@ -18,6 +18,7 @@ enum Permission: string
     case SekolahLihat = 'sekolah.lihat';
     case SekolahBuat = 'sekolah.buat';
     case SekolahUbah = 'sekolah.ubah';
+    case SekolahHapus = 'sekolah.hapus';
 
     case SiswaLihat = 'siswa.lihat';
     case SiswaUbah = 'siswa.ubah';
