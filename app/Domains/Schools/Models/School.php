@@ -2,6 +2,8 @@
 
 namespace App\Domains\Schools\Models;
 
+use App\Domains\Registrations\Models\RegistrationStudent;
+use App\Domains\Students\Models\Student;
 use App\Models\User;
 use Database\Factories\SchoolFactory;
 use Illuminate\Database\Eloquent\Attributes\UseFactory;
@@ -23,6 +25,18 @@ class School extends Model
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    /** @return HasMany<Student, $this> */
+    public function students(): HasMany
+    {
+        return $this->hasMany(Student::class);
+    }
+
+    /** @return HasMany<RegistrationStudent, $this> */
+    public function registrationEntries(): HasMany
+    {
+        return $this->hasMany(RegistrationStudent::class);
     }
 
     public function getActivitylogOptions(): LogOptions

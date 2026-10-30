@@ -7,6 +7,8 @@ export interface User {
     email: string;
     email_verified_at?: string;
     role?: string | null;
+    school_id?: number | null;
+    school?: { id: number; name: string } | null;
 }
 
 export type PageProps<

@@ -36,6 +36,50 @@ class ScheduleService
         return $this->schedules->upcoming($limit);
     }
 
+    /** @return list<array{id: int, date: string, school_name: string, participants: int, location: string, status: string}> */
+    public function upcomingTable(int $limit = 8): array
+    {
+        $today = Schedule::today();
+
+        return $this->schedules->upcoming($limit)->map(function (Schedule $s) use ($today) {
+            $isToday = $s->date->toDateString() === $today;
+
+            return [
+                'id' => $s->id,
+                'date' => $s->date->toDateString(),
+                'school_name' => $s->school->name,
+                'participants' => $s->entries_count,
+                'location' => $s->location,
+                'status' => $isToday ? 'Hari Ini' : 'Dijadwalkan',
+            ];
+        })->values()->all();
+    }
+
+    /** @return list<array{id: int, date: string, school_name: string, location: string, participants: int, status: string}> */
+    public function calendarEvents(?int $year = null, ?int $month = null): array
+    {
+        $today = Schedule::today();
+        $query = Schedule::query()->with('school')->withCount('entries');
+
+        if ($year !== null && $month !== null) {
+            $query->whereYear('date', $year)->whereMonth('date', $month);
+        }
+
+        return $query->orderBy('date')->get()->map(function (Schedule $s) use ($today) {
+            $isToday = $s->date->toDateString() === $today;
+            $isPast = $s->date->toDateString() < $today;
+
+            return [
+                'id' => $s->id,
+                'date' => $s->date->toDateString(),
+                'school_name' => $s->school->name,
+                'location' => $s->location,
+                'participants' => $s->entries_count,
+                'status' => $isToday ? 'Hari Ini' : ($isPast ? 'Terlaksana' : 'Dijadwalkan'),
+            ];
+        })->values()->all();
+    }
+
     /** @return Collection<int, RegistrationStudent> */
     public function candidates(Schedule $schedule): Collection
     {

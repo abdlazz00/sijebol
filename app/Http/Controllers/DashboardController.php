@@ -13,8 +13,10 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, ScheduleService $schedules, DashboardService $dashboard): Response
     {
+        $canJadwal = $request->user()->can('jadwal.lihat');
+
         return Inertia::render('Dashboard', [
-            'schedules' => $request->user()->can('jadwal.lihat')
+            'schedules' => $canJadwal
                 ? $schedules->upcoming(3)->map(fn (Schedule $s) => [
                     'date' => $s->date->toDateString(),
                     'school' => $s->school?->name,
@@ -22,6 +24,8 @@ class DashboardController extends Controller
                     'participants' => $s->entries_count,
                 ])->values()
                 : [],
+            'schedules_table' => $canJadwal ? $schedules->upcomingTable(8) : [],
+            'calendar_events' => $canJadwal ? $schedules->calendarEvents((int) now()->year) : [],
             ...$dashboard->forUser($request->user()),
         ]);
     }
