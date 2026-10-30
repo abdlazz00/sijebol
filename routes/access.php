@@ -18,6 +18,7 @@ Route::middleware('auth')->group(function () {
     Route::post('schools', [SchoolController::class, 'store'])->middleware('can:sekolah.buat')->name('schools.store');
     Route::get('schools/{school}/edit', [SchoolController::class, 'edit'])->middleware('can:sekolah.ubah')->name('schools.edit');
     Route::put('schools/{school}', [SchoolController::class, 'update'])->middleware('can:sekolah.ubah')->name('schools.update');
+    Route::delete('schools/{school}', [SchoolController::class, 'destroy'])->middleware('can:sekolah.hapus')->name('schools.destroy');
 
     Route::get('registration-links', [SchoolLinkController::class, 'index'])->middleware('can:sekolah.tautan')->name('registration-links.index');
     Route::post('registration-links/{school}/reset', [SchoolLinkController::class, 'reset'])->middleware(['can:sekolah.reset-tautan', 'throttle:20,1'])->name('registration-links.reset');

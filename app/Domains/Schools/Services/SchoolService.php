@@ -45,6 +45,16 @@ class SchoolService
         return $this->schools->update($school, $data);
     }
 
+    public function delete(School $school, User $actor): void
+    {
+        if ($school->students()->exists() || $school->users()->exists() || $school->schedules()->exists() || $school->registrationEntries()->exists()) {
+            throw new AccessRuleException('Sekolah masih memiliki data terkait (siswa, sesi jadwal, atau pengguna) dan tidak dapat dihapus.');
+        }
+
+        $this->schools->delete($school);
+        activity('akses')->performedOn($school)->causedBy($actor)->log('sekolah.dihapus');
+    }
+
     /**
      * Link pendaftaran per sekolah: operator hanya sekolahnya, staf tanpa sekolah semuanya.
      *

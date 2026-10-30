@@ -66,4 +66,6 @@ export type SchoolRow = {
     level: SchoolLevel;
     address: string | null;
     users_count: number;
+    students_count?: number;
+    schedules_count?: number;
 };

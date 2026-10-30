@@ -12,6 +12,7 @@ dataset('rute', [
     ['POST', '/schools', 'sekolah.buat'],
     ['GET', '/schools/{school}/edit', 'sekolah.ubah'],
     ['PUT', '/schools/{school}', 'sekolah.ubah'],
+    ['DELETE', '/schools/{school}', 'sekolah.hapus'],
     ['GET', '/me', 'profil.lihat'],
     ['PUT', '/me', 'profil.ubah'],
     ['GET', '/registration-links', 'sekolah.tautan'],

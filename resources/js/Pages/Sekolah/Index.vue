@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import ConfirmDialog from '@/Components/shared/ConfirmDialog.vue';
 import DataTable from '@/Components/shared/DataTable.vue';
 import EmptyState from '@/Components/shared/EmptyState.vue';
 import FormField from '@/Components/shared/FormField.vue';
+import InlineAlert from '@/Components/shared/InlineAlert.vue';
 import PageHeader from '@/Components/shared/PageHeader.vue';
 import Pagination from '@/Components/shared/Pagination.vue';
 import SearchInput from '@/Components/shared/SearchInput.vue';
@@ -12,10 +14,10 @@ import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { PERMISSIONS } from '@/lib/permissions';
 import type { Paginator, SchoolRow } from '@/types/access';
-import { Link } from '@inertiajs/vue3';
+import { Link, router } from '@inertiajs/vue3';
 import { useDebounceFn } from '@vueuse/core';
 import { Plus, School, Search } from '@lucide/vue';
-import { computed, watch } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     schools: Paginator<SchoolRow>;
@@ -37,6 +39,7 @@ const hasFilters = computed(() =>
 const levelOptions = ['SMA', 'SMK', 'MA'].map((l) => ({ value: l, label: l }));
 
 const canEdit = computed(() => can(PERMISSIONS.SekolahUbah));
+const canDelete = computed(() => can(PERMISSIONS.SekolahHapus));
 const columns = computed(() => [
     { key: 'name', label: 'Nama sekolah' },
     { key: 'npsn', label: 'NPSN', class: 'w-[128px]' },
@@ -46,10 +49,49 @@ const columns = computed(() => [
         label: 'Jumlah operator',
         class: 'w-[144px] text-right',
     },
-    ...(canEdit.value
-        ? [{ key: 'actions', label: 'Aksi', class: 'w-[88px] text-right' }]
+    ...(canEdit.value || canDelete.value
+        ? [{ key: 'actions', label: 'Aksi', class: 'w-[140px] text-right' }]
         : []),
 ]);
+
+const confirmOpen = ref(false);
+const target = ref<SchoolRow | null>(null);
+const inUse = computed(() => {
+    if (!target.value) return false;
+    return (
+        (target.value.users_count ?? 0) > 0 ||
+        (target.value.students_count ?? 0) > 0 ||
+        (target.value.schedules_count ?? 0) > 0
+    );
+});
+
+const inUseReasonsText = computed(() => {
+    if (!target.value) return '';
+    const reasons: string[] = [];
+    if ((target.value.students_count ?? 0) > 0) {
+        reasons.push(`${target.value.students_count} siswa`);
+    }
+    if ((target.value.schedules_count ?? 0) > 0) {
+        reasons.push(`${target.value.schedules_count} sesi jadwal`);
+    }
+    if ((target.value.users_count ?? 0) > 0) {
+        reasons.push(`${target.value.users_count} operator`);
+    }
+    return reasons.join(', ');
+});
+
+function askDelete(school: SchoolRow) {
+    target.value = school;
+    confirmOpen.value = true;
+}
+
+function destroy() {
+    if (target.value) {
+        router.delete(route('schools.destroy', target.value.id), {
+            preserveScroll: true,
+        });
+    }
+}
 </script>
 
 <template>
@@ -130,8 +172,9 @@ const columns = computed(() => [
                         }}</span>
                     </template>
                     <template #cell-actions="{ row }">
-                        <div class="flex justify-end">
+                        <div class="flex items-center justify-end gap-1">
                             <Button
+                                v-if="canEdit"
                                 as-child
                                 variant="ghost"
                                 class="text-primary h-10 min-w-10 px-2"
@@ -141,6 +184,15 @@ const columns = computed(() => [
                                     :aria-label="`Ubah ${row.name}`"
                                     >Ubah</Link
                                 >
+                            </Button>
+                            <Button
+                                v-if="canDelete"
+                                variant="ghost"
+                                class="text-danger hover:text-danger h-10 min-w-10 px-2"
+                                :aria-label="`Hapus ${row.name}`"
+                                @click="askDelete(row)"
+                            >
+                                Hapus
                             </Button>
                         </div>
                     </template>
@@ -182,5 +234,29 @@ const columns = computed(() => [
                 <Pagination :paginator="schools" />
             </div>
         </div>
+
+        <ConfirmDialog
+            v-model:open="confirmOpen"
+            :title="`Hapus sekolah ${target?.name ?? ''}?`"
+            :description="
+                inUse
+                    ? 'Sekolah tidak dapat dihapus selama masih memiliki data terkait.'
+                    : 'Sekolah ini akan dihapus. Tindakan ini tidak dapat dibatalkan.'
+            "
+            confirm-label="Hapus"
+            destructive
+            :confirm-disabled="inUse"
+            @confirm="destroy"
+        >
+            <InlineAlert v-if="inUse">
+                Sekolah masih memiliki {{ inUseReasonsText }} dan tidak dapat dihapus.
+            </InlineAlert>
+            <p
+                v-else
+                class="bg-secondary text-muted-foreground rounded-lg p-3 text-xs leading-4"
+            >
+                Tidak ada data siswa, operator, atau sesi yang terhubung dengan sekolah ini.
+            </p>
+        </ConfirmDialog>
     </AppLayout>
 </template>

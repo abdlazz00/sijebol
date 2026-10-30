@@ -18,7 +18,7 @@ class SchoolController extends Controller
     public function index(Request $request): Response
     {
         return Inertia::render('Sekolah/Index', [
-            'schools' => $this->schools->list()->through(fn (School $s) => $s->only(['id', 'name', 'npsn', 'level', 'address', 'users_count'])),
+            'schools' => $this->schools->list()->through(fn (School $s) => $s->only(['id', 'name', 'npsn', 'level', 'address', 'users_count', 'students_count', 'schedules_count'])),
             'filters' => $request->query('filter', []),
         ]);
     }
@@ -45,5 +45,12 @@ class SchoolController extends Controller
         $this->schools->update($school, $request->validated());
 
         return redirect()->route('schools.index')->with('success', 'Sekolah diperbarui.');
+    }
+
+    public function destroy(Request $request, School $school): RedirectResponse
+    {
+        $this->schools->delete($school, $request->user());
+
+        return redirect()->route('schools.index')->with('success', 'Sekolah dihapus.');
     }
 }
