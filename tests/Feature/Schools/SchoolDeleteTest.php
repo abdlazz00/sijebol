@@ -30,8 +30,9 @@ test('sekolah tanpa data terkait dapat dihapus oleh pengguna berizin', function 
     $user = makeUserWith(['sekolah.hapus']);
 
     $this->actingAs($user)
+        ->from('/schools?filter[search]=QA')
         ->delete("/schools/{$school->id}")
-        ->assertRedirect('/schools')
+        ->assertRedirect('/schools?filter[search]=QA')
         ->assertSessionHas('success', 'Sekolah dihapus.');
 
     expect(School::find($school->id))->toBeNull();

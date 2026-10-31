@@ -51,6 +51,6 @@ class SchoolController extends Controller
     {
         $this->schools->delete($school, $request->user());
 
-        return redirect()->route('schools.index')->with('success', 'Sekolah dihapus.');
+        return back()->with('success', 'Sekolah dihapus.');
     }
 }
