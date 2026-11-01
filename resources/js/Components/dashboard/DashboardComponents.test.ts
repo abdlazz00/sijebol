@@ -36,6 +36,9 @@ vi.mock('@inertiajs/vue3', () => ({
 
 beforeEach(() => {
     permissions.length = 0;
+    const route = (name: string, id?: number) => `/${name}/${id ?? ''}`;
+    vi.stubGlobal('route', route);
+    config.global.mocks = { route };
 });
 
 describe('DashboardKpiCards', () => {
@@ -252,9 +255,6 @@ describe('DashboardUpcomingTable', () => {
             status,
         });
         const schedules = [baris(1, 'Hari Ini'), baris(2, 'Dijadwalkan')];
-        const route = (name: string, id?: number) => `/${name}/${id}`;
-        vi.stubGlobal('route', route);
-        config.global.mocks = { route };
 
         const tanpa = mount(DashboardUpcomingTable, { props: { schedules } });
         expect(tanpa.text()).not.toContain('Pindai');
@@ -333,5 +333,6 @@ describe('DashboardMiniCalendar & Dialog', () => {
         expect(document.body.textContent).toContain('Aula Sekolah');
         expect(document.body.textContent).toContain('50 peserta');
         expect(document.body.textContent).toContain('Dijadwalkan');
+        expect(document.querySelector('a[href="/schedules.show/10"]')).not.toBeNull();
     });
 });

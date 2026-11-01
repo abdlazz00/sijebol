@@ -40,13 +40,16 @@ const props = defineProps<{
 }>();
 
 const { can } = usePermission();
-const { filters, loading, apply, reset } = useDataTable('/siswa', {
-    search: props.filters.search ?? '',
-    docs: props.filters.docs ?? '',
-    eligible: props.filters.eligible ?? '',
-    registration: props.filters.registration ?? '',
-    school_id: props.filters.school_id ?? '',
-});
+const { filters, loading, apply, reset } = useDataTable(
+    route('students.index'),
+    {
+        search: props.filters.search ?? '',
+        docs: props.filters.docs ?? '',
+        eligible: props.filters.eligible ?? '',
+        registration: props.filters.registration ?? '',
+        school_id: props.filters.school_id ?? '',
+    },
+);
 
 watch(
     () => [

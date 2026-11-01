@@ -6,8 +6,8 @@ import type {
     QuickActionItem,
     UpcomingScheduleRow,
 } from '@/types/dashboard';
-import { mount } from '@vue/test-utils';
-import { describe, expect, it, vi } from 'vitest';
+import { config, mount } from '@vue/test-utils';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock ApexChart
 vi.mock('@/Components/shared/ApexChart.vue', () => ({
@@ -63,6 +63,12 @@ vi.mock('@inertiajs/vue3', () => ({
 }));
 
 describe('Dashboard Page Integration', () => {
+    beforeEach(() => {
+        const route = (name: string, id?: number) => `/${name}/${id ?? ''}`;
+        vi.stubGlobal('route', route);
+        config.global.mocks = { route };
+    });
+
     const kpiSample: KpiCardItem[] = [
         {
             key: 'total',
@@ -176,6 +182,10 @@ describe('Dashboard Page Integration', () => {
         expect(wrapper.text()).toContain('Notifikasi Terbaru');
         expect(wrapper.text()).toContain('Pendaftaran Baru');
         expect(wrapper.text()).toContain('Kalender Kegiatan');
+
+        // Tautan memakai nama rute, bukan alamat lama
+        expect(wrapper.find('a[href="/notifications.index/"]').exists()).toBe(true);
+        expect(wrapper.find('a[href="/schedules.index/"]').exists()).toBe(true);
     });
 
     it('merender fallback ke kartu summary lama jika kpi belum disediakan', () => {

@@ -203,7 +203,7 @@ const actionIcons = {
                                 </div>
                             </div>
                             <Link
-                                href="/notifikasi"
+                                :href="route('notifications.index')"
                                 class="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
                             >
                                 <span>Lihat Semua</span>

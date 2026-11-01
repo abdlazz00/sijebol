@@ -36,11 +36,14 @@ const props = defineProps<{
 }>();
 
 const { can } = usePermission();
-const { filters, loading, apply, reset } = useDataTable('/jadwal', {
-    search: props.filters.search ?? '',
-    period: props.filters.period ?? '',
-    school_id: props.filters.school_id ?? '',
-});
+const { filters, loading, apply, reset } = useDataTable(
+    route('schedules.index'),
+    {
+        search: props.filters.search ?? '',
+        period: props.filters.period ?? '',
+        school_id: props.filters.school_id ?? '',
+    },
+);
 
 watch(() => [filters.period, filters.school_id], apply);
 watch(() => filters.search, useDebounceFn(apply, 300));

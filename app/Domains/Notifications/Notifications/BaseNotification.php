@@ -24,7 +24,7 @@ abstract class BaseNotification extends Notification implements ShouldQueue
 
     abstract public function body(): string;
 
-    /** Path relatif di aplikasi, mis. `/pengguna/5`. */
+    /** Path relatif di aplikasi, mis. `/users/5`. */
     abstract public function url(): string;
 
     /** @return list<string> */

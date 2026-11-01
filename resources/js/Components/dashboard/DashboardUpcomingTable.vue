@@ -49,7 +49,7 @@ function statusBadgeClass(status: string): string {
             </div>
 
             <Link
-                href="/jadwal"
+                :href="route('schedules.index')"
                 class="inline-flex items-center gap-1 text-xs font-semibold text-primary transition-colors hover:text-primary/80 hover:underline"
             >
                 <span>Lihat Semua</span>

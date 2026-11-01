@@ -31,12 +31,15 @@ const props = defineProps<{
     users: { id: number; name: string }[];
 }>();
 
-const { filters, loading, apply, reset } = useDataTable('/log', {
-    user: props.filters.user ?? '',
-    type: props.filters.type ?? '',
-    from: props.filters.from ?? '',
-    to: props.filters.to ?? '',
-});
+const { filters, loading, apply, reset } = useDataTable(
+    route('audit-logs.index'),
+    {
+        user: props.filters.user ?? '',
+        type: props.filters.type ?? '',
+        from: props.filters.from ?? '',
+        to: props.filters.to ?? '',
+    },
+);
 
 watch(() => [filters.user, filters.type, filters.from, filters.to], apply);
 

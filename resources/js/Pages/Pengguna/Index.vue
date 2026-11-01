@@ -36,7 +36,7 @@ const props = defineProps<{
 }>();
 
 const { can } = usePermission();
-const { filters, loading, apply, reset } = useDataTable('/pengguna', {
+const { filters, loading, apply, reset } = useDataTable(route('users.index'), {
     search: props.filters.search ?? '',
     role: props.filters.role ?? '',
     school_id: props.filters.school_id ?? '',

@@ -35,11 +35,14 @@ const props = defineProps<{
     sessions: QueueSession[];
 }>();
 
-const { filters, loading, apply, reset } = useDataTable('/verifikasi', {
-    search: props.filters.search ?? '',
-    school_id: props.filters.school_id ?? '',
-    schedule_id: props.filters.schedule_id ?? '',
-});
+const { filters, loading, apply, reset } = useDataTable(
+    route('verifications.index'),
+    {
+        search: props.filters.search ?? '',
+        school_id: props.filters.school_id ?? '',
+        schedule_id: props.filters.schedule_id ?? '',
+    },
+);
 
 watch(() => [filters.school_id, filters.schedule_id], apply);
 watch(() => filters.search, useDebounceFn(apply, 300));
