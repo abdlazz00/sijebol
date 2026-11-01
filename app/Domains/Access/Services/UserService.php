@@ -6,6 +6,7 @@ use App\Domains\Access\Exceptions\AccessRuleException;
 use App\Domains\Access\Models\Role;
 use App\Domains\Access\Repositories\Contracts\RoleRepositoryInterface;
 use App\Domains\Access\Repositories\Contracts\UserRepositoryInterface;
+use App\Domains\Notifications\Notifications\StaffActivationNotification;
 use App\Models\User;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
@@ -33,7 +34,7 @@ class UserService
         $role = $this->roles->find($data['role_id']);
         $this->assertRoleAllowed($role, $data['school_id'] ?? null, $actor);
 
-        return DB::transaction(function () use ($data, $role, $actor) {
+        $created = DB::transaction(function () use ($data, $role, $actor) {
             $user = $this->users->create([
                 'name' => $data['name'],
                 'email' => $this->normalizeEmail($data['email']),
@@ -45,6 +46,11 @@ class UserService
 
             return ['user' => $user, 'token' => $this->activations->issue($user)];
         });
+
+        // Sesudah transaksi: email tidak boleh terkirim untuk akun yang dibatalkan.
+        $this->sendActivation($created['user'], $created['token']);
+
+        return $created;
     }
 
     /** @param array{name: string, email: string, phone?: ?string, role_id: int, school_id?: ?int} $data */
@@ -105,7 +111,16 @@ class UserService
             throw new AccessRuleException('Akun ini sudah aktif; link aktivasi tidak diperlukan.');
         }
 
-        return $this->activations->issue($user);
+        $token = $this->activations->issue($user);
+        $this->sendActivation($user, $token);
+
+        return $token;
+    }
+
+    /** Email antre; kegagalan pengiriman tidak menggagalkan pembuatan akun, link di layar jadi cadangan. */
+    private function sendActivation(User $user, string $token): void
+    {
+        $user->notify(new StaffActivationNotification($token, $user->currentRole()?->name, $user->school?->name));
     }
 
     private function assertRoleAllowed(Role $role, ?int $schoolId, User $actor): void

@@ -137,6 +137,7 @@ Layout split screen. Panel kiri (45% lebar, latar `sidebar`): logo, "SIJEBOL", "
 
 ### 5.9 Pengguna: layar sukses (setelah tambah atau kirim ulang aktivasi)
 - Breadcrumb "Pengguna > Tambah pengguna > Berhasil". Kartu sukses dengan ikon centang hijau, judul "Akun dibuat untuk {nama}", sub-judul "{role} · {sekolah}".
+- Email aktivasi otomatis dikirim ke alamat pengguna (antre, tanpa kanal lonceng); halaman menyebut alamatnya ("Email aktivasi sedang dikirim ke {email}"; "sedang" karena lewat antrean). Label link diberi keterangan "(cadangan bila email belum sampai)"; link dan tombol WhatsApp menjadi cadangan itu. Tanpa subjudul halaman.
 - Kolom link (baca saja, font monospace kecil) dengan tombol **Salin link**; setelah klik tombol berubah menjadi "Tersalin" 2 detik.
 - Tombol **Kirim via WhatsApp** (sekunder, ikon; nonaktif dengan tooltip jika tidak ada nomor HP): membuka chat dengan pesan siap kirim berisi link.
 - Teks catatan: "Berlaku 3 hari. Link tidak dapat ditampilkan lagi setelah halaman ini ditutup."

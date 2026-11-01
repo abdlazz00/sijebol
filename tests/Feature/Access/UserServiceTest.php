@@ -2,13 +2,17 @@
 
 use App\Domains\Access\Exceptions\AccessRuleException;
 use App\Domains\Access\Models\Role;
+use App\Domains\Access\Services\ActivationService;
 use App\Domains\Access\Services\UserService;
+use App\Domains\Notifications\Notifications\StaffActivationNotification;
 use App\Domains\Schools\Models\School;
 use App\Models\User;
 use Database\Seeders\AccessSeeder;
+use Illuminate\Support\Facades\Notification;
 
 beforeEach(function () {
     $this->seed(AccessSeeder::class);
+    Notification::fake();
     $this->service = app(UserService::class);
     $this->super = User::factory()->create()->assignRole('super-admin');
     $this->admin = User::factory()->create()->assignRole('admin-kecamatan');
@@ -125,4 +129,44 @@ test('kirim ulang aktivasi hanya untuk akun belum aktif dan mencabut token lama'
 
     $aktif = User::factory()->create();
     expect(fn () => $this->service->resendActivation($aktif))->toThrow(AccessRuleException::class);
+});
+
+test('membuat user mengirim email aktivasi berisi token ke alamat yang sudah dinormalisasi', function () {
+    ['user' => $user, 'token' => $token] = $this->service->create(
+        payload(['email' => '  Budi@X.TEST ', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);
+
+    Notification::assertSentTo($user, StaffActivationNotification::class, fn ($n, $channels) => $channels === ['mail']
+        && $n->url() === "/activation/{$token}"
+        && $user->email === 'budi@x.test');
+});
+
+test('create yang ditolak tidak mengirim email', function () {
+    expect(fn () => $this->service->create(payload(['role_id' => $this->operatorRole->id]), $this->super))
+        ->toThrow(AccessRuleException::class);
+
+    Notification::assertNothingSent();
+});
+
+test('kirim ulang mengirim email dengan token baru', function () {
+    ['user' => $user] = $this->service->create(
+        payload(['role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);
+
+    $new = $this->service->resendActivation($user);
+
+    Notification::assertSentToTimes($user, StaffActivationNotification::class, 2);
+    Notification::assertSentTo($user, StaffActivationNotification::class, fn ($n) => $n->url() === "/activation/{$new}");
+});
+
+test('kirim ulang untuk akun aktif tidak mengirim email', function () {
+    $aktif = User::factory()->create();
+
+    expect(fn () => $this->service->resendActivation($aktif))->toThrow(AccessRuleException::class);
+
+    Notification::assertNothingSent();
+});
+
+test('isi email staf menyebut role, sekolah, dan masa berlaku', function () {
+    $body = (new StaffActivationNotification('tok', 'operator-sekolah', 'SMAN 1'))->body();
+
+    expect($body)->toContain('Operator Sekolah')->toContain('SMAN 1')->toContain(ActivationService::TTL_DAYS.' hari');
 });

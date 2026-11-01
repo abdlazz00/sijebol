@@ -36,6 +36,7 @@ test('buat pengguna mengarah ke halaman berhasil yang menampilkan link sekali sa
     $this->get("/users/{$user->id}/done")->assertInertia(fn (Assert $p) => $p
         ->component('Pengguna/Berhasil')
         ->where('user.name', 'Budi')
+        ->where('user.email', 'budi@x.test')
         ->where('link', fn ($link) => str_contains($link, '/activation/')));
 
     $this->get("/users/{$user->id}/done")->assertRedirect("/users/{$user->id}");

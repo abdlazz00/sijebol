@@ -13,6 +13,7 @@ const props = defineProps<{
     user: {
         id: number;
         name: string;
+        email: string;
         phone: string | null;
         role: string | null;
         school: string | null;
@@ -44,13 +45,6 @@ const crumbs = computed(() => [
     <AppLayout :title="pageTitle" :breadcrumbs="crumbs">
         <div class="mb-6 flex flex-col gap-1">
             <h1 class="text-2xl leading-8 font-semibold">{{ pageTitle }}</h1>
-            <p class="text-muted-foreground text-sm leading-5">
-                {{
-                    resend
-                        ? 'Bagikan link baru agar pengguna dapat mengaktifkan akun.'
-                        : 'Bagikan link agar pengguna dapat mengaktifkan akun.'
-                }}
-            </p>
         </div>
 
         <div class="max-w-[720px]">
@@ -83,10 +77,15 @@ const crumbs = computed(() => [
                     </div>
                     <div><StatusBadge status="menunggu" /></div>
                     <p class="text-muted-foreground text-sm leading-5">
+                        Email aktivasi sedang dikirim ke
+                        <span class="text-foreground font-medium break-all">{{
+                            user.email
+                        }}</span
+                        >.
                         {{
                             resend
                                 ? 'Link sebelumnya tidak berlaku lagi.'
-                                : 'Pengguna perlu membuka link aktivasi dan membuat kata sandi sebelum dapat masuk.'
+                                : 'Pengguna perlu membuka link di email itu dan membuat kata sandi sebelum dapat masuk.'
                         }}
                     </p>
                 </div>
@@ -97,6 +96,9 @@ const crumbs = computed(() => [
                     <div class="flex flex-col gap-2">
                         <p class="text-sm leading-5 font-medium">
                             Link aktivasi
+                            <span class="text-muted-foreground font-normal"
+                                >(cadangan bila email belum sampai)</span
+                            >
                         </p>
                         <CopyField :value="link" label="Link aktivasi" />
                     </div>
@@ -163,9 +165,7 @@ const crumbs = computed(() => [
 
             <div class="mt-6 flex justify-end">
                 <Button as-child variant="outline" class="h-10 px-4">
-                    <Link :href="route('users.index')"
-                        >Kembali ke daftar</Link
-                    >
+                    <Link :href="route('users.index')">Kembali ke daftar</Link>
                 </Button>
             </div>
         </div>

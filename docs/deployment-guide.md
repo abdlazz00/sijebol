@@ -591,7 +591,7 @@ php artisan queue:restart
 ### Wajib hidup di server
 
 - **Cron `schedule:run` setiap menit** dan **worker antrean**. Dua perintah berjalan tiap jam: `sijebol:kedaluwarsakan` (melepas kursi yang lewat batas perbaikan atau sesinya sudah berakhir) dan `sijebol:kirim-pengingat` (pengingat batas perbaikan dan sesi H-1 sejak pukul 08.00 WIB). Tanpa cron, kursi tidak pernah dilepas otomatis dan pengingat tidak terkirim. Detail di `docs/operasional-queue.md`.
-- **Email**: semua keputusan, perubahan sesi, dan pengingat dikirim ke email siswa lewat antrean. SMTP produksi atau domain terverifikasi harus siap sebelum rilis (lihat catatan Resend free tier di spec bagian 11).
+- **Email**: semua keputusan, perubahan sesi, dan pengingat dikirim ke email siswa lewat antrean. Akun staf (operator sekolah, admin kecamatan) yang dibuat atau dikirim ulang aktivasinya lewat menu Pengguna juga menerima link aktivasi lewat email; `sijebol:create-super-admin` tidak, link-nya dicetak di terminal. SMTP produksi atau domain terverifikasi harus siap sebelum rilis (lihat catatan Resend free tier di spec bagian 11).
 - **HTTPS** untuk produksi (kamera pemindai di fase 7d membutuhkannya; halaman tiket sebaiknya juga lewat HTTPS).
 
 ### Konfigurasi (`config/sijebol.php`)

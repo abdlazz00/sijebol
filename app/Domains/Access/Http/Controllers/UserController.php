@@ -116,7 +116,7 @@ class UserController extends Controller
 
         return Inertia::render('Pengguna/Berhasil', [
             'user' => [
-                'id' => $user->id, 'name' => $user->name, 'phone' => $user->phone,
+                'id' => $user->id, 'name' => $user->name, 'email' => $user->email, 'phone' => $user->phone,
                 'role' => $user->currentRole()?->name, 'school' => $user->school?->name,
             ],
             'link' => $link,
