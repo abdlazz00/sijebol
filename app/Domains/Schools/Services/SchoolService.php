@@ -47,6 +47,10 @@ class SchoolService
 
     public function delete(School $school, User $actor): void
     {
+        // Pelindung untuk role lama yang terikat sekolah tetapi terlanjur memegang izin ini.
+        if ($actor->school_id !== null) {
+            throw new AccessRuleException('Hanya staf kecamatan yang dapat menghapus sekolah.');
+        }
         if ($school->students()->exists() || $school->users()->exists() || $school->schedules()->exists() || $school->registrationEntries()->exists()) {
             throw new AccessRuleException('Sekolah masih memiliki data terkait (siswa, sesi jadwal, atau pengguna) dan tidak dapat dihapus.');
         }

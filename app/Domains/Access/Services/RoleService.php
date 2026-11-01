@@ -117,7 +117,14 @@ class RoleService
      */
     private function assertScopeAllows(bool $schoolScoped, array $permissions): void
     {
-        $districtWide = [Permission::LogLihat->value => 'Log Aktivitas', Permission::LaporanLihat->value => 'Laporan'];
+        $districtWide = [
+            Permission::LogLihat->value => 'Log Aktivitas',
+            Permission::LaporanLihat->value => 'Laporan',
+            // Sekolah tidak dibatasi per sekolah: izin ini berlaku untuk semua sekolah di kecamatan.
+            Permission::SekolahBuat->value => 'Tambah Sekolah',
+            Permission::SekolahUbah->value => 'Ubah Sekolah',
+            Permission::SekolahHapus->value => 'Hapus Sekolah',
+        ];
 
         foreach ($districtWide as $permission => $label) {
             if ($schoolScoped && in_array($permission, $permissions, true)) {

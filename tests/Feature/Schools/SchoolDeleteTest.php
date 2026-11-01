@@ -76,3 +76,15 @@ test('sekolah dengan sesi jadwal tidak dapat dihapus', function () {
 
     expect(School::find($school->id))->not->toBeNull();
 });
+
+test('pengguna terikat sekolah ditolak menghapus sekolah walau role-nya memegang izin sekolah.hapus', function () {
+    $milik = School::factory()->create();
+    $lain = School::factory()->create();
+    $operator = makeUserWith(['sekolah.hapus'], $milik, true, 'operator-hapus-sekolah');
+
+    $this->actingAs($operator)
+        ->delete("/schools/{$lain->id}")
+        ->assertSessionHas('error', 'Hanya staf kecamatan yang dapat menghapus sekolah.');
+
+    expect(School::find($lain->id))->not->toBeNull();
+});
