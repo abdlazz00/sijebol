@@ -11,7 +11,11 @@ import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { Textarea } from '@/Components/ui/textarea';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { formatDate, formatDateWithDay, formatTimeRange } from '@/lib/date';
+import {
+    formatDateTime,
+    formatDateWithDay,
+    formatTimeRange,
+} from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
 import { registrationStatus } from '@/lib/status';
 import type { ParticipantRow, ScheduleDetail } from '@/types/schedule';
@@ -82,7 +86,11 @@ const info = computed(() => [
         label: 'Pendaftaran',
         value: props.schedule.cancelled
             ? 'Ditutup (sesi dibatalkan)'
-            : `Dibuka sampai ${formatDate(props.schedule.last_registration_day)}`,
+            : `${
+                  new Date(props.schedule.registration_closes_at) > new Date()
+                      ? 'Dibuka sampai'
+                      : 'Ditutup sejak'
+              } ${formatDateTime(props.schedule.registration_closes_at)}`,
     },
     { label: 'Dibuat oleh', value: props.schedule.created_by ?? null },
 ]);

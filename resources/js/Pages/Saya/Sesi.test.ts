@@ -37,6 +37,8 @@ const sesi = (over: Partial<OpenSchedule> = {}): OpenSchedule => ({
     quota: 30,
     taken: 12,
     full: false,
+    closed: false,
+    closes_at: '2026-10-18T23:59:00+07:00',
     eligible: true,
     reasons: [],
     ...over,
@@ -58,7 +60,6 @@ const entry = (over: Partial<SelfEntry> = {}): SelfEntry => ({
 });
 const base = {
     ready: true,
-    close_days: 2,
     entry: null as SelfEntry | null,
     schedules: [] as OpenSchedule[],
 };
@@ -96,13 +97,50 @@ describe('Saya/Sesi — daftar sesi', () => {
         expect(w.text()).toContain('Aula SMPN 1');
         expect(w.text()).toContain('Sisa 18 dari 30 kursi');
         expect(w.text()).toContain('Penuh');
-        expect(w.text()).toContain('Pendaftaran ditutup 2 hari sebelum sesi.');
+        expect(w.text()).toContain('Dibuka sampai 18 Okt 2026 · 23.59');
 
         const tombol = w
             .findAll('button')
             .filter((b) => b.text().startsWith('Daftar'));
         expect(tombol[0].attributes('disabled')).toBeUndefined();
         expect(tombol[1].attributes('disabled')).toBeDefined();
+    });
+
+    it('sesi yang batas pendaftarannya lewat tetap tampil dengan ribbon teks, tombol nonaktif, dan tanpa alasan kelayakan', () => {
+        const w = mount(Sesi, {
+            props: {
+                ...base,
+                schedules: [
+                    sesi({
+                        id: 7,
+                        closed: true,
+                        eligible: false,
+                        reasons: ['Umur minimal 16 tahun (umur 15).'],
+                    }),
+                    sesi({ id: 8, eligible: false, reasons: ['Akta belum diunggah.'] }),
+                ],
+            },
+        });
+        const [tutup, buka] = w.findAll('li');
+
+        expect(tutup.text()).toContain('Pendaftaran ditutup');
+        expect(tutup.text()).toContain('Ditutup 18 Okt 2026 · 23.59');
+        expect(tutup.text()).not.toContain('Dibuka sampai');
+        expect(tutup.text()).not.toContain('Umur minimal 16 tahun');
+        expect(tutup.find('button').attributes('disabled')).toBeDefined();
+
+        expect(buka.text()).not.toContain('Pendaftaran ditutup');
+        expect(buka.text()).toContain('Akta belum diunggah.');
+    });
+
+    it('sesi tertutup tidak dapat dipilih walau siswa layak', async () => {
+        const w = mount(Sesi, {
+            props: { ...base, schedules: [sesi({ id: 9, closed: true })] },
+        });
+
+        await w.find('li button').trigger('click');
+
+        expect(w.find('[data-testid="confirm"]').exists()).toBe(false);
     });
 
     it('mendaftar: dialog menyebut sesi, penguncian data, dan cara membatalkan; konfirmasi memanggil rute daftar', async () => {

@@ -1,7 +1,7 @@
 <?php
 
 return [
-    // Pendaftaran sesi ditutup sekian hari sebelum tanggal sesi (hari terakhir mendaftar = tanggal sesi dikurangi nilai ini, inklusif).
+    // Isian awal batas pendaftaran di form sesi: sekian hari sebelum tanggal sesi, pukul 23.59. Batas sebenarnya disimpan per sesi (schedules.registration_closes_at).
     'registration_close_days' => 2,
 
     // Batas perbaikan: sekian jam sejak diminta, tetapi tidak melewati akhir hari sebelum sesi.

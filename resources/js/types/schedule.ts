@@ -26,7 +26,7 @@ export type ScheduleDetail = {
     taken: number;
     cancelled: boolean;
     is_past: boolean;
-    last_registration_day: string;
+    registration_closes_at: string;
     created_by?: string | null;
 };
 

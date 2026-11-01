@@ -23,19 +23,35 @@ test('halaman sesi memuat sesi terbuka sekolah siswa, urut tanggal, dengan kursi
     $penuh = makeSchedule($this->school, '2026-10-30');
     $penuh->update(['quota' => 1]);
     makeEntry(S::Terdaftar, $this->school, schedule: $penuh);
-    makeSchedule($this->school, '2026-10-02');                       // ditutup (H-1)
+    $tutup = makeSchedule($this->school, '2026-10-02');              // batas pendaftaran sudah lewat: tetap tampil, bertanda tutup
+    makeSchedule($this->school, '2026-09-28');                       // tanggal sesi sudah lewat
     makeSchedule($this->school, '2026-10-25')->update(['cancelled_at' => now()]);
     makeSchedule(School::factory()->create(), '2026-10-22');         // sekolah lain
 
     $this->actingAs($this->akun)->get('/me/sessions')->assertInertia(fn (Assert $p) => $p
         ->component('Saya/Sesi')
-        ->where('ready', true)->where('close_days', 2)->where('entry', null)
-        ->has('schedules', 3)
-        ->where('schedules.0.id', $lebihAwal->id)->where('schedules.1.id', $this->sesi->id)->where('schedules.2.id', $penuh->id)
-        ->where('schedules.1.start_time', '08:00')->where('schedules.1.end_time', '12:00')
-        ->where('schedules.1.quota', 30)->where('schedules.1.taken', 0)->where('schedules.1.full', false)
-        ->where('schedules.1.eligible', true)->where('schedules.1.reasons', [])
-        ->where('schedules.2.full', true)->where('schedules.2.taken', 1));
+        ->where('ready', true)->missing('close_days')->where('entry', null)
+        ->has('schedules', 4)
+        ->where('schedules.0.id', $tutup->id)->where('schedules.1.id', $lebihAwal->id)
+        ->where('schedules.2.id', $this->sesi->id)->where('schedules.3.id', $penuh->id)
+        ->where('schedules.0.closed', true)->where('schedules.1.closed', false)
+        ->where('schedules.2.closes_at', Carbon::parse('2026-10-18 23:59:59', 'Asia/Jakarta')->toIso8601String())
+        ->where('schedules.2.start_time', '08:00')->where('schedules.2.end_time', '12:00')
+        ->where('schedules.2.quota', 30)->where('schedules.2.taken', 0)->where('schedules.2.full', false)
+        ->where('schedules.2.eligible', true)->where('schedules.2.reasons', [])
+        ->where('schedules.3.full', true)->where('schedules.3.taken', 1));
+});
+
+test('mendaftar ke sesi yang batasnya lewat ditolak, dan diterima setelah admin membuka batasnya lagi', function () {
+    $tutup = makeSchedule($this->school, '2026-10-02');
+    $this->actingAs($this->akun);
+
+    $this->post("/me/sessions/{$tutup->id}/register")->assertSessionHas('error', 'Pendaftaran untuk sesi ini sudah ditutup.');
+    expect(RegistrationStudent::count())->toBe(0);
+
+    $tutup->update(['registration_closes_at' => '2026-10-01 18:00:00']);
+    $this->post("/me/sessions/{$tutup->id}/register")->assertSessionHas('success');
+    expect(RegistrationStudent::count())->toBe(1);
 });
 
 test('kelayakan dihitung per sesi: umur 16 pada tanggal sesi', function () {

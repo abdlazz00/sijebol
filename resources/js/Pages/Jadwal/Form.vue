@@ -9,7 +9,7 @@ import { formatDateWithDay } from '@/lib/date';
 import { focusFirstInvalid } from '@/lib/focusFirstInvalid';
 import { Link, useForm } from '@inertiajs/vue3';
 import { LoaderCircle } from '@lucide/vue';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const props = defineProps<{
     schedule: {
@@ -17,11 +17,13 @@ const props = defineProps<{
         date: string;
         start_time: string;
         end_time: string;
+        registration_closes_at: string;
         location: string;
         quota: number;
         has_participants: boolean;
     } | null;
     schools: { id: number; name: string }[] | null;
+    close_days: number;
 }>();
 
 const isEdit = computed(() => props.schedule !== null);
@@ -36,9 +38,22 @@ const form = useForm({
     date: props.schedule?.date ?? '',
     start_time: props.schedule?.start_time ?? '',
     end_time: props.schedule?.end_time ?? '',
+    registration_closes_at: props.schedule?.registration_closes_at ?? '',
     location: props.schedule?.location ?? '',
     quota: props.schedule ? String(props.schedule.quota) : '',
 });
+
+// Isian awal batas: `close_days` hari sebelum sesi, akhir hari. Berhenti mengikuti tanggal begitu admin mengubahnya sendiri.
+const closesTouched = ref(isEdit.value);
+watch(
+    () => form.date,
+    (date) => {
+        if (closesTouched.value || !date) return;
+        const d = new Date(`${date}T00:00:00Z`);
+        d.setUTCDate(d.getUTCDate() - props.close_days);
+        form.registration_closes_at = `${d.toISOString().slice(0, 10)}T23:59`;
+    },
+);
 
 const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
@@ -68,6 +83,15 @@ function validate(): boolean {
     if (!form.end_time) errors.end_time = 'Jam selesai wajib diisi.';
     else if (form.start_time && form.end_time <= form.start_time)
         errors.end_time = 'Jam selesai harus setelah jam mulai.';
+    if (!form.registration_closes_at)
+        errors.registration_closes_at = 'Batas pendaftaran wajib diisi.';
+    else if (
+        form.date &&
+        form.start_time &&
+        form.registration_closes_at > `${form.date}T${form.start_time}`
+    )
+        errors.registration_closes_at =
+            'Batas pendaftaran tidak boleh melewati jam mulai sesi.';
     if (!form.location.trim()) errors.location = 'Lokasi wajib diisi.';
     const quota = Number(form.quota);
     if (!/^\d+$/.test(form.quota) || quota < 1 || quota > 1000)
@@ -100,8 +124,8 @@ const crumbs = computed(() => [
             <p class="text-muted-foreground text-sm leading-5">
                 {{
                     isEdit
-                        ? 'Perbarui jam, lokasi, atau kuota sesi.'
-                        : 'Tentukan sekolah, tanggal, jam, lokasi, dan kuota sesi perekaman.'
+                        ? 'Perbarui jam, batas pendaftaran, lokasi, atau kuota sesi.'
+                        : 'Tentukan sekolah, tanggal, jam, batas pendaftaran, lokasi, dan kuota sesi perekaman.'
                 }}
             </p>
         </div>
@@ -200,6 +224,24 @@ const crumbs = computed(() => [
                         />
                     </FormField>
                 </div>
+
+                <FormField
+                    v-slot="{ id, describedBy, invalid }"
+                    label="Batas pendaftaran"
+                    required
+                    hint="Setelah batas ini siswa tidak dapat mendaftar. Sesi tetap tampil di daftar siswa dengan label ditutup."
+                    :error="error('registration_closes_at')"
+                >
+                    <Input
+                        :id="id"
+                        v-model="form.registration_closes_at"
+                        type="datetime-local"
+                        class="h-10 sm:w-64"
+                        :aria-invalid="invalid"
+                        :aria-describedby="describedBy"
+                        @input="closesTouched = true"
+                    />
+                </FormField>
 
                 <FormField
                     v-slot="{ id, describedBy, invalid }"

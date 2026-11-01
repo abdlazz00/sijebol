@@ -20,12 +20,11 @@ import type {
     SelfEntry,
 } from '@/types/registration';
 import { Link, router } from '@inertiajs/vue3';
-import { CalendarDays, LoaderCircle } from '@lucide/vue';
+import { CalendarDays, LoaderCircle, Lock } from '@lucide/vue';
 import { computed, nextTick, ref } from 'vue';
 
 const props = defineProps<{
     ready: boolean;
-    close_days: number;
     entry: SelfEntry | null;
     schedules: OpenSchedule[];
 }>();
@@ -335,7 +334,8 @@ function register() {
                         Pilih sesi
                     </h2>
                     <p class="text-muted-foreground text-xs leading-4">
-                        Pendaftaran ditutup {{ close_days }} hari sebelum sesi.
+                        Tiap sesi punya batas waktu pendaftaran. Sesi yang
+                        batasnya sudah lewat ditandai ditutup.
                     </p>
                 </div>
 
@@ -369,8 +369,17 @@ function register() {
                             <li
                                 v-for="s in group.items"
                                 :key="s.id"
-                                class="bg-card flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                                class="bg-card relative flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-center sm:justify-between"
+                                :class="{ 'pt-9 sm:pt-4': s.closed }"
                             >
+                                <!-- Ribbon: pita bertulis di tepi atas kartu; status tidak hanya lewat warna. -->
+                                <span
+                                    v-if="s.closed"
+                                    class="bg-danger-soft text-danger absolute -top-px right-4 inline-flex items-center gap-1 rounded-b-md px-2.5 py-1 text-xs leading-4 font-semibold"
+                                >
+                                    <Lock class="size-3" aria-hidden="true" />
+                                    Pendaftaran ditutup
+                                </span>
                                 <div class="flex min-w-0 flex-col gap-1">
                                     <p class="text-sm leading-5 font-semibold">
                                         {{ formatDateWithDay(s.date) }}
@@ -387,6 +396,7 @@ function register() {
                                         · {{ s.location }}
                                     </p>
                                     <p
+                                        v-if="!s.closed"
                                         class="text-xs leading-4"
                                         :class="
                                             s.full
@@ -400,8 +410,14 @@ function register() {
                                                 : `Sisa ${s.quota - s.taken} dari ${s.quota} kursi`
                                         }}
                                     </p>
+                                    <p
+                                        class="text-muted-foreground text-xs leading-4"
+                                    >
+                                        {{ s.closed ? 'Ditutup' : 'Dibuka sampai' }}
+                                        {{ formatDateTime(s.closes_at) }}
+                                    </p>
                                     <ul
-                                        v-if="specificReasons(s).length"
+                                        v-if="!s.closed && specificReasons(s).length"
                                         class="text-warning list-disc pl-4 text-xs leading-4"
                                     >
                                         <li
@@ -415,7 +431,9 @@ function register() {
                                 <Button
                                     type="button"
                                     class="h-10 px-4"
-                                    :disabled="s.full || !s.eligible || busy"
+                                    :disabled="
+                                        s.closed || s.full || !s.eligible || busy
+                                    "
                                     @click="picked = s"
                                 >
                                     <LoaderCircle

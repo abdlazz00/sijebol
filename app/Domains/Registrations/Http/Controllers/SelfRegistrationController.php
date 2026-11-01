@@ -31,7 +31,6 @@ class SelfRegistrationController extends Controller
 
         return Inertia::render('Saya/Sesi', [
             'ready' => $student !== null,
-            'close_days' => (int) config('sijebol.registration_close_days'),
             'entry' => $entry ? $this->entry($entry) : null,
             'schedules' => $student && ! $active ? $this->registrations->openSchedules($student) : [],
         ]);

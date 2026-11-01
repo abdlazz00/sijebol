@@ -7,7 +7,7 @@ import type {
     ScheduleDetail,
     ScheduleRow,
 } from '@/types/schedule';
-import { config, flushPromises, mount } from '@vue/test-utils';
+import { config, flushPromises, mount, type VueWrapper } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { post, put, routerPost, routerDelete, permissions } = vi.hoisted(() => ({
@@ -73,7 +73,7 @@ const detail: ScheduleDetail = {
     taken: 12,
     cancelled: false,
     is_past: false,
-    last_registration_day: '2026-10-18',
+    registration_closes_at: '2026-10-18T23:59:00+07:00',
     created_by: 'Admin',
 };
 const peserta = (
@@ -167,9 +167,25 @@ describe('Jadwal/Index', () => {
     });
 });
 
+const formUbah = (over: { has_participants?: boolean } = {}) => ({
+    schedule: {
+        id: 5,
+        date: '2026-10-20',
+        start_time: '08:00',
+        end_time: '12:00',
+        registration_closes_at: '2026-10-18T23:59',
+        location: 'Aula',
+        quota: 30,
+        has_participants: false,
+        ...over,
+    },
+    schools: null,
+    close_days: 2,
+});
+
 describe('Jadwal/Form', () => {
     it('membuat sesi: jam selesai harus setelah jam mulai dan kuota 1–1000', async () => {
-        const w = mount(Form, { props: { schedule: null, schools: null } });
+        const w = mount(Form, { props: { schedule: null, schools: null, close_days: 2 } });
         const [mulai, selesai] = w.findAll('input[type="time"]');
         await w.find('input[type="date"]').setValue('2099-01-01');
         await w.find('input[placeholder^="Contoh"]').setValue('Aula');
@@ -185,7 +201,7 @@ describe('Jadwal/Form', () => {
     });
 
     it('data valid dikirim lewat POST', async () => {
-        const w = mount(Form, { props: { schedule: null, schools: null } });
+        const w = mount(Form, { props: { schedule: null, schools: null, close_days: 2 } });
         const [mulai, selesai] = w.findAll('input[type="time"]');
         await w.find('input[type="date"]').setValue('2099-01-01');
         await w.find('input[placeholder^="Contoh"]').setValue('Aula');
@@ -199,24 +215,71 @@ describe('Jadwal/Form', () => {
     });
 
     it('ubah sesi berpendaftar: tanggal tampil sebagai teks baca-saja dengan alasan', () => {
-        const w = mount(Form, {
-            props: {
-                schedule: {
-                    id: 5,
-                    date: '2026-10-20',
-                    start_time: '08:00',
-                    end_time: '12:00',
-                    location: 'Aula',
-                    quota: 30,
-                    has_participants: true,
-                },
-                schools: null,
-            },
-        });
+        const w = mount(Form, { props: formUbah({ has_participants: true }) });
 
         expect(w.find('input[type="date"]').exists()).toBe(false);
         expect(w.text()).toContain('Selasa, 20 Okt 2026');
         expect(w.text()).toContain('tidak dapat diubah');
+    });
+
+    describe('batas pendaftaran', () => {
+        const batas = (w: VueWrapper) =>
+            w.find('input[type="datetime-local"]').element as HTMLInputElement;
+
+        it('isian awal mengikuti tanggal sesi (hari sebelumnya sesuai close_days, 23.59) sampai diubah sendiri', async () => {
+            const w = mount(Form, {
+                props: { schedule: null, schools: null, close_days: 2 },
+            });
+            const tanggal = w.find('input[type="date"]');
+
+            expect(batas(w).value).toBe('');
+            await tanggal.setValue('2099-01-10');
+            expect(batas(w).value).toBe('2099-01-08T23:59');
+            await tanggal.setValue('2099-01-20');
+            expect(batas(w).value).toBe('2099-01-18T23:59');
+
+            await w.find('input[type="datetime-local"]').setValue('2099-01-19T10:00');
+            await tanggal.setValue('2099-02-01');
+            expect(batas(w).value).toBe('2099-01-19T10:00');
+        });
+
+        it('ubah sesi memakai nilai tersimpan dan tidak ikut berubah saat tanggal diganti', async () => {
+            const w = mount(Form, { props: formUbah() });
+
+            expect(batas(w).value).toBe('2026-10-18T23:59');
+            await w.find('input[type="date"]').setValue('2026-10-30');
+            expect(batas(w).value).toBe('2026-10-18T23:59');
+        });
+
+        it('wajib diisi dan tidak boleh melewati jam mulai sesi', async () => {
+            const w = mount(Form, {
+                props: { schedule: null, schools: null, close_days: 2 },
+            });
+            const [mulai, selesai] = w.findAll('input[type="time"]');
+            await w.find('input[type="date"]').setValue('2099-01-01');
+            await w.find('input[placeholder^="Contoh"]').setValue('Aula');
+            await mulai.setValue('08:00');
+            await selesai.setValue('11:00');
+            await w.find('input[inputmode="numeric"]').setValue('25');
+
+            await w.find('input[type="datetime-local"]').setValue('');
+            await w.find('form').trigger('submit');
+            await flushPromises();
+            expect(w.text()).toContain('Batas pendaftaran wajib diisi.');
+
+            await w.find('input[type="datetime-local"]').setValue('2099-01-01T08:01');
+            await w.find('form').trigger('submit');
+            await flushPromises();
+            expect(w.text()).toContain(
+                'Batas pendaftaran tidak boleh melewati jam mulai sesi.',
+            );
+            expect(post).not.toHaveBeenCalled();
+
+            await w.find('input[type="datetime-local"]').setValue('2099-01-01T08:00');
+            await w.find('form').trigger('submit');
+            await flushPromises();
+            expect(post).toHaveBeenCalledOnce();
+        });
     });
 });
 
@@ -244,6 +307,22 @@ describe('Jadwal/Show', () => {
         expect(w.text()).not.toContain('Tambah siswa');
         expect(w.text()).not.toContain('Pindahkan');
         expect(w.text()).not.toContain('Keluarkan');
+    });
+
+    it('baris Pendaftaran menyebut batas waktunya: dibuka sampai atau ditutup sejak', () => {
+        const buka = mount(Show, {
+            props: {
+                ...base,
+                schedule: {
+                    ...detail,
+                    registration_closes_at: '2099-01-01T23:59:00+07:00',
+                },
+            },
+        });
+        expect(buka.text()).toContain('Dibuka sampai 1 Jan 2099 · 23.59');
+
+        const tutup = mount(Show, { props: base });
+        expect(tutup.text()).toContain('Ditutup sejak 18 Okt 2026 · 23.59');
     });
 
     it('tautan Pindai tiket hanya untuk pemegang rekaman.pindai dan sesi yang tidak dibatalkan', () => {

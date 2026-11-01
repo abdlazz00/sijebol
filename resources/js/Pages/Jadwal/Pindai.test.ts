@@ -67,7 +67,7 @@ const sesi: ScheduleDetail = {
     taken: 10,
     cancelled: false,
     is_past: false,
-    last_registration_day: '2026-10-18',
+    registration_closes_at: '2026-10-18T23:59:00+07:00',
 };
 const jendelaTerbuka = {
     from: '2020-01-01T00:00:00+07:00',

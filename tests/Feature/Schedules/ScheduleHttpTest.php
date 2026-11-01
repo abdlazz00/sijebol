@@ -16,7 +16,7 @@ beforeEach(function () {
 
 function formSesi(array $override = []): array
 {
-    return [...['date' => now('Asia/Jakarta')->addDay()->toDateString(), 'start_time' => '08:00', 'end_time' => '11:30', 'location' => 'Aula SMPN 1', 'quota' => 25], ...$override];
+    return [...['date' => now('Asia/Jakarta')->addDay()->toDateString(), 'start_time' => '08:00', 'end_time' => '11:30', 'registration_closes_at' => now('Asia/Jakarta')->addDay()->format('Y-m-d').'T07:00', 'location' => 'Aula SMPN 1', 'quota' => 25], ...$override];
 }
 
 test('admin membuat sesi lalu melihat detailnya dengan jam dan kuota', function () {
@@ -30,7 +30,7 @@ test('admin membuat sesi lalu melihat detailnya dengan jam dan kuota', function 
         ->where('schedule.location', 'Aula SMPN 1')->where('schedule.is_past', false)
         ->where('schedule.start_time', '08:00')->where('schedule.end_time', '11:30')
         ->where('schedule.quota', 25)->where('schedule.taken', 0)->where('schedule.cancelled', false)
-        ->where('schedule.last_registration_day', now('Asia/Jakarta')->subDay()->toDateString())
+        ->where('schedule.registration_closes_at', now('Asia/Jakarta')->addDay()->setTime(7, 0)->toIso8601String())
         ->has('participants', 0));
 });
 
@@ -47,11 +47,46 @@ test('validasi: lokasi, sekolah, jam, dan kuota; tanggal tidak boleh lewat', fun
     expect(Schedule::count())->toBe(0);
 });
 
+test('validasi batas pendaftaran: wajib, berformat, dan tidak melewati jam mulai sesi', function () {
+    $this->actingAs($this->admin);
+    $sekolah = ['school_id' => $this->school->id];
+
+    foreach (['', 'besok', $this->besok.' 07:00', $this->besok.'T08:01'] as $batas) {
+        $this->post('/schedules', formSesi($sekolah + ['registration_closes_at' => $batas]))->assertSessionHasErrors('registration_closes_at');
+    }
+    expect(Schedule::count())->toBe(0);
+
+    // Tepat di jam mulai masih sah.
+    $this->post('/schedules', formSesi($sekolah + ['registration_closes_at' => $this->besok.'T08:00']))->assertSessionHasNoErrors();
+    expect(Schedule::count())->toBe(1);
+});
+
+test('ubah batas pendaftaran: sesi yang sudah ditutup dapat dibuka lagi', function () {
+    $s = makeSchedule($this->school, $this->besok);
+    expect($s->isOpenForRegistration())->toBeFalse();
+    $this->actingAs($this->admin);
+
+    $this->put("/schedules/{$s->id}", formSesi(['date' => $this->besok]))->assertRedirect("/schedules/{$s->id}");
+
+    expect($s->fresh()->isOpenForRegistration())->toBeTrue();
+});
+
+test('halaman buat dan ubah memuat isian awal batas pendaftaran', function () {
+    $s = makeSchedule($this->school, $this->besok);
+    $s->update(['registration_closes_at' => $this->besok.' 07:30:00']);
+    $this->actingAs($this->admin);
+
+    $this->get('/schedules/create')->assertInertia(fn (Assert $p) => $p
+        ->component('Jadwal/Form')->where('schedule', null)->where('close_days', 2));
+    $this->get("/schedules/{$s->id}/edit")->assertInertia(fn (Assert $p) => $p
+        ->where('close_days', 2)->where('schedule.registration_closes_at', $this->besok.'T07:30'));
+});
+
 test('ubah: sesi yang sudah lewat ditolak, memindahkan sesi mendatang ke masa lalu juga', function () {
     $lewat = makeSchedule($this->school, now('Asia/Jakarta')->subDays(3)->toDateString());
     $this->actingAs($this->admin);
 
-    $this->put("/schedules/{$lewat->id}", formSesi(['date' => $lewat->date->toDateString(), 'location' => 'Lokasi baru']))
+    $this->put("/schedules/{$lewat->id}", formSesi(['date' => $lewat->date->toDateString(), 'registration_closes_at' => $lewat->date->toDateString().'T07:00', 'location' => 'Lokasi baru']))
         ->assertSessionHas('error', 'Sesi yang sudah lewat tidak dapat diubah.');
     expect($lewat->fresh()->location)->not->toBe('Lokasi baru');
 

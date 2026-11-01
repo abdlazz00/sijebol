@@ -51,7 +51,11 @@ class ScheduleController extends Controller
 
     public function create(Request $request): Response
     {
-        return Inertia::render('Jadwal/Form', ['schedule' => null, 'schools' => $this->schools->optionsFor($request->user())]);
+        return Inertia::render('Jadwal/Form', [
+            'schedule' => null,
+            'schools' => $this->schools->optionsFor($request->user()),
+            'close_days' => (int) config('sijebol.registration_close_days'),
+        ]);
     }
 
     public function store(ScheduleRequest $request): RedirectResponse
@@ -82,11 +86,13 @@ class ScheduleController extends Controller
                 'date' => $schedule->date->toDateString(),
                 'start_time' => self::time($schedule->start_time),
                 'end_time' => self::time($schedule->end_time),
+                'registration_closes_at' => $schedule->registration_closes_at->format('Y-m-d\TH:i'),
                 'location' => $schedule->location,
                 'quota' => $schedule->quota,
                 'has_participants' => $schedule->entries()->exists(),
             ],
             'schools' => null,
+            'close_days' => (int) config('sijebol.registration_close_days'),
         ]);
     }
 
@@ -138,7 +144,7 @@ class ScheduleController extends Controller
             'taken' => $s->seatsTaken(),
             'cancelled' => $s->isCancelled(),
             'is_past' => $s->isPast(),
-            'last_registration_day' => $s->lastRegistrationDay(),
+            'registration_closes_at' => $s->registration_closes_at->toIso8601String(),
         ];
     }
 

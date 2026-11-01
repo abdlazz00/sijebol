@@ -3,6 +3,7 @@
 namespace App\Domains\Schedules\Http\Requests;
 
 use App\Domains\Schedules\Models\Schedule;
+use Closure;
 use Illuminate\Foundation\Http\FormRequest;
 
 /** Satu kelas untuk buat dan ubah; `$this->route('schedule')` kosong saat buat. */
@@ -23,6 +24,13 @@ class ScheduleRequest extends FormRequest
             'date' => ['required', 'date_format:Y-m-d', ...($dateChanged ? ['after_or_equal:'.Schedule::today()] : [])],
             'start_time' => ['required', 'date_format:H:i'],
             'end_time' => ['required', 'date_format:H:i', 'after:start_time'],
+            'registration_closes_at' => [
+                'bail', 'required', 'date_format:Y-m-d\TH:i',
+                // Format tetap, jadi perbandingan teks sama dengan perbandingan waktu.
+                fn (string $attribute, mixed $value, Closure $fail) => $value <= $this->input('date').'T'.$this->input('start_time')
+                    ? null
+                    : $fail('Batas pendaftaran tidak boleh melewati jam mulai sesi.'),
+            ],
             'location' => ['required', 'string', 'max:150'],
             'quota' => ['required', 'integer', 'between:1,1000'],
         ];
@@ -41,6 +49,8 @@ class ScheduleRequest extends FormRequest
             'end_time.required' => 'Jam selesai wajib diisi.',
             'end_time.date_format' => 'Format jam selesai tidak valid.',
             'end_time.after' => 'Jam selesai harus setelah jam mulai.',
+            'registration_closes_at.required' => 'Batas pendaftaran wajib diisi.',
+            'registration_closes_at.date_format' => 'Format batas pendaftaran tidak valid.',
             'location.required' => 'Lokasi wajib diisi.',
             'quota.required' => 'Kuota wajib diisi.',
             'quota.integer' => 'Kuota harus berupa angka 1–1000.',

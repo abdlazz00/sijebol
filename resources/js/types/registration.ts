@@ -63,6 +63,8 @@ export type OpenSchedule = SessionBrief & {
     quota: number;
     taken: number;
     full: boolean;
+    closed: boolean;
+    closes_at: string;
     eligible: boolean;
     reasons: string[];
 };

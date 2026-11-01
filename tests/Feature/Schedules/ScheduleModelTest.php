@@ -17,13 +17,16 @@ test('seatsTaken menghitung hanya status penahan kursi', function () {
         ->and($schedule->seatsTaken())->toBe(5);
 });
 
-test('pendaftaran dibuka sampai H-2 inklusif dan ditutup H-1', function () {
-    Carbon::setTestNow(Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+test('pendaftaran dibuka sampai tepat detik batas waktu sesi', function () {
+    $batas = Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta');
+    $schedule = makeSchedule(date: '2026-10-22');
+    $schedule->update(['registration_closes_at' => $batas]);
 
-    expect(makeSchedule(date: '2026-10-22')->isOpenForRegistration())->toBeTrue()
-        ->and(makeSchedule(date: '2026-10-21')->isOpenForRegistration())->toBeTrue()
-        ->and(makeSchedule(date: '2026-10-20')->isOpenForRegistration())->toBeFalse()
-        ->and(makeSchedule(date: '2026-10-21')->lastRegistrationDay())->toBe('2026-10-19');
+    Carbon::setTestNow($batas->copy());
+    expect($schedule->isOpenForRegistration())->toBeTrue();
+
+    Carbon::setTestNow($batas->copy()->addSecond());
+    expect($schedule->isOpenForRegistration())->toBeFalse();
 });
 
 test('sesi dibatalkan tidak menerima pendaftaran maupun perubahan siswa', function () {

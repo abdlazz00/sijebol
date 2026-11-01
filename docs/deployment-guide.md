@@ -572,7 +572,7 @@ Bila `migrate` berhenti dengan pesan "Data lama masih ada", jalankan perintah pe
 
 ### Konfigurasi
 
-`config/sijebol.php` memuat `registration_close_days` (nilai awal `2`): pendaftaran sesi ditutup sekian hari sebelum tanggal sesi (hari terakhir mendaftar = tanggal sesi dikurangi nilai ini, inklusif). Siswa dapat membatalkan atau mengajukan ulang sampai sehari sebelum sesi.
+`config/sijebol.php` memuat `registration_close_days` (nilai awal `2`): sejak 2026-11-01 hanya isian awal batas pendaftaran di form sesi (lihat bagian 13); sebelumnya = hari terakhir mendaftar (tanggal sesi dikurangi nilai ini, inklusif). Siswa dapat membatalkan atau mengajukan ulang sampai sehari sebelum sesi.
 
 ### Belum tersedia sampai fase 7c
 
@@ -598,7 +598,7 @@ php artisan queue:restart
 
 | Kunci | Nilai awal | Arti |
 |---|---|---|
-| `registration_close_days` | 2 | Pendaftaran sesi ditutup sekian hari sebelum sesi |
+| `registration_close_days` | 2 | Isian awal batas pendaftaran di form sesi: sekian hari sebelum sesi, pukul 23.59 |
 | `fix_window_hours` | 48 | Batas perbaikan: sekian jam sejak diminta, tidak melewati akhir hari sebelum sesi |
 | `reminder_hour` | 8 | Pengingat sesi H-1 dikirim sejak jam ini (WIB) |
 
@@ -648,3 +648,15 @@ Tanpa seeder, tombol **Pindai tiket** tidak muncul untuk siapa pun dan rute pind
 ### Gerbang rilis
 
 Penelusuran manual pada rencana 7d (Task 8) harus lulus di DB dev sebelum rilis: pindai QR dari HP lain lewat HTTPS, pindai ulang, tiket sesi lain, batalkan penandaan lalu pindai lagi, jalankan `sijebol:tandai-tidak-hadir` setelah menggeser tanggal sesi, periksa label KTP-el langsung, beranda, dan kedua ekspor.
+
+## 13. Catatan Batas Waktu Pendaftaran per Sesi
+
+Admin menetapkan **batas pendaftaran** (tanggal dan jam) pada tiap sesi rekaman; aturan global "tutup N hari sebelum sesi" tidak lagi menentukan. Sesi yang batasnya lewat tetap tampil bagi siswa dengan ribbon "Pendaftaran ditutup" dan pendaftarannya ditolak server.
+
+```bash
+php artisan migrate --force    # menambah kolom schedules.registration_closes_at; TANPA seeder
+```
+
+- Sesi yang sudah ada diisi otomatis: tanggal sesi dikurangi 2 hari, pukul 23.59.59 (sama dengan aturan lama), jadi perilakunya tidak berubah sampai admin mengubah batasnya lewat **Ubah** sesi.
+- `registration_close_days` di `config/sijebol.php` kini hanya isian awal form Buat sesi (batas = tanggal sesi dikurangi nilai ini, pukul 23.59). Admin bebas mengubahnya per sesi, termasuk ke hari yang sama untuk sesi mendadak.
+- Siswa yang sudah terdaftar tetap dapat membatalkan atau mengajukan ulang sampai sehari sebelum sesi (aturan terpisah dari batas pendaftaran).

@@ -86,7 +86,7 @@ class ScheduleService
         })->values()->all();
     }
 
-    /** @param array{school_id?: ?int, date: string, start_time: string, end_time: string, location: string, quota: int} $data */
+    /** @param array{school_id?: ?int, date: string, start_time: string, end_time: string, registration_closes_at: string, location: string, quota: int} $data */
     public function create(array $data, User $actor): Schedule
     {
         $schedule = $this->schedules->create([
@@ -104,7 +104,7 @@ class ScheduleService
      * Tanggal terkunci bila sesi sudah punya pendaftar; kuota tidak boleh di bawah kursi yang sedang ditahan.
      * Pemeriksaan di bawah kunci baris sesi agar tidak berebut dengan pendaftaran siswa.
      *
-     * @param  array{date: string, start_time: string, end_time: string, location: string, quota: int}  $data
+     * @param  array{date: string, start_time: string, end_time: string, registration_closes_at: string, location: string, quota: int}  $data
      */
     public function update(Schedule $schedule, array $data, User $actor): Schedule
     {
@@ -127,7 +127,7 @@ class ScheduleService
 
             $this->schedules->update($locked, $this->attributes($data));
 
-            if ($locked->wasChanged(['date', 'start_time', 'end_time', 'location', 'quota'])) {
+            if ($locked->wasChanged(['date', 'start_time', 'end_time', 'registration_closes_at', 'location', 'quota'])) {
                 activity('jadwal')->performedOn($locked)->causedBy($actor)->log('jadwal.diubah');
             }
 
@@ -210,6 +210,7 @@ class ScheduleService
             'date' => $data['date'],
             'start_time' => $data['start_time'].':00',
             'end_time' => $data['end_time'].':00',
+            'registration_closes_at' => $data['registration_closes_at'],
             'location' => $data['location'],
             'quota' => $data['quota'],
         ];

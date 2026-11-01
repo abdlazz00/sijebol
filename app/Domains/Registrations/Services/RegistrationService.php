@@ -12,7 +12,6 @@ use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
 use App\Models\User;
-use Carbon\Carbon;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Facades\DB;
 
@@ -167,18 +166,18 @@ class RegistrationService
     }
 
     /**
-     * Sesi sekolah siswa yang pendaftarannya masih dibuka, terdekat dulu, lengkap dengan kursi dan kelayakan
-     * (umur dihitung pada tanggal sesi itu). Sesi penuh tetap dikembalikan agar dapat ditampilkan nonaktif.
+     * Sesi sekolah siswa yang belum lewat dan tidak dibatalkan, terdekat dulu, lengkap dengan kursi dan kelayakan
+     * (umur dihitung pada tanggal sesi itu). Sesi penuh atau yang batas pendaftarannya sudah lewat tetap
+     * dikembalikan (`closed`) agar dapat ditampilkan nonaktif.
      *
-     * @return list<array{id: int, date: string, start_time: string, end_time: string, location: string, quota: int, taken: int, full: bool, eligible: bool, reasons: list<string>}>
+     * @return list<array{id: int, date: string, start_time: string, end_time: string, location: string, quota: int, taken: int, full: bool, closed: bool, closes_at: string, eligible: bool, reasons: list<string>}>
      */
     public function openSchedules(Student $student): array
     {
         $student->load(['documents', 'registrationEntries']);
-        $firstOpenDate = Carbon::parse(Schedule::today())->addDays((int) config('sijebol.registration_close_days'))->toDateString();
 
         return Schedule::query()
-            ->whereNull('cancelled_at')->where('date', '>=', $firstOpenDate)
+            ->whereNull('cancelled_at')->where('date', '>=', Schedule::today())
             ->withCount(['entries as taken_count' => fn ($q) => $q->withoutGlobalScope('owner')->whereIn('status', RegistrationStatus::values(RegistrationStatus::holdingSeat()))])
             ->orderBy('date')->orderBy('start_time')->orderBy('id')->get()
             ->map(function (Schedule $s) use ($student) {
@@ -193,6 +192,8 @@ class RegistrationService
                     'quota' => $s->quota,
                     'taken' => $s->taken_count,
                     'full' => $s->taken_count >= $s->quota,
+                    'closed' => ! $s->isOpenForRegistration(),
+                    'closes_at' => $s->registration_closes_at->toIso8601String(),
                     'eligible' => $check['eligible'],
                     'reasons' => $check['reasons'],
                 ];

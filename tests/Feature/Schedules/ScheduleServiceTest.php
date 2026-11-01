@@ -20,7 +20,7 @@ beforeEach(function () {
 
 function dataSesi(array $override = []): array
 {
-    return [...['date' => '2026-12-01', 'start_time' => '08:00', 'end_time' => '11:00', 'location' => 'Aula SMPN 1', 'quota' => 25], ...$override];
+    return [...['date' => '2026-12-01', 'start_time' => '08:00', 'end_time' => '11:00', 'registration_closes_at' => '2026-11-29 23:59:59', 'location' => 'Aula SMPN 1', 'quota' => 25], ...$override];
 }
 
 test('staf membuat sesi untuk sekolah pilihan dengan jam dan kuota, tercatat di log', function () {

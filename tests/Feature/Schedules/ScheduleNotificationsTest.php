@@ -21,7 +21,7 @@ function dataSesiBaru(Schedule $s, array $override = []): array
 {
     return [...[
         'date' => $s->date->toDateString(), 'start_time' => '08:00', 'end_time' => '12:00',
-        'location' => $s->location, 'quota' => $s->quota,
+        'registration_closes_at' => $s->registration_closes_at->toDateTimeString(), 'location' => $s->location, 'quota' => $s->quota,
     ], ...$override];
 }
 

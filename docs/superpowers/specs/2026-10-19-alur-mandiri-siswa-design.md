@@ -101,7 +101,7 @@ Sesi selesai: yang belum terpindai -> "Tidak hadir"
 - Pendaftaran ke sesi dilakukan di bawah kunci baris sesi (`lockForUpdate`) agar tidak ada kelebihan kuota saat serentak. Kuota tidak boleh diubah di bawah jumlah kursi yang sedang ditahan.
 - **[Pilihan saya]** Satu siswa hanya punya satu pendaftaran aktif (aturan v1, indeks unik `active_student_id`, daftar status aktif diperbarui).
 - **[Pilihan saya]** Umur minimal 16 tahun dihitung pada **tanggal sesi** (bukan tanggal daftar), di satu tempat (`EligibilityService`).
-- **[Pilihan saya]** Pendaftaran ditutup 2 hari sebelum tanggal sesi; verifikasi admin tetap boleh sampai hari sesi. Nilai awal ini berada di satu tempat konfigurasi.
+- **[Pilihan saya]** ~~Pendaftaran ditutup 2 hari sebelum tanggal sesi~~ (diganti 2026-11-01): admin menetapkan **batas waktu pendaftaran per sesi** (tanggal dan jam, tidak boleh melewati jam mulai sesi); isian awal form = `registration_close_days` (2) hari sebelum sesi pukul 23.59. Sesi yang batasnya lewat tetap tampil bagi siswa dengan label ditutup; server menolak pendaftarannya. Verifikasi admin tetap boleh sampai hari sesi. Rencana: `docs/superpowers/plans/2026-11-01-batas-waktu-pendaftaran-per-sesi.md`.
 - Sesi yang sudah memiliki pendaftar tidak dapat dihapus. **[Pilihan saya]** Perubahan pada sesi yang sudah punya pendaftar:
   - Jam dan lokasi boleh diubah; siswa terdaftar diberi notifikasi.
   - Tanggal **tidak** boleh diubah (umur, batas tutup, dan tiket bergantung pada tanggal). Bila tanggal harus berubah, admin membatalkan sesi lalu membuat sesi baru.

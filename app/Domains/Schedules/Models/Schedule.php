@@ -22,6 +22,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property Carbon $date
  * @property string $start_time
  * @property string $end_time
+ * @property Carbon $registration_closes_at
  * @property string $location
  * @property int $quota
  * @property Carbon|null $cancelled_at
@@ -38,11 +39,11 @@ class Schedule extends Model
 
     private const ZONE = 'Asia/Jakarta';
 
-    protected $fillable = ['school_id', 'date', 'start_time', 'end_time', 'location', 'quota', 'cancelled_at', 'created_by'];
+    protected $fillable = ['school_id', 'date', 'start_time', 'end_time', 'registration_closes_at', 'location', 'quota', 'cancelled_at', 'created_by'];
 
     protected function casts(): array
     {
-        return ['date' => 'date', 'cancelled_at' => 'datetime'];
+        return ['date' => 'date', 'registration_closes_at' => 'datetime', 'cancelled_at' => 'datetime'];
     }
 
     /** Tanggal hari ini di zona Asia/Jakarta (Y-m-d): satu sumber untuk model, repository, dan validasi. */
@@ -68,15 +69,10 @@ class Schedule extends Model
         return $this->cancelled_at !== null;
     }
 
-    /** Hari terakhir (inklusif) siswa boleh mendaftar: tanggal sesi dikurangi `sijebol.registration_close_days`. */
-    public function lastRegistrationDay(): string
-    {
-        return $this->date->copy()->subDays((int) config('sijebol.registration_close_days'))->toDateString();
-    }
-
+    /** Siswa boleh mendaftar sampai batas waktu yang ditetapkan admin (inklusif sampai detik batas). */
     public function isOpenForRegistration(): bool
     {
-        return ! $this->isCancelled() && self::today() <= $this->lastRegistrationDay();
+        return ! $this->isCancelled() && Carbon::now(self::ZONE)->lessThanOrEqualTo($this->registration_closes_at);
     }
 
     /** Siswa boleh membatalkan atau mengajukan ulang sampai hari sebelum sesi. */
