@@ -22,7 +22,7 @@ Tanggal: 2026-10-09. Bagian pertama dari tiga sub-fase 6c (6c-1 hardening, 6c-2 
 
 Middleware baru `App\Http\Middleware\SecurityHeaders`, ditambahkan di grup `web` (setelah `HandleInertiaRequests`).
 
-- **Selalu:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(), microphone=(), geolocation=()`.
+- **Selalu:** `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy: camera=(self), microphone=(), geolocation=()` (kamera diizinkan untuk situs sendiri karena halaman Pindai tiket memakainya).
 - **HSTS:** `Strict-Transport-Security: max-age=31536000; includeSubDomains` hanya bila `$request->secure()`.
 - **CSP:** hanya bila `! app()->isLocal()` (kunci konfigurasi `security.csp`, default aktif di luar local, dapat dimatikan lewat `.env` untuk darurat). Kebijakan:
   `default-src 'self'; script-src 'self' 'nonce-{nonce}'; style-src 'self' 'unsafe-inline' https://fonts.bunny.net; font-src 'self' https://fonts.bunny.net data:; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'`.

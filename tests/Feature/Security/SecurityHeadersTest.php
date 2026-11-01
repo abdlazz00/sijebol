@@ -17,7 +17,7 @@ test('semua respons web membawa header keamanan dasar', function () {
         ->assertHeader('X-Content-Type-Options', 'nosniff')
         ->assertHeader('X-Frame-Options', 'DENY')
         ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
-        ->assertHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+        ->assertHeader('Permissions-Policy', 'camera=(self), microphone=(), geolocation=()')
         ->assertHeader('X-Robots-Tag', 'noindex, nofollow');
 });
 
