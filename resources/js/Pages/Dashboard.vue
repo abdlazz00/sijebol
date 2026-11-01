@@ -179,10 +179,10 @@ const actionIcons = {
                 </div>
 
                 <!-- Kolom Kanan: Notifikasi Terbaru & Kalender Mini (~40% / 5 cols) -->
-                <div class="flex flex-col gap-6 lg:col-span-5">
+                <div class="@container flex flex-wrap items-start gap-6 lg:col-span-5">
                     <!-- Card Notifikasi Terbaru -->
                     <div
-                        class="flex flex-col justify-between rounded-xl border border-border/80 bg-card p-4 shadow-xs"
+                        class="flex w-full flex-col justify-between rounded-xl border border-border/80 bg-card p-4 shadow-xs @3xl:w-[calc(50%-0.75rem)]"
                     >
                         <div
                             class="flex items-center justify-between gap-2 border-b border-border/50 pb-3"
@@ -245,7 +245,10 @@ const actionIcons = {
                     </div>
 
                     <!-- Card Mini Kalender -->
-                    <DashboardMiniCalendar :events="calendar_events" />
+                    <DashboardMiniCalendar
+                        class="w-full @3xl:w-[calc(50%-0.75rem)]"
+                        :events="calendar_events"
+                    />
                 </div>
             </div>
         </div>

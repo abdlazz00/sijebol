@@ -27,7 +27,7 @@ vi.mock('@inertiajs/vue3', async (importOriginal) => {
 });
 
 describe('AppLayout Shell Layout', () => {
-    it('memiliki kontainer main dengan atribut aksesibilitas dan kelas fluid 1600px', () => {
+    it('memiliki kontainer main dengan atribut aksesibilitas dan kelas fluid tanpa batas lebar', () => {
         const wrapper = mount(AppLayout, {
             props: { title: 'Test Page' },
             slots: { default: '<div id="test-content">Konten Uji</div>' },
@@ -39,8 +39,8 @@ describe('AppLayout Shell Layout', () => {
 
         // Memastikan tidak ada mx-auto yang membuat layout melayang di tengah
         expect(main.classes()).not.toContain('mx-auto');
-        // Memastikan batas lebar menggunakan 1600px dan fluid rata-kiri
-        expect(main.classes()).toContain('max-w-[1600px]');
+        // Memastikan konten fluid rata-kiri tanpa batas lebar maksimum
+        expect(main.classes().some((c) => c.startsWith('max-w-'))).toBe(false);
         expect(main.classes()).toContain('w-full');
     });
 

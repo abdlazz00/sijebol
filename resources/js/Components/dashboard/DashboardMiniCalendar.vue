@@ -195,7 +195,7 @@ function handleDateClick(day: {
             <div
                 v-for="(day, idx) in calendarDays"
                 :key="idx"
-                class="flex aspect-square items-center justify-center p-0.5"
+                class="flex h-10 items-center justify-center p-0.5"
             >
                 <button
                     v-if="day.dayNumber"
