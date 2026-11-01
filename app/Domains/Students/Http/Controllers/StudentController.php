@@ -45,7 +45,7 @@ class StudentController extends Controller
                 'gender' => $student->gender,
             ],
             'documents' => $request->user()->can('dokumen.lihat') ? $this->documents->rows($student) : [],
-            'eligibility' => $this->eligibility->check($student),
+            'eligibility' => $this->check($student),
             'locked' => $student->isLocked(),
             'registrations' => $student->registrationEntries->map(fn ($e) => [
                 'id' => $e->id,
@@ -88,10 +88,22 @@ class StudentController extends Controller
         return redirect()->route('students.index')->with('success', 'Siswa dihapus.');
     }
 
+    /**
+     * Syarat = umur dan dokumen. Pendaftaran terkini dikecualikan: aturan "satu pendaftaran aktif" hanya menjaga
+     * pendaftaran ganda, bukan tanda siswa belum memenuhi syarat.
+     *
+     * @return array{eligible: bool, reasons: list<string>}
+     */
+    private function check(Student $s): array
+    {
+        return $this->eligibility->check($s, null, $s->currentRegistration()?->id);
+    }
+
     /** @return array<string, mixed> */
     private function row(Student $s): array
     {
-        $check = $this->eligibility->check($s);
+        $check = $this->check($s);
+        $current = $s->currentRegistration();
         $types = $s->documents->pluck('type')->all();
 
         return [
@@ -105,6 +117,7 @@ class StudentController extends Controller
             'docs' => ['kk' => in_array('kk', $types, true), 'akta_lahir' => in_array('akta_lahir', $types, true)],
             'eligible' => $check['eligible'],
             'reasons' => $check['reasons'],
+            'registration' => $current ? ['status' => $current->status->value, 'date' => $current->schedule->date->toDateString()] : null,
         ];
     }
 }

@@ -1,4 +1,5 @@
 import KtpLangsungBadge from '@/Components/shared/KtpLangsungBadge.vue';
+import SelectField from '@/Components/shared/SelectField.vue';
 import Form from '@/Pages/Siswa/Form.vue';
 import Index from '@/Pages/Siswa/Index.vue';
 import Show from '@/Pages/Siswa/Show.vue';
@@ -50,6 +51,7 @@ const siswa: StudentDetail = {
     docs: { kk: true, akta_lahir: true },
     eligible: true,
     reasons: [],
+    registration: null,
     birth_date: '2009-05-01',
     gender: 'L',
 };
@@ -253,5 +255,85 @@ describe('Siswa — penanda KTP-el langsung', () => {
         expect(ya.text()).toContain('KTP-el dapat langsung diterbitkan');
         expect(tidak.findComponent(KtpLangsungBadge).exists()).toBe(false);
         expect(tidak.text()).not.toContain('KTP-el dapat langsung diterbitkan');
+    });
+});
+
+describe('Siswa/Index — syarat dan pendaftaran', () => {
+    const halaman = (rows: (typeof siswa)[]) => ({
+        data: rows,
+        current_page: 1,
+        last_page: 1,
+        from: 1,
+        to: rows.length,
+        total: rows.length,
+        per_page: 20,
+        links: [],
+    });
+    const mountIndex = (rows: (typeof siswa)[]) => {
+        permissions.push('siswa.lihat');
+
+        return mount(Index, {
+            props: { students: halaman(rows), filters: {}, schools: null },
+        });
+    };
+
+    it('kolom Syarat dan Pendaftaran terpisah, tanpa kolom Status tunggal', () => {
+        const w = mountIndex([siswa]);
+        const header = w.findAll('th').map((th) => th.text());
+
+        expect(header).toContain('Syarat');
+        expect(header).toContain('Pendaftaran');
+        expect(header).not.toContain('Status');
+    });
+
+    it('siswa terdaftar tetap Memenuhi syarat dan menampilkan status serta tanggal sesinya', () => {
+        const w = mountIndex([
+            {
+                ...siswa,
+                id: 1,
+                registration: { status: 'terdaftar', date: '2026-10-20' },
+            },
+        ]);
+
+        expect(w.text()).toContain('Memenuhi syarat');
+        expect(w.text()).not.toContain('Belum memenuhi syarat');
+        expect(w.text()).toContain('Terdaftar');
+        expect(w.text()).toContain('20 Okt 2026');
+    });
+
+    it('siswa tanpa pendaftaran tertulis Belum mendaftar; yang Tidak hadir tertulis statusnya', () => {
+        const w = mountIndex([
+            { ...siswa, id: 1, name: 'Satu', registration: null },
+            {
+                ...siswa,
+                id: 2,
+                name: 'Dua',
+                registration: { status: 'tidak_hadir', date: '2026-10-20' },
+            },
+        ]);
+        const [satu, dua] = w.findAll('tbody tr');
+
+        expect(satu.text()).toContain('Belum mendaftar');
+        expect(dua.text()).toContain('Tidak hadir');
+        expect(dua.text()).not.toContain('Belum mendaftar');
+    });
+
+    it('filter Syarat dan Pendaftaran tersedia; Pendaftaran memuat Belum mendaftar dan tiap status', () => {
+        const w = mountIndex([siswa]);
+        const opsi = w
+            .findAllComponents(SelectField)
+            .map((c) => c.props('options') as { value: string; label: string }[]);
+        const pendaftaran = opsi.find((o) => o.some((x) => x.value === 'none'));
+
+        expect(w.text()).toContain('Syarat');
+        expect(pendaftaran?.map((o) => o.label)).toEqual(
+            expect.arrayContaining([
+                'Belum mendaftar',
+                'Terdaftar',
+                'Sudah rekaman',
+                'Tidak hadir',
+            ]),
+        );
+        expect(pendaftaran).toHaveLength(10);
     });
 });

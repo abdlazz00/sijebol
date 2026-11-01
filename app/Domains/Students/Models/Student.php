@@ -77,6 +77,17 @@ class Student extends Model
         return $this->hasMany(RegistrationStudent::class);
     }
 
+    /**
+     * Pendaftaran terkini dari relasi `registrationEntries` yang sudah dimuat: yang aktif bila ada, selain itu yang terbaru
+     * (aturan yang sama dengan RegistrationService::currentEntry, tanpa query tambahan).
+     */
+    public function currentRegistration(): ?RegistrationStudent
+    {
+        $entries = $this->registrationEntries->sortByDesc('id');
+
+        return $entries->first(fn (RegistrationStudent $e) => $e->status->isActive()) ?? $entries->first();
+    }
+
     /** Terkunci selama ada entri yang sedang diproses petugas (lihat RegistrationStatus::locking). */
     public function isLocked(): bool
     {

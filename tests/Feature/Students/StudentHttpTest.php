@@ -81,16 +81,111 @@ test('pencarian NIK hanya cocok persis sehingga masker tidak bisa dibongkar', fu
     $this->get('/students?filter[search]=3201123412341234')->assertInertia(fn (Assert $p) => $p->has('students.data', 1));
 });
 
-test('filter eligible tidak menampilkan siswa dengan entri aktif', function () {
+test('filter eligible hanya menilai umur dan dokumen, bukan pendaftaran', function () {
     $sekolah = School::factory()->create();
     $bebas = eligibleStudent($sekolah);
     $sibuk = eligibleStudent($sekolah);
     makeEntry(RegistrationStatus::MenungguVerifikasi, student: $sibuk);
+    Student::factory()->for($sekolah)->create();   // tanpa dokumen
     $user = makeUserWith(['siswa.lihat'], $sekolah, true, 'op-filter');
 
     $this->actingAs($user)->get('/students?filter[eligible]=1')->assertInertia(fn (Assert $p) => $p
-        ->has('students.data', 1)
-        ->where('students.data.0.id', $bebas->id));
+        ->has('students.data', 2)
+        ->where('students.data', fn ($rows) => collect($rows)->pluck('id')->sort()->values()->all() === collect([$bebas->id, $sibuk->id])->sort()->values()->all()));
+});
+
+test('baris daftar: syarat hanya umur dan dokumen, pendaftaran terkini tampil terpisah', function () {
+    $sekolah = School::factory()->create();
+    $dengan = function (RegistrationStatus ...$statuses) use ($sekolah) {
+        $siswa = eligibleStudent($sekolah);
+        foreach ($statuses as $status) {
+            makeEntry($status, $sekolah, $siswa, makeSchedule($sekolah, '2026-12-01'));
+        }
+
+        return $siswa;
+    };
+    $terdaftar = $dengan(RegistrationStatus::Terdaftar);
+    $selesai = $dengan(RegistrationStatus::SudahRekaman);
+    $absen = $dengan(RegistrationStatus::TidakHadir);
+    $absenLaluDaftar = $dengan(RegistrationStatus::TidakHadir, RegistrationStatus::Terdaftar);
+    $belum = eligibleStudent($sekolah);
+    $absenTanpaKk = Student::factory()->for($sekolah)->create();
+    makeEntry(RegistrationStatus::TidakHadir, $sekolah, $absenTanpaKk, makeSchedule($sekolah, '2026-12-01'));
+
+    $this->actingAs(operatorSekolah($sekolah))->get('/students')->assertInertia(fn (Assert $p) => $p
+        ->where('students.data', function ($rows) use ($terdaftar, $selesai, $absen, $absenLaluDaftar, $belum, $absenTanpaKk) {
+            $r = collect($rows)->keyBy('id');
+
+            foreach ([$terdaftar, $selesai, $absen, $absenLaluDaftar, $belum] as $siswa) {
+                expect($r[$siswa->id]['eligible'])->toBeTrue()->and($r[$siswa->id]['reasons'])->toBe([]);
+            }
+            expect($r[$terdaftar->id]['registration'])->toBe(['status' => 'terdaftar', 'date' => '2026-12-01'])
+                ->and($r[$selesai->id]['registration']['status'])->toBe('sudah_rekaman')
+                ->and($r[$absen->id]['registration']['status'])->toBe('tidak_hadir')
+                ->and($r[$absenLaluDaftar->id]['registration']['status'])->toBe('terdaftar')
+                ->and($r[$belum->id]['registration'])->toBeNull()
+                ->and($r[$absenTanpaKk->id]['eligible'])->toBeFalse()
+                ->and($r[$absenTanpaKk->id]['reasons'])->toContain('Kartu Keluarga belum diunggah.')
+                ->and($r[$absenTanpaKk->id]['registration']['status'])->toBe('tidak_hadir');
+
+            return true;
+        }));
+});
+
+test('detail siswa yang sudah terdaftar tetap memenuhi syarat', function () {
+    $sekolah = School::factory()->create();
+    $siswa = eligibleStudent($sekolah);
+    makeEntry(RegistrationStatus::Terdaftar, $sekolah, $siswa);
+
+    $this->actingAs(operatorSekolah($sekolah))->get("/students/{$siswa->id}")->assertInertia(fn (Assert $p) => $p
+        ->where('eligibility.eligible', true)->where('eligibility.reasons', [])
+        ->where('student.registration.status', 'terdaftar'));
+});
+
+test('filter pendaftaran memakai pendaftaran terkini siswa', function () {
+    $sekolah = School::factory()->create();
+    $dengan = function (RegistrationStatus ...$statuses) use ($sekolah) {
+        $siswa = eligibleStudent($sekolah);
+        foreach ($statuses as $status) {
+            makeEntry($status, $sekolah, $siswa);
+        }
+
+        return $siswa->id;
+    };
+    $belum = eligibleStudent($sekolah)->id;
+    $terdaftar = $dengan(RegistrationStatus::Terdaftar);
+    $absen = $dengan(RegistrationStatus::TidakHadir);
+    $absenLaluDaftar = $dengan(RegistrationStatus::TidakHadir, RegistrationStatus::Terdaftar);
+    $absenLaluBatal = $dengan(RegistrationStatus::TidakHadir, RegistrationStatus::Dibatalkan);
+    $this->actingAs(operatorSekolah($sekolah));
+
+    $ids = function (string $filter) {
+        $hasil = [];
+        $this->get('/students?filter[registration]='.$filter)->assertInertia(function (Assert $p) use (&$hasil) {
+            $p->where('students.data', function ($rows) use (&$hasil) {
+                $hasil = collect($rows)->pluck('id')->sort()->values()->all();
+
+                return true;
+            });
+        });
+
+        return $hasil;
+    };
+    $urut = fn (int ...$id) => collect($id)->sort()->values()->all();
+
+    expect([
+        'none' => $ids('none'),
+        'terdaftar' => $ids('terdaftar'),
+        'tidak_hadir' => $ids('tidak_hadir'),
+        'dibatalkan' => $ids('dibatalkan'),
+        'asing' => count($ids('bukan-status')),
+    ])->toBe([
+        'none' => $urut($belum),
+        'terdaftar' => $urut($terdaftar, $absenLaluDaftar),
+        'tidak_hadir' => $urut($absen),
+        'dibatalkan' => $urut($absenLaluBatal),
+        'asing' => 5,
+    ]);
 });
 
 test('penanda KTP-el langsung mengikuti tanggal sesi pendaftaran aktif', function () {

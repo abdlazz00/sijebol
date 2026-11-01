@@ -9,12 +9,15 @@ import Pagination from '@/Components/shared/Pagination.vue';
 import RowActions from '@/Components/shared/RowActions.vue';
 import SearchInput from '@/Components/shared/SearchInput.vue';
 import SelectField from '@/Components/shared/SelectField.vue';
+import StatusBadge from '@/Components/shared/StatusBadge.vue';
 import { Button } from '@/Components/ui/button';
 import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { useDataTable } from '@/composables/useDataTable';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { formatDate } from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
+import { REGISTRATION_STATUS } from '@/lib/status';
 import type { Paginator } from '@/types/access';
 import type { StudentRow } from '@/types/student';
 import { Link, router } from '@inertiajs/vue3';
@@ -41,10 +44,19 @@ const { filters, loading, apply, reset } = useDataTable('/siswa', {
     search: props.filters.search ?? '',
     docs: props.filters.docs ?? '',
     eligible: props.filters.eligible ?? '',
+    registration: props.filters.registration ?? '',
     school_id: props.filters.school_id ?? '',
 });
 
-watch(() => [filters.docs, filters.eligible, filters.school_id], apply);
+watch(
+    () => [
+        filters.docs,
+        filters.eligible,
+        filters.registration,
+        filters.school_id,
+    ],
+    apply,
+);
 watch(() => filters.search, useDebounceFn(apply, 300));
 
 const hasFilters = computed(() =>
@@ -55,6 +67,13 @@ const docsOptions = [
     { value: 'kurang', label: 'Belum lengkap' },
 ];
 const eligibleOptions = [{ value: '1', label: 'Memenuhi syarat' }];
+const registrationOptions = [
+    { value: 'none', label: 'Belum mendaftar' },
+    ...Object.entries(REGISTRATION_STATUS).map(([value, { label }]) => ({
+        value,
+        label,
+    })),
+];
 const schoolOptions = computed(() =>
     (props.schools ?? []).map((s) => ({ value: s.id, label: s.name })),
 );
@@ -65,7 +84,8 @@ const columns = computed(() => [
     { key: 'age', label: 'Umur', class: 'w-[80px]' },
     ...(props.schools ? [{ key: 'school', label: 'Sekolah' }] : []),
     { key: 'docs', label: 'Dokumen', class: 'w-[160px]' },
-    { key: 'eligible', label: 'Status', class: 'w-[184px]' },
+    { key: 'eligible', label: 'Syarat', class: 'w-[184px]' },
+    { key: 'registration', label: 'Pendaftaran', class: 'w-[176px]' },
     { key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' },
 ]);
 
@@ -114,12 +134,24 @@ function destroy() {
                         all-label="Semua dokumen"
                     />
                 </FormField>
-                <FormField v-slot="{ id }" label="Status" class="lg:w-[180px]">
+                <FormField v-slot="{ id }" label="Syarat" class="lg:w-[180px]">
                     <SelectField
                         :id="id"
                         v-model="filters.eligible"
                         :options="eligibleOptions"
-                        all-label="Semua status"
+                        all-label="Semua syarat"
+                    />
+                </FormField>
+                <FormField
+                    v-slot="{ id }"
+                    label="Pendaftaran"
+                    class="lg:w-[180px]"
+                >
+                    <SelectField
+                        :id="id"
+                        v-model="filters.registration"
+                        :options="registrationOptions"
+                        all-label="Semua pendaftaran"
                     />
                 </FormField>
                 <FormField
@@ -221,6 +253,23 @@ function destroy() {
                                 row.reasons.join(' ')
                             }}</span>
                         </span>
+                    </template>
+                    <template #cell-registration="{ row }">
+                        <div
+                            v-if="row.registration"
+                            class="flex flex-col items-start gap-1"
+                        >
+                            <StatusBadge
+                                :status="row.registration.status"
+                                kind="registration"
+                            />
+                            <span class="text-muted-foreground text-xs leading-4"
+                                >Sesi {{ formatDate(row.registration.date) }}</span
+                            >
+                        </div>
+                        <span v-else class="text-muted-foreground text-xs"
+                            >Belum mendaftar</span
+                        >
                     </template>
                     <template #cell-actions="{ row }">
                         <div class="flex justify-end">

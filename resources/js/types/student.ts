@@ -9,8 +9,11 @@ export type StudentRow = {
     ktp_langsung: boolean;
     school: string | null;
     docs: { kk: boolean; akta_lahir: boolean };
+    /** Syarat: umur dan dokumen saja. */
     eligible: boolean;
     reasons: string[];
+    /** Pendaftaran terkini (aktif bila ada, selain itu yang terbaru); null bila belum pernah mendaftar. */
+    registration: { status: RegistrationStatus; date: string } | null;
 };
 
 export type StudentDetail = StudentRow & {

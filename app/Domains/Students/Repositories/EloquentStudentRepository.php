@@ -44,8 +44,21 @@ class EloquentStudentRepository implements StudentRepositoryInterface
                     }
                     $q->where('birth_date', '<=', $this->eligibility->latestBirthDate())
                         ->whereHas('documents', $this->ofType('kk'))
-                        ->whereHas('documents', $this->ofType('akta_lahir'))
-                        ->whereDoesntHave('registrationEntries', fn ($entries) => $entries->whereIn('status', RegistrationStatus::values(RegistrationStatus::active())));
+                        ->whereHas('documents', $this->ofType('akta_lahir'));
+                }),
+                // Pendaftaran terkini: `none` = belum pernah mendaftar; status aktif = pendaftaran aktifnya; status lain =
+                // tanpa pendaftaran aktif dan pendaftaran terbarunya berstatus itu.
+                AllowedFilter::callback('registration', function (Builder $q, $v) {
+                    $status = RegistrationStatus::tryFrom((string) $v);
+                    if ((string) $v === 'none') {
+                        $q->whereDoesntHave('registrationEntries');
+                    } elseif ($status?->isActive()) {
+                        $q->whereHas('registrationEntries', fn ($e) => $e->where('status', $status->value));
+                    } elseif ($status !== null) {
+                        $q->whereDoesntHave('registrationEntries', fn ($e) => $e->whereIn('status', RegistrationStatus::values(RegistrationStatus::active())))
+                            ->whereHas('registrationEntries', fn ($e) => $e->where('status', $status->value)
+                                ->whereRaw('registration_students.id = (select max(r.id) from registration_students r where r.student_id = registration_students.student_id)'));
+                    }
                 }),
             )
             ->paginate($perPage)

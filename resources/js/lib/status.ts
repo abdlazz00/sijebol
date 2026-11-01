@@ -17,7 +17,7 @@ export function userStatus(status: string): StatusMeta {
     return USER_STATUS[status] ?? { label: status, variant: 'neutral' };
 }
 
-const REGISTRATION_STATUS: Record<string, StatusMeta> = {
+export const REGISTRATION_STATUS: Record<string, StatusMeta> = {
     menunggu_verifikasi: { label: 'Menunggu verifikasi', variant: 'info' },
     perlu_perbaikan: { label: 'Perlu perbaikan', variant: 'warning' },
     terdaftar: { label: 'Terdaftar', variant: 'success' },
