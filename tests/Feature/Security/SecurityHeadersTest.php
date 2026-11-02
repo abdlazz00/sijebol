@@ -53,6 +53,25 @@ test('CSP diberlakukan di luar local dengan nonce yang sama dengan tag skrip dan
     expect(cspNonceOf($kedua))->not->toBe('')->and(cspNonceOf($kedua))->not->toBe($nonce);
 });
 
+test('CSP halaman pendaftaran siswa mengizinkan widget Turnstile hanya saat site key terisi', function () {
+    $sekolah = School::factory()->create();
+    $url = "/register/{$sekolah->registration_token}";
+    $cloudflare = 'https://challenges.cloudflare.com';
+
+    $tanpa = (string) $this->get($url)->headers->get('Content-Security-Policy');
+    expect($tanpa)->not->toContain($cloudflare);
+
+    config(['services.turnstile.site_key' => 'kunci-situs', 'services.turnstile.secret' => 'rahasia']);
+
+    $csp = (string) $this->get($url)->headers->get('Content-Security-Policy');
+    $nonce = cspNonceOf($csp);
+    expect($csp)->toContain("script-src 'self' 'nonce-{$nonce}' {$cloudflare}")
+        ->and($csp)->toContain("frame-src {$cloudflare}")
+        ->and($csp)->toContain("connect-src 'self' {$cloudflare}");
+
+    expect((string) $this->get('/login')->headers->get('Content-Security-Policy'))->not->toContain($cloudflare);
+});
+
 test('CSP tidak dipasang di lingkungan local atau saat dimatikan', function () {
     app()->detectEnvironment(fn () => 'local');
     $this->get('/login')->assertHeaderMissing('Content-Security-Policy');

@@ -21,7 +21,7 @@ Basis: branch `staging` @ `b085691`.
 |---|---|---|
 | Tinggi | 2 | F-01, F-02 |
 | Sedang | 9 | F-03 s.d. F-11 |
-| Rendah | 17 | F-12 s.d. F-28 |
+| Rendah | 18 | F-12 s.d. F-29 |
 
 Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding atau kolom tetap), XSS (tanpa `v-html`/`innerHTML`), eksekusi perintah dari input, mass assignment dari input mentah, atau rahasia yang ter-commit.
 
@@ -64,6 +64,11 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Masalah:** Siapa pun yang memegang link sekolah (dibagikan ke siswa) bisa mengirim email apa saja. Setiap permintaan mengirim email dan memanggil `ActivationService::issue()`, yang **mencabut** link aktivasi sebelumnya. Cooldown di halaman hanya ada di sisi klien.
 - **Dampak:** (a) Satu IP bisa mengirim 300 email per jam, sedangkan kuota Resend gratis 100 per hari, sehingga email aktivasi dan reset password sah ikut gagal. (b) Email pihak ketiga bisa dispam. (c) Menembak email korban berulang kali membuat link aktivasi korban terus hangus.
 - **Saran:** Cooldown per email di server (jangan terbitkan ulang bila token aktif masih baru, mis. 10 menit). Throttle per token sekolah. Opsional captcha.
+- **Keputusan (2 Nov 2026):** batas per alamat email + Cloudflare Turnstile; **tanpa** batas per link sekolah (penyerang bisa sengaja menghabiskannya untuk mengunci satu sekolah). Paket Resend: gratis. **Sudah dikerjakan, belum di-commit.**
+  - Catatan hasil telaah: dampak (c) lebih ringan dari tertulis di atas (korban tetap menerima email terbaru yang valid), dan ada dampak (d): akun siswa belum aktif menumpuk dari email acak. Cooldown per email tidak menutup (a) dan (d) bila penyerang memakai banyak email, itu sebabnya Turnstile dipilih.
+  - Batas: 3 email per alamat per 15 menit (`StudentSignupService`, RateLimiter), diabaikan diam-diam dengan respons sama. Turnstile aktif hanya bila `TURNSTILE_SECRET_KEY` terisi, gagal tertutup bila Cloudflare tak terjangkau, widget `interaction-only`, di-reset setelah tiap kirim, CSP dilonggarkan hanya di rute `register.*`.
+  - Verifikasi: Pest 765/765, Vitest 274/274, Pint, PHPStan, vue-tsc, ESLint bersih. Cek peramban nyata dengan kunci uji Cloudflare dan CSP menyala (APP_ENV=staging): skrip Cloudflare termuat tanpa pelanggaran CSP, token diperoleh otomatis, pendaftaran berhasil, dan "Kirim ulang" memakai token baru. **Belum dicoba dengan kunci Turnstile sungguhan di UAT/produksi.**
+  - **Wajib sebelum rilis:** isi `TURNSTILE_SITE_KEY` dan `TURNSTILE_SECRET_KEY` di UAT dan produksi. Dokumen: `deployment-guide.md` bagian 18, spec dan rencana `2026-11-02-pengaman-pendaftaran-siswa`.
 
 ### F-04 — `SchoolService::create` dan `update` tidak memeriksa pelaku (perbaikan sebelumnya hanya menutup `delete`)
 - **Lokasi:** `app/Domains/Schools/Services/SchoolService.php:37` dan `:43`; `SchoolController::store/update` tidak memeriksa pelaku.
@@ -162,6 +167,9 @@ Filter pencarian (`'like', "%{$v}%"`) di enam repository tidak meng-escape `%` d
 
 ### F-28 — Contoh kata sandi lemah di panduan deployment
 `docs/deployment-guide.md` (sekitar baris 261 dan 263) memuat contoh `MYSQL_ROOT_PASSWORD: 'PasswordRootKuat123!'` dan `MYSQL_PASSWORD: 'PasswordSijebolKuat123!'` pada compose MySQL. Port MySQL hanya di-bind ke `127.0.0.1`, jadi tidak terbuka ke internet, tetapi bila nilai contoh ini dipakai apa adanya di server, kata sandi root dan aplikasi menjadi tebakan publik karena tertulis di repositori. Saran: ganti contoh dengan placeholder (`<ganti-dengan-sandi-acak>`). Dikonfirmasi pemilik: nilai tersebut hanya contoh dan tidak dipakai di server, jadi rotasi kata sandi tidak diperlukan; tersisa mengganti contoh dengan placeholder di panduan.
+
+### F-29 — Kuota email gratis Resend (100/hari) tidak cukup untuk pendaftaran massal; throttle IP bisa mengenai siswa sah
+Ditemukan saat membahas F-03. Pendaftaran mandiri ±1.500 siswa mengirim satu email aktivasi per siswa, ditambah kirim ulang, reset password, dan notifikasi. Kuota gratis Resend 100 email per hari berarti pendaftaran massal tertahan berhari-hari dan email staf/reset ikut terhambat; pilihan: paket berbayar, atau pendaftaran bergelombang per sekolah. Terkait: `throttle:5,1` per IP di `routes/students.php` memakai IP sebagai kunci; siswa di Wi-Fi sekolah yang sama berbagi IP, sehingga siswa keenam dalam semenit mendapat 429. Setelah Turnstile aktif, batas ini bisa dilonggarkan (mis. 30 per menit). **Perlu keputusan pemilik** (rencana kuota email dan angka throttle).
 
 ---
 

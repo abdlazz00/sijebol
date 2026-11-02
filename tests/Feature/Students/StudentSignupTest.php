@@ -143,6 +143,34 @@ test('POST pendaftaran dibatasi 5 kali per menit', function () {
     $this->post($this->url, ['name' => 'A', 'email' => 'a6@example.com'])->assertStatus(429);
 });
 
+test('satu alamat email hanya mendapat 3 email per 15 menit, respons tetap sama, tanpa akun ganda', function () {
+    foreach (['budi@example.com', 'BUDI@example.com', ' budi@example.com', 'budi@EXAMPLE.com'] as $email) {
+        $this->post($this->url, ['name' => 'Budi', 'email' => $email])
+            ->assertRedirect($this->url)
+            ->assertSessionHas('sent', true);
+    }
+
+    $user = User::where('email', 'budi@example.com')->first();
+    expect(User::where('email', 'budi@example.com')->count())->toBe(1)
+        ->and($user->activations()->count())->toBe(1);
+    Notification::assertSentToTimes($user, StudentSignupNotification::class, 3);
+});
+
+test('batas per email tidak memengaruhi alamat lain dan pulih setelah 15 menit', function () {
+    foreach (range(1, 4) as $i) {
+        $this->post($this->url, ['name' => 'Budi', 'email' => 'budi@example.com']);
+    }
+    $this->post($this->url, ['name' => 'Ani', 'email' => 'ani@example.com']);
+
+    Notification::assertSentToTimes(User::where('email', 'budi@example.com')->first(), StudentSignupNotification::class, 3);
+    Notification::assertSentTo(User::where('email', 'ani@example.com')->first(), StudentSignupNotification::class);
+
+    $this->travel(16)->minutes();
+    $this->post($this->url, ['name' => 'Budi', 'email' => 'budi@example.com']);
+
+    Notification::assertSentToTimes(User::where('email', 'budi@example.com')->first(), StudentSignupNotification::class, 4);
+});
+
 test('siswa belum aktif yang memakai Lupa password dapat masuk setelah reset', function () {
     $user = User::factory()->pending()->create(['email' => 'budi@example.com', 'school_id' => $this->school->id])->assignRole('siswa');
     $token = Password::createToken($user);

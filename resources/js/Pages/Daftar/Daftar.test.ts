@@ -2,7 +2,10 @@ import Daftar from '@/Pages/Daftar/Index.vue';
 import { config, flushPromises, mount } from '@vue/test-utils';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-const { post } = vi.hoisted(() => ({ post: vi.fn() }));
+const { post, resetWidget } = vi.hoisted(() => ({
+    post: vi.fn(),
+    resetWidget: vi.fn(),
+}));
 
 vi.mock('@inertiajs/vue3', async () => {
     const { reactive } = await import('vue');
@@ -24,6 +27,16 @@ vi.mock('@/Layouts/AuthLayout.vue', () => ({
     default: { template: '<div><slot /></div>' },
 }));
 vi.mock('@/lib/focusFirstInvalid', () => ({ focusFirstInvalid: vi.fn() }));
+// Widget asli memuat skrip Cloudflare: diganti tombol yang memberi token saat diklik.
+vi.mock('@/Components/shared/TurnstileWidget.vue', () => ({
+    default: {
+        emits: ['update:token', 'load-error'],
+        setup: (_: unknown, { expose }: { expose: (e: object) => void }) =>
+            expose({ reset: resetWidget }),
+        template:
+            '<div><button type="button" data-test="widget" @click="$emit(\'update:token\', \'token-uji\')" /><button type="button" data-test="widget-gagal" @click="$emit(\'load-error\')" /></div>',
+    },
+}));
 
 const props = { valid: true, school: 'SMAN 1', sent: false, ttl_days: 3 };
 
@@ -34,6 +47,7 @@ beforeEach(() => {
     config.global.mocks = { route };
     sessionStorage.clear();
     post.mockReset();
+    resetWidget.mockReset();
 });
 afterEach(() => {
     vi.useRealTimers();
@@ -112,5 +126,75 @@ describe('Daftar', () => {
 
         expect(post).toHaveBeenCalledTimes(1);
         expect(post.mock.calls[0][0]).toBe('/register.store/abc123');
+    });
+
+    describe('verifikasi keamanan (Turnstile)', () => {
+        const withKey = { ...props, turnstile_site_key: 'kunci-situs' };
+        const submitButton = (w: ReturnType<typeof mount>) =>
+            w.findAll('button').find((b) => b.text() === 'Buat akun')!;
+
+        it('tanpa site key: tidak ada widget dan tombol langsung aktif', () => {
+            const w = mount(Daftar, { props });
+
+            expect(w.find('[data-test="widget"]').exists()).toBe(false);
+            expect(submitButton(w).attributes('disabled')).toBeUndefined();
+            expect(w.text()).not.toContain('Memeriksa keamanan');
+        });
+
+        it('tombol kirim nonaktif sampai widget memberi token', async () => {
+            const w = mount(Daftar, { props: withKey });
+
+            expect(submitButton(w).attributes('disabled')).toBeDefined();
+            expect(w.text()).toContain('Memeriksa keamanan');
+
+            await w.find('[data-test="widget"]').trigger('click');
+
+            expect(submitButton(w).attributes('disabled')).toBeUndefined();
+            expect(w.text()).not.toContain('Memeriksa keamanan');
+        });
+
+        it('token ikut terkirim dan widget di-reset setelah pengiriman selesai', async () => {
+            const w = mount(Daftar, { props: withKey });
+            await w.find('input[autocomplete="name"]').setValue('Budi');
+            await w.find('input[type="email"]').setValue('budi@example.com');
+            await w.find('[data-test="widget"]').trigger('click');
+
+            await w.find('form').trigger('submit');
+
+            expect(post).toHaveBeenCalledTimes(1);
+            expect(resetWidget).not.toHaveBeenCalled();
+            post.mock.calls[0][1].onFinish();
+            expect(resetWidget).toHaveBeenCalledTimes(1);
+        });
+
+        it('widget gagal dimuat: pesan penjelasan tampil dan hilang begitu token tiba', async () => {
+            const w = mount(Daftar, { props: withKey });
+
+            await w.find('[data-test="widget-gagal"]').trigger('click');
+            expect(w.text()).toContain('Verifikasi keamanan tidak termuat');
+            expect(submitButton(w).attributes('disabled')).toBeDefined();
+
+            await w.find('[data-test="widget"]').trigger('click');
+            expect(w.text()).not.toContain('Verifikasi keamanan tidak termuat');
+        });
+
+        it('kirim ulang di keadaan "Periksa email" juga menunggu token', async () => {
+            sessionStorage.setItem(
+                'sijebol.daftar',
+                JSON.stringify({ name: 'Budi', email: 'budi@example.com' }),
+            );
+            const w = mount(Daftar, { props: { ...withKey, sent: true } });
+            vi.advanceTimersByTime(60_000);
+            await flushPromises();
+
+            const resend = () =>
+                w
+                    .findAll('button')
+                    .find((b) => b.text().startsWith('Kirim ulang'))!;
+            expect(resend().attributes('disabled')).toBeDefined();
+
+            await w.find('[data-test="widget"]').trigger('click');
+            expect(resend().attributes('disabled')).toBeUndefined();
+        });
     });
 });

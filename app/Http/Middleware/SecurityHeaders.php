@@ -35,7 +35,7 @@ class SecurityHeaders
             $response->headers->set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
         }
         if ($nonce !== null) {
-            $response->headers->set('Content-Security-Policy', $this->csp($nonce, $allowSameOriginFrame));
+            $response->headers->set('Content-Security-Policy', $this->csp($nonce, $allowSameOriginFrame, $this->allowsTurnstile($request)));
         }
 
         return $response;
@@ -46,27 +46,35 @@ class SecurityHeaders
         return $request->routeIs('students.documents.preview');
     }
 
+    /** Widget Cloudflare Turnstile hanya dimuat di halaman pendaftaran siswa, dan hanya bila diaktifkan. */
+    private function allowsTurnstile(Request $request): bool
+    {
+        return filled(config('services.turnstile.site_key')) && $request->routeIs('register.*');
+    }
+
     private function cspEnabled(): bool
     {
         return (bool) config('security.csp') && ! app()->isLocal();
     }
 
-    private function csp(string $nonce, bool $allowSameOriginFrame = false): string
+    private function csp(string $nonce, bool $allowSameOriginFrame = false, bool $allowTurnstile = false): string
     {
         $frameAncestors = $allowSameOriginFrame ? "frame-ancestors 'self'" : "frame-ancestors 'none'";
+        $cloudflare = $allowTurnstile ? ' https://challenges.cloudflare.com' : '';
 
-        return implode('; ', [
+        return implode('; ', array_filter([
             "default-src 'self'",
-            "script-src 'self' 'nonce-{$nonce}'",
+            "script-src 'self' 'nonce-{$nonce}'{$cloudflare}",
             // 'unsafe-inline' hanya untuk gaya: reka-ui dan Sonner menyisipkan gaya inline; skrip tetap ketat.
             "style-src 'self' 'unsafe-inline' https://fonts.bunny.net",
             "font-src 'self' https://fonts.bunny.net data:",
             "img-src 'self' data:",
-            "connect-src 'self'",
+            "connect-src 'self'{$cloudflare}",
+            $allowTurnstile ? "frame-src{$cloudflare}" : null,
             $frameAncestors,
             "base-uri 'self'",
             "form-action 'self'",
             "object-src 'none'",
-        ]);
+        ]));
     }
 }

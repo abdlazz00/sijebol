@@ -752,3 +752,31 @@ Catatan:
 - Pada instalasi pertama, pesan "status migrasi tidak terbaca" saat langkah 2 wajar (tabel `migrations` belum ada).
 - Rilis produksi pertama: migrasi `convert_registrations_to_session_registrations` menolak berjalan bila `registration_students` atau `schedules` sudah berisi data. Database produksi saat ini kosong, sehingga lolos. Bila kelak ada data uji, jalankan `php artisan sijebol:bersihkan-data-siswa` lebih dulu.
 - Skrip bantu (`scripts/lib/deploy.sh`) diuji dengan `bash scripts/test-deploy-lib.sh` (tanpa Docker sungguhan).
+
+## 18. Pengaman pendaftaran siswa: Cloudflare Turnstile dan batas per email
+
+Mulai 2 Nov 2026 (temuan F-03) halaman pendaftaran siswa publik (`/register/{token}`) dilindungi dua lapis:
+
+- **Batas per alamat email**: maksimal 3 email pendaftaran per alamat per 15 menit. Di atas batas, permintaan diabaikan diam-diam dan respons ke pengguna tetap sama. Tidak perlu pengaturan.
+- **Cloudflare Turnstile** (captcha gratis, tak terlihat kecuali Cloudflare butuh interaksi). **Aktif hanya bila `TURNSTILE_SECRET_KEY` terisi.** Kosong = nonaktif, jadi pendaftaran terbuka tanpa captcha.
+
+### Mengaktifkan di UAT dan produksi (wajib)
+
+1. Dashboard Cloudflare → **Turnstile** → **Add widget**. Isi domain `sungaibeduk.sijebol.online` (produksi) dan domain UAT; satu widget boleh mencakup keduanya. Mode: **Managed**.
+2. Salin **Site Key** dan **Secret Key** ke `.env` masing-masing lingkungan:
+
+   ```
+   TURNSTILE_SITE_KEY=...
+   TURNSTILE_SECRET_KEY=...
+   ```
+
+3. Terapkan: `docker exec <kontainer> php artisan config:cache` (kunci dibaca saat runtime, tidak perlu build ulang image).
+4. Cek: buka link pendaftaran sekolah; tombol "Buat akun" aktif setelah teks "Memeriksa keamanan…" hilang, dan pendaftaran berhasil.
+
+Kunci uji Cloudflare (selalu lolos) untuk lokal: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`.
+
+### Perilaku yang perlu diketahui
+
+- Bila Cloudflare tidak terjangkau dari server, pendaftaran **ditolak** dengan pesan "Verifikasi keamanan gagal…" (sengaja gagal tertutup supaya kuota email tidak terkuras). Pendaftaran pulih sendiri saat Cloudflare terjangkau.
+- CSP (`SecurityHeaders`) otomatis mengizinkan `https://challenges.cloudflare.com` hanya pada rute `register.*` dan hanya bila site key terisi.
+- Kuota email gratis Resend (100/hari) tetap tidak cukup untuk pendaftaran massal; lihat F-29 di berkas review.

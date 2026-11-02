@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import FormField from '@/Components/shared/FormField.vue';
 import InlineAlert from '@/Components/shared/InlineAlert.vue';
+import TurnstileWidget from '@/Components/shared/TurnstileWidget.vue';
 import { Button } from '@/Components/ui/button';
 import { Input } from '@/Components/ui/input';
 import AuthLayout from '@/Layouts/AuthLayout.vue';
@@ -14,6 +15,7 @@ const props = defineProps<{
     school?: string;
     sent: boolean;
     ttl_days: number;
+    turnstile_site_key?: string | null;
 }>();
 
 // Backend tidak mengirim token sebagai prop; ambil dari segmen terakhir URL.
@@ -29,7 +31,22 @@ function remembered(): { name?: string; email?: string } {
     }
 }
 const saved = remembered();
-const form = useForm({ name: saved.name ?? '', email: saved.email ?? '' });
+const form = useForm({
+    name: saved.name ?? '',
+    email: saved.email ?? '',
+    turnstile: '',
+});
+
+// Token Turnstile sekali pakai: tombol kirim menunggu token, widget di-reset setiap selesai kirim.
+const widget = ref<InstanceType<typeof TurnstileWidget>>();
+const captchaPending = computed(
+    () => !!props.turnstile_site_key && !form.turnstile,
+);
+const captchaFailed = ref(false);
+function onToken(token: string) {
+    form.turnstile = token;
+    if (token) captchaFailed.value = false;
+}
 
 const editing = ref(false);
 const showForm = computed(() => !props.sent || editing.value);
@@ -40,7 +57,8 @@ const error = (key: 'name' | 'email') =>
 const hasErrors = computed(
     () =>
         Object.keys(clientErrors.value).length > 0 ||
-        Object.keys(form.errors).length > 0,
+        !!form.errors.name ||
+        !!form.errors.email,
 );
 
 function validate(): boolean {
@@ -92,6 +110,7 @@ function submit() {
             editing.value = false;
             startCooldown();
         },
+        onFinish: () => widget.value?.reset(),
     });
 }
 </script>
@@ -176,7 +195,7 @@ function submit() {
                 <Button
                     type="submit"
                     class="h-10 w-full"
-                    :disabled="form.processing"
+                    :disabled="form.processing || captchaPending"
                 >
                     <LoaderCircle
                         v-if="form.processing"
@@ -210,7 +229,9 @@ function submit() {
                     type="button"
                     variant="outline"
                     class="h-10 px-4"
-                    :disabled="cooldown > 0 || form.processing"
+                    :disabled="
+                        cooldown > 0 || form.processing || captchaPending
+                    "
                     @click="submit"
                 >
                     <LoaderCircle
@@ -236,6 +257,33 @@ function submit() {
             <span class="sr-only" role="status">{{
                 cooldown === 0 ? 'Anda dapat mengirim ulang email.' : ''
             }}</span>
+        </div>
+
+        <div
+            v-if="valid && turnstile_site_key"
+            class="mt-4 flex flex-col gap-3"
+        >
+            <InlineAlert v-if="form.errors.turnstile">{{
+                form.errors.turnstile
+            }}</InlineAlert>
+            <TurnstileWidget
+                ref="widget"
+                :site-key="turnstile_site_key"
+                @update:token="onToken"
+                @load-error="captchaFailed = true"
+            />
+            <InlineAlert v-if="captchaFailed && captchaPending">
+                Verifikasi keamanan tidak termuat. Periksa koneksi internet,
+                nonaktifkan pemblokir iklan untuk halaman ini, lalu muat ulang.
+            </InlineAlert>
+            <p
+                v-else-if="captchaPending"
+                class="text-muted-foreground text-sm leading-5"
+                role="status"
+            >
+                Memeriksa keamanan. Bila muncul kotak verifikasi, selesaikan
+                dulu.
+            </p>
         </div>
     </AuthLayout>
 </template>
