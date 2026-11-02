@@ -16,7 +16,7 @@ class MenuService
         ['group' => 'Pelayanan', 'label' => 'Antrean verifikasi', 'href' => '/verifications', 'icon' => 'badge-check', 'permission' => 'verifikasi.lihat'],
         ['group' => 'Pelayanan', 'label' => 'Sesi rekaman', 'href' => '/schedules', 'icon' => 'calendar-days', 'permission' => 'jadwal.lihat'],
         ['group' => 'Laporan', 'label' => 'Rekap pendaftaran', 'href' => '/reports', 'icon' => 'file-spreadsheet', 'permission' => 'laporan.lihat'],
-        ['group' => 'Laporan', 'label' => 'Daftar rekaman & KTP-el', 'href' => '/reports/students', 'icon' => 'clipboard-list', 'permission' => 'laporan.rekaman'],
+        ['group' => 'Laporan', 'label' => 'Laporan KTP-el pelajar', 'href' => '/reports/students', 'icon' => 'clipboard-list', 'permission' => 'laporan.rekaman'],
         ['group' => 'Sistem & Akses', 'label' => 'Sekolah', 'href' => '/schools', 'icon' => 'school', 'permission' => 'sekolah.lihat'],
         ['group' => 'Sistem & Akses', 'label' => 'Pengguna', 'href' => '/users', 'icon' => 'users', 'permission' => 'user.lihat'],
         ['group' => 'Sistem & Akses', 'label' => 'Role & Permission', 'href' => '/roles', 'icon' => 'shield-check', 'permission' => 'role.lihat'],

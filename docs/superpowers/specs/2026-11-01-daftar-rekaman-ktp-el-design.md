@@ -42,7 +42,7 @@ Dasarnya pendaftaran terkini siswa (`Student::currentRegistration()`: yang aktif
 
 ### Halaman
 
-- Rute dan izin: lihat bagian Izin. Judul "Daftar rekaman & KTP-el", di bawah Laporan.
+- Rute dan izin: lihat bagian Izin. Judul "Laporan KTP-el pelajar", di bawah Laporan.
 - Tiga kotak angka (jumlah per kelompok) yang bisa diklik untuk menyaring; klik lagi untuk melepas. Jumlah mengikuti filter lain (sekolah, sesi, rentang, pencarian) kecuali filter kelompok itu sendiri.
 - Filter: sekolah (hanya untuk pengguna tanpa sekolah), sesi, rentang tanggal rekaman, pencarian nama atau NISN.
 - Tabel server-side berpaginasi, kolom: Nama, NISN, Sekolah, Tanggal rekaman, KTP-el (kelompok atau perkiraan tanggal terbit), Alasan (hanya terisi untuk Belum rekaman). Tanpa NIK.
@@ -57,7 +57,7 @@ Menyaring menurut **tanggal sesi** pendaftaran terkini siswa. Siswa tanpa pendaf
 - Kolom: Nama, NIK, NISN, Tanggal lahir, Jenis kelamin, Sekolah, Tanggal rekaman, Kelompok KTP-el, Tanggal genap 17 tahun, Alasan.
 - Isinya mengikuti filter aktif (semua halaman, bukan hanya halaman yang tampil).
 - NIK dan NISN sebagai teks (jangan berubah jadi notasi ilmiah). Nama dan sekolah lewat `RecapExport::safe` (anti formula Excel).
-- Tiap unduhan dicatat: `activity('laporan')->log('laporan.diekspor')` dengan `jenis: daftar-rekaman`, filter yang dipakai, dan `nik_penuh: true|false`.
+- Tiap unduhan dicatat: `activity('laporan')->log('laporan.diekspor')` dengan `jenis: ktp-el-pelajar`, filter yang dipakai, dan `nik_penuh: true|false`.
 - Throttle sama dengan ekspor lain (`throttle:20,1`).
 
 ### Izin

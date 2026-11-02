@@ -82,7 +82,7 @@ class ReportService
         return $expected > 0 ? (int) round($came / $expected * 100) : null;
     }
 
-    /** Kelompok daftar rekaman dan KTP-el (urutan = urutan tampil). */
+    /** Kelompok laporan KTP-el pelajar (urutan = urutan tampil). */
     public const GROUPS = ['langsung' => 'Langsung terbit', 'menunggu' => 'Menunggu genap 17', 'belum' => 'Belum rekaman'];
 
     /**

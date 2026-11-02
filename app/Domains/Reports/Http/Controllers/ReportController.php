@@ -62,11 +62,11 @@ class ReportController extends Controller
         $filters = $request->filters();
         $rows = $this->reports->studentRecords($filters)['rows'];
         $fullNik = $request->user()->can('laporan.unduh-nik');
-        $this->reports->recordExport($request->user(), $filters['dari'] ?? null, $filters['sampai'] ?? null, 'daftar-rekaman', [
+        $this->reports->recordExport($request->user(), $filters['dari'] ?? null, $filters['sampai'] ?? null, 'ktp-el-pelajar', [
             'filter' => $filters, 'nik_penuh' => $fullNik, 'jumlah' => count($rows),
         ]);
 
-        return Excel::download(new StudentRecordExport($rows, $fullNik), 'daftar-rekaman-ktp-el.xlsx');
+        return Excel::download(new StudentRecordExport($rows, $fullNik), 'laporan-ktp-el-pelajar.xlsx');
     }
 
     public function export(ReportRequest $request): BinaryFileResponse

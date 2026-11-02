@@ -38,5 +38,5 @@
 ### Task 3: Perintah artisan dan verifikasi lokal
 **Files:** Create `app/Console/Commands/SeedDummyData.php`; Test di `DummyDataSeederTest.php` (perintah memanggil seeder, `--bersihkan`); Modify `docs/deployment-guide.md` (bagian singkat data dummy).
 - [ ] Perintah `sijebol:isi-data-dummy {--siswa=1500} {--bersihkan}`; cetak ringkasan jumlah; pesan error ramah.
-- [ ] Jalankan di DB lokal dengan 1500 siswa, cek halaman Daftar rekaman & KTP-el menunjukkan ketiga kelompok; jalankan `--bersihkan` lalu isi ulang.
+- [ ] Jalankan di DB lokal dengan 1500 siswa, cek halaman Laporan KTP-el pelajar menunjukkan ketiga kelompok; jalankan `--bersihkan` lalu isi ulang.
 - [ ] Pint, PHPStan, seluruh Pest.

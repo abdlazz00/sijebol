@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Halaman "Daftar rekaman & KTP-el" (satu tabel, tiga kelompok, filter) plus unduh Excel berisi NIK penuh untuk pemegang izin khusus.
+**Goal:** Halaman "Laporan KTP-el pelajar" (satu tabel, tiga kelompok, filter) plus unduh Excel berisi NIK penuh untuk pemegang izin khusus.
 
 **Architecture:** `ReportRepositoryInterface` mengambil siswa (sudah dibatasi sekolah oleh `ScopedBySchool`) beserta pendaftaran dan sesinya; `ReportService::studentRecords` menyusun baris, kelompok, jumlah, dan menerapkan filter di PHP (ratusan sampai ribuan siswa). `ReportController` menampilkan halaman berpaginasi dan mengunduh Excel dari baris yang sama. Aturan "genap 17 tahun" tetap satu sumber di `EligibilityService`.
 
@@ -75,7 +75,7 @@
 - Produces: rute `reports.students` (`GET /reports/students`) dan `reports.students.export` (`GET /reports/students/export`, `throttle:20,1`), keduanya `can:laporan.rekaman`.
 - Produces: `StudentRecordRequest::filters(): array` — memetakan `filter.school_id|schedule_id|search|group|dari|sampai` ke kunci `$filters` Task 1; aturan: id integer, `search` string maks 100, `group` in `langsung,menunggu,belum`, `dari`/`sampai` `date_format:Y-m-d` dan `sampai` `after_or_equal:dari` hanya bila `dari` terisi (pola `ReportRequest`), pesan Indonesia yang sama.
 - Produces: halaman Inertia `Laporan/Siswa` dengan props `records` (paginator 25 baris/halaman, `withQueryString`, baris TANPA `nik`, `birth_date`, `gender`), `groups` (`list<{key, label, count}>`), `filters` (nilai yang berlaku), `schools` (`{id,name}[]` atau `null` bila pengguna terikat sekolah), `schedules` (`{id, label}[]`, label `"{tanggal} · {sekolah}"`, urut tanggal turun).
-- Produces: item menu "Daftar rekaman & KTP-el" pada grup Laporan, href `/reports/students`, ikon `clipboard-list`, izin `laporan.rekaman`.
+- Produces: item menu "Laporan KTP-el pelajar" pada grup Laporan, href `/reports/students`, ikon `clipboard-list`, izin `laporan.rekaman`.
 
 - [ ] **Step 1: Tulis tes yang gagal.**
   - `RoutePermissionMatrixTest`: tambah `GET /reports/students` dan `GET /reports/students/export` dengan `laporan.rekaman`. `MenuTest`: pemegang `laporan.rekaman` melihat item baru, pemegang `laporan.lihat` saja tidak.
@@ -97,7 +97,7 @@
 **Interfaces:**
 - Consumes: `ReportService::studentRecords` (baris lengkap, termasuk `nik`), `ReportService::GROUPS`, `RecapExport::safe`, `App\Support\Nik::mask`.
 - Produces: `StudentRecordExport::__construct(array $rows, bool $fullNik)`; `FromArray`, `WithHeadings`, `WithCustomValueBinder` (turunan `PhpOffice\PhpSpreadsheet\Cell\StringValueBinder` agar semua sel berupa teks); `headings()` = `['Nama', 'NIK', 'NISN', 'Tanggal lahir', 'Jenis kelamin', 'Sekolah', 'Tanggal rekaman', 'KTP-el', 'Terbit mulai', 'Alasan']`; `Tanggal rekaman` terisi hanya untuk kelompok langsung dan menunggu; `Jenis kelamin` = `Laki-laki`/`Perempuan`; `KTP-el` = label kelompok; `Terbit mulai` = `eligible_from`.
-- Produces: berkas `daftar-rekaman-ktp-el.xlsx`; log `laporan.diekspor` dengan `jenis: daftar-rekaman`, filter yang dipakai, `nik_penuh` bool, `jumlah` baris.
+- Produces: berkas `laporan-ktp-el-pelajar.xlsx`; log `laporan.diekspor` dengan `jenis: ktp-el-pelajar`, filter yang dipakai, `nik_penuh` bool, `jumlah` baris.
 
 - [ ] **Step 1: Tulis tes yang gagal** (`Excel::fake()` untuk isi, unduhan sungguhan untuk berkas):
   - pemegang `laporan.unduh-nik`: sel NIK `3201123412341234`; tanpa izin itu: `3201********1234`.
@@ -105,7 +105,7 @@
   - ekspor mengikuti filter (`filter[group]=belum`) dan mencakup semua halaman (lebih dari 25 siswa).
   - nama berawalan `=` dan `@` dinetralkan (`'=...`).
   - `bindValue` mengikat string numerik `3201123412341234` sebagai tipe string pada sel `Worksheet`.
-  - unduhan sungguhan: `assertDownload('daftar-rekaman-ktp-el.xlsx')`, log dengan `jenis`, `nik_penuh`, `jumlah`; pengguna tanpa `laporan.rekaman` → 403.
+  - unduhan sungguhan: `assertDownload('laporan-ktp-el-pelajar.xlsx')`, log dengan `jenis`, `nik_penuh`, `jumlah`; pengguna tanpa `laporan.rekaman` → 403.
 
 - [ ] **Step 2: Jalankan, pastikan gagal.** Run: `vendor/bin/pest tests/Feature/Reports/StudentRecordHttpTest.php` — Expected: FAIL.
 
@@ -138,7 +138,7 @@
 ### Task 5: Dokumen dan verifikasi akhir
 
 **Files:**
-- Modify: `docs/superpowers/specs/2026-10-07-sijebol-ui-guide.md` (bagian halaman Daftar rekaman & KTP-el), `docs/deployment-guide.md` (catatan rilis: jalankan `AccessSeeder` di UAT/produksi untuk izin `laporan.rekaman` dan `laporan.unduh-nik`)
+- Modify: `docs/superpowers/specs/2026-10-07-sijebol-ui-guide.md` (bagian halaman Laporan KTP-el pelajar), `docs/deployment-guide.md` (catatan rilis: jalankan `AccessSeeder` di UAT/produksi untuk izin `laporan.rekaman` dan `laporan.unduh-nik`)
 
 - [ ] **Step 1:** Perbarui kedua dokumen.
 - [ ] **Step 2:** Review `ponytail:ponytail-review` (semua perubahan) dan `impeccable` (`Siswa.vue`); perbaiki temuan yang valid.

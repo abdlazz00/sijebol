@@ -28,7 +28,7 @@ export interface StudentRecordGroup {
     count: number;
 }
 
-/** Baris daftar rekaman & KTP-el; tanpa NIK (NIK hanya ada di Excel). */
+/** Baris laporan KTP-el pelajar; tanpa NIK (NIK hanya ada di Excel). */
 export type StudentRecordRow = {
     id: number;
     name: string;

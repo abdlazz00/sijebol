@@ -663,7 +663,7 @@ php artisan migrate --force    # menambah kolom schedules.registration_closes_at
 
 ## 14. Catatan Daftar Rekaman & KTP-el
 
-Halaman baru **Laporan > Daftar rekaman & KTP-el** (daftar per siswa: sudah rekaman dengan KTP-el langsung terbit, sudah rekaman tetapi menunggu genap 17 tahun, dan belum rekaman) beserta unduhan Excel.
+Halaman baru **Laporan > Laporan KTP-el pelajar** (daftar per siswa: sudah rekaman dengan KTP-el langsung terbit, sudah rekaman tetapi menunggu genap 17 tahun, dan belum rekaman) beserta unduhan Excel.
 
 ```bash
 php artisan db:seed --class=AccessSeeder --force   # WAJIB: membuat izin laporan.rekaman dan laporan.unduh-nik; tanpa migrasi
@@ -672,7 +672,7 @@ php artisan db:seed --class=AccessSeeder --force   # WAJIB: membuat izin laporan
 - Tanpa seeder, item menu tidak muncul dan rutenya menjawab 403. Secara bawaan hanya `super-admin` dan `admin-kecamatan` yang memegang kedua izin; role lain diatur lewat menu **Role**.
 - `laporan.rekaman` membuka halaman dan Excel (NIK termasking). `laporan.unduh-nik` menambah NIK penuh di Excel. Pengguna terikat sekolah yang diberi izin ini hanya melihat siswa sekolahnya.
 - "Terbit" berarti **memenuhi syarat umur** (lebih dari 17 tahun pada tanggal sesi rekaman). Sistem tidak mencatat KTP-el yang sudah dicetak Disdukcapil.
-- Setiap unduhan tercatat di Log aktivitas (`laporan.diekspor`, `jenis: daftar-rekaman`, filter, `nik_penuh`, jumlah baris).
+- Setiap unduhan tercatat di Log aktivitas (`laporan.diekspor`, `jenis: ktp-el-pelajar`, filter, `nik_penuh`, jumlah baris).
 
 ## 15. Data dummy (lokal dan UAT)
 

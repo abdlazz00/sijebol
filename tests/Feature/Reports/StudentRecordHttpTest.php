@@ -115,7 +115,7 @@ test('Excel: judul kolom dan isi tiga kelompok, tanggal rekaman kosong untuk yan
 
     $this->actingAs($this->pelapor)->get('/reports/students/export');
 
-    Excel::assertDownloaded('daftar-rekaman-ktp-el.xlsx', function (StudentRecordExport $e) {
+    Excel::assertDownloaded('laporan-ktp-el-pelajar.xlsx', function (StudentRecordExport $e) {
         $rows = $e->array();
 
         return $e->headings() === ['Nama', 'NIK', 'NISN', 'Tanggal lahir', 'Jenis kelamin', 'Sekolah', 'Tanggal rekaman', 'KTP-el', 'Terbit mulai', 'Alasan']
@@ -131,7 +131,7 @@ test('Excel: NIK penuh hanya untuk pemegang laporan.unduh-nik', function () {
 
     $this->actingAs(makeUserWith(['laporan.rekaman', 'laporan.unduh-nik'], roleName: 'pengunduh-nik'))->get('/reports/students/export');
 
-    Excel::assertDownloaded('daftar-rekaman-ktp-el.xlsx', fn (StudentRecordExport $e) => $e->array()[0][1] === '3201123412341234');
+    Excel::assertDownloaded('laporan-ktp-el-pelajar.xlsx', fn (StudentRecordExport $e) => $e->array()[0][1] === '3201123412341234');
 });
 
 test('Excel mengikuti filter dan mencakup semua halaman', function () {
@@ -141,7 +141,7 @@ test('Excel mengikuti filter dan mencakup semua halaman', function () {
 
     $this->actingAs($this->pelapor)->get('/reports/students/export?filter[group]=belum');
 
-    Excel::assertDownloaded('daftar-rekaman-ktp-el.xlsx', fn (StudentRecordExport $e) => count($e->array()) === 30);
+    Excel::assertDownloaded('laporan-ktp-el-pelajar.xlsx', fn (StudentRecordExport $e) => count($e->array()) === 30);
 });
 
 test('Excel menetralkan nama dan sekolah berawalan simbol formula', function () {
@@ -151,7 +151,7 @@ test('Excel menetralkan nama dan sekolah berawalan simbol formula', function () 
 
     $this->actingAs($this->pelapor)->get('/reports/students/export');
 
-    Excel::assertDownloaded('daftar-rekaman-ktp-el.xlsx', fn (StudentRecordExport $e) => $e->array()[0][0] === "'=HYPERLINK(\"http://x\")" && $e->array()[0][5] === "'@sekolah");
+    Excel::assertDownloaded('laporan-ktp-el-pelajar.xlsx', fn (StudentRecordExport $e) => $e->array()[0][0] === "'=HYPERLINK(\"http://x\")" && $e->array()[0][5] === "'@sekolah");
 });
 
 test('Excel mengikat NIK dan NISN sebagai teks, bukan angka', function () {
@@ -168,11 +168,11 @@ test('unduhan sungguhan berupa xlsx dan tercatat di log beserta penanda NIK penu
     $pengunduh = makeUserWith(['laporan.rekaman', 'laporan.unduh-nik'], roleName: 'pengunduh-log');
 
     $this->actingAs($pengunduh)->get('/reports/students/export?filter[group]=belum&filter[dari]=2026-10-01')
-        ->assertOk()->assertDownload('daftar-rekaman-ktp-el.xlsx');
+        ->assertOk()->assertDownload('laporan-ktp-el-pelajar.xlsx');
 
     $log = Activity::where('description', 'laporan.diekspor')->sole();
     expect($log->causer_id)->toBe($pengunduh->id)
-        ->and($log->properties['jenis'])->toBe('daftar-rekaman')
+        ->and($log->properties['jenis'])->toBe('ktp-el-pelajar')
         ->and($log->properties['nik_penuh'])->toBeTrue()
         ->and($log->properties['jumlah'])->toBe(1)
         ->and($log->properties['filter'])->toEqual(['group' => 'belum', 'dari' => '2026-10-01']);

@@ -245,13 +245,13 @@ Rancangan lengkap: `2026-10-28-halaman-profil-design.md`. Satu halaman untuk sem
 ### Lencana KTP-el langsung
 - Lencana informasi (biru lembut, ikon kartu, teks "KTP-el langsung", makna untuk pembaca layar "Berumur lebih dari 17 tahun; KTP-el dapat langsung terbit.") untuk siswa yang sudah melewati ulang tahun ke-17 pada tanggal acuan (tanggal sesi pendaftaran aktif, atau hari ini bila tidak ada). Tampil di daftar dan detail Siswa, antrean dan detail Verifikasi, hasil pindai, dan Tiket; pada halaman detail disertai satu kalimat penjelas. Hanya informasi, tidak mengubah alur.
 
-### 5.30 Laporan: daftar rekaman & KTP-el `/reports/students` (`laporan.rekaman`)
-- Spec: `2026-11-01-daftar-rekaman-ktp-el-design.md`. Item menu "Daftar rekaman & KTP-el" di grup Laporan; sidebar hanya menyalakan item dengan alamat paling spesifik (jalur tanpa query string), jadi "Rekap pendaftaran" tidak ikut menyala.
-- Header "Daftar rekaman & KTP-el" dengan keterangan bahwa **terbit = memenuhi syarat umur** dan pencetakan oleh Disdukcapil tidak dicatat sistem. Tombol **Ekspor Excel** (tautan; mengikuti filter yang sudah diterapkan di server).
+### 5.30 Laporan KTP-el pelajar `/reports/students` (`laporan.rekaman`)
+- Spec: `2026-11-01-daftar-rekaman-ktp-el-design.md`. Item menu "Laporan KTP-el pelajar" di grup Laporan; sidebar hanya menyalakan item dengan alamat paling spesifik (jalur tanpa query string), jadi "Rekap pendaftaran" tidak ikut menyala.
+- Header "Laporan KTP-el pelajar" dengan keterangan bahwa **terbit = memenuhi syarat umur** dan pencetakan oleh Disdukcapil tidak dicatat sistem. Tombol **Ekspor Excel** (tautan; mengikuti filter yang sudah diterapkan di server).
 - Tiga kotak angka (Langsung terbit, Menunggu genap 17, Belum rekaman; tetap tiga kolom di HP) berupa tombol toggle `aria-pressed` dengan cincin fokus sendiri: klik menyaring, klik lagi melepas; jumlahnya tidak berubah oleh pilihan kelompok itu sendiri.
 - Filter: pencarian nama atau NISN (debounce 300 ms), Sekolah (hanya pengguna tanpa sekolah), Sesi, Rekaman dari/sampai (tanggal sesi; siswa tanpa pendaftaran tetap tampil di Belum rekaman). Galat validasi di bawah field.
 - Tabel satu baris per siswa: Siswa (nama, NISN), Sekolah (bersyarat), Tanggal rekaman (hanya yang sudah rekaman), KTP-el (lencana "KTP-el langsung" untuk kelompok langsung, "Terbit mulai {tanggal}" untuk kelompok menunggu, "—" untuk belum), Alasan (label status pendaftaran terkini, atau "Belum mendaftar sesi"). **NIK tidak pernah tampil di halaman.** Empty state "Tidak ada hasil" dengan Reset filter, atau "Belum ada siswa terdata".
-- Excel `daftar-rekaman-ktp-el.xlsx`: kolom Nama, NIK, NISN, Tanggal lahir, Jenis kelamin, Sekolah, Tanggal rekaman, KTP-el, Terbit mulai, Alasan; semua halaman sesuai filter. NIK penuh hanya untuk pemegang `laporan.unduh-nik`, selain itu termasking. Setiap unduhan tercatat di log (`jenis: daftar-rekaman`, filter, `nik_penuh`, `jumlah`).
+- Excel `laporan-ktp-el-pelajar.xlsx`: kolom Nama, NIK, NISN, Tanggal lahir, Jenis kelamin, Sekolah, Tanggal rekaman, KTP-el, Terbit mulai, Alasan; semua halaman sesuai filter. NIK penuh hanya untuk pemegang `laporan.unduh-nik`, selain itu termasking. Setiap unduhan tercatat di log (`jenis: ktp-el-pelajar`, filter, `nik_penuh`, `jumlah`).
 
 ## 6. Pola lintas halaman
 

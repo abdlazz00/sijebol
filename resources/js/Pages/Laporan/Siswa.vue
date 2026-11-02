@@ -92,7 +92,7 @@ const columns = computed(() => [
 <template>
     <AppLayout title="Laporan">
         <PageHeader
-            title="Daftar rekaman & KTP-el"
+            title="Laporan KTP-el pelajar"
             description="Siswa yang sudah rekaman, yang KTP-el-nya langsung terbit, dan yang belum. Terbit berarti memenuhi syarat umur; pencetakan oleh Disdukcapil tidak dicatat di sistem."
         >
             <template #actions>
@@ -100,7 +100,7 @@ const columns = computed(() => [
                     <a :href="exportHref">
                         <Download class="size-4" aria-hidden="true" />
                         Ekspor Excel<span class="sr-only">
-                            daftar rekaman dan KTP-el</span
+                            laporan KTP-el pelajar</span
                         >
                     </a>
                 </Button>
@@ -211,7 +211,7 @@ const columns = computed(() => [
                     kolom lainnya
                 </p>
                 <DataTable
-                    label="Daftar rekaman dan KTP-el"
+                    label="Laporan KTP-el pelajar"
                     :columns="columns"
                     :rows="records.data"
                     :loading="loading"

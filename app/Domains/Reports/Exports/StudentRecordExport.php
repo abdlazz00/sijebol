@@ -10,7 +10,7 @@ use Maatwebsite\Excel\Concerns\WithHeadings;
 use PhpOffice\PhpSpreadsheet\Cell\StringValueBinder;
 
 /**
- * Berkas daftar rekaman dan KTP-el; barisnya dari `ReportService::studentRecords`, jadi identik dengan halaman.
+ * Berkas laporan KTP-el pelajar; barisnya dari `ReportService::studentRecords`, jadi identik dengan halaman.
  * Semua sel diikat sebagai teks agar NIK 16 digit tidak berubah menjadi notasi ilmiah.
  */
 class StudentRecordExport extends StringValueBinder implements FromArray, WithCustomValueBinder, WithHeadings

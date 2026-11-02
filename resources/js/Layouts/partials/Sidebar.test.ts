@@ -48,7 +48,7 @@ vi.mock('@inertiajs/vue3', async (importOriginal) => {
                                 icon: 'file-spreadsheet',
                             },
                             {
-                                label: 'Daftar rekaman & KTP-el',
+                                label: 'Laporan KTP-el pelajar',
                                 href: '/reports/students',
                                 icon: 'clipboard-list',
                             },
@@ -108,12 +108,12 @@ describe('Sidebar Navigation Component', () => {
 
     it('hanya menyalakan item dengan alamat paling spesifik', () => {
         expect(aktif('/reports')).toEqual(['Rekap pendaftaran']);
-        expect(aktif('/reports/students')).toEqual(['Daftar rekaman & KTP-el']);
+        expect(aktif('/reports/students')).toEqual(['Laporan KTP-el pelajar']);
     });
 
     it('query string tidak mematikan penanda item aktif', () => {
         expect(aktif('/reports/students?filter[group]=belum')).toEqual([
-            'Daftar rekaman & KTP-el',
+            'Laporan KTP-el pelajar',
         ]);
         expect(aktif('/siswa?page=2')).toEqual(['Siswa']);
     });
