@@ -718,3 +718,37 @@ docker exec -it sijebol-uat php artisan sijebol:isi-data-dummy --siswa=600 --san
 - Role bawaan yang terhapus dibuat kembali lengkap dengan izin bawaannya.
 
 Konsekuensinya: **mengurangi** izin bawaan sebuah role di kode tidak otomatis berlaku di server yang sudah berjalan. Pencabutan semacam itu harus dilakukan lewat menu Role atau lewat migrasi data, dan dicatat di bagian rilis yang bersangkutan.
+
+## 17. Deploy produksi: cadangan dan migrasi terkendali
+
+Mulai 2 Nov 2026 (temuan F-02), migrasi di **produksi tidak lagi otomatis** saat kontainer mulai (`AUTO_MIGRATE=false` di `docker-compose.prod.yml`). Sebelumnya setiap start/restart kontainer menjalankan `migrate --force`; migrasi yang gagal membuat kontainer crash-loop dan tidak ada cadangan. **UAT tetap otomatis** (`AUTO_MIGRATE=true`).
+
+```bash
+bash scripts/deploy-prod.sh          # interaktif (menanyakan konfirmasi)
+bash scripts/deploy-prod.sh --yes    # tanpa konfirmasi, untuk otomasi
+```
+
+Urutan skrip:
+
+1. `git pull origin main`, lalu **build image baru** (aplikasi lama tetap melayani).
+2. Menampilkan **migrasi yang akan dijalankan** dan meminta konfirmasi. Dibatalkan = tidak ada yang berubah.
+3. `artisan down` (mode pemeliharaan; status tersimpan di `storage`, jadi kontainer baru juga langsung dalam mode itu).
+4. **Cadangan database** (`mysqldump --single-transaction`) ke `/opt/sijebol/backups/<db>-<stempel>.sql.gz` (izin folder 700, berkas 600). **Cadangan gagal = deploy berhenti** dan aplikasi dibuka kembali. Cadangan lebih dari **14 hari** dihapus, hanya setelah cadangan baru berhasil.
+5. Mengganti kontainer, menunggu siap, lalu `migrate --force`, `queue:restart`, cache, dan `artisan up`.
+
+Bila migrasi gagal, aplikasi **tetap dalam mode pemeliharaan** dan skrip mencetak lokasi cadangan serta perintah pemulihan. Setelah diperbaiki: `docker exec sijebol-prod php artisan up`.
+
+Memulihkan cadangan:
+
+```bash
+export MYSQL_PWD='<DB_PASSWORD dari .env>'
+gunzip -c /opt/sijebol/backups/sijebol_prod-YYYYMMDD-HHMMSS.sql.gz \
+  | docker exec -i -e MYSQL_PWD sijebol-mysql mysql -usijebol sijebol_prod
+unset MYSQL_PWD
+```
+
+Catatan:
+- Cadangan hanya ada di VPS yang sama. **Salinan di luar VPS tetap harus diatur terpisah** (tidak ditangani skrip ini).
+- Pada instalasi pertama, pesan "status migrasi tidak terbaca" saat langkah 2 wajar (tabel `migrations` belum ada).
+- Rilis produksi pertama: migrasi `convert_registrations_to_session_registrations` menolak berjalan bila `registration_students` atau `schedules` sudah berisi data. Database produksi saat ini kosong, sehingga lolos. Bila kelak ada data uji, jalankan `php artisan sijebol:bersihkan-data-siswa` lebih dulu.
+- Skrip bantu (`scripts/lib/deploy.sh`) diuji dengan `bash scripts/test-deploy-lib.sh` (tanpa Docker sungguhan).

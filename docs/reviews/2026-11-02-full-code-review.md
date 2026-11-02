@@ -21,7 +21,7 @@ Basis: branch `staging` @ `b085691`.
 |---|---|---|
 | Tinggi | 2 | F-01, F-02 |
 | Sedang | 9 | F-03 s.d. F-11 |
-| Rendah | 16 | F-12 s.d. F-27 |
+| Rendah | 17 | F-12 s.d. F-28 |
 
 Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding atau kolom tetap), XSS (tanpa `v-html`/`innerHTML`), eksekusi perintah dari input, mass assignment dari input mentah, atau rahasia yang ter-commit.
 
@@ -49,6 +49,11 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Dampak:** Rilis produksi pertama akan menjalankan semua migrasi otomatis. Migrasi `2026_10_20_100001_convert_registrations_to_session_registrations` menjatuhkan tabel `registrations`. Migrasi itu punya pengaman (melempar galat bila masih ada data lama), tetapi bila terpicu, kontainer **crash-loop** (`restart: unless-stopped` + `set -e`) dan situs tidak naik. Tidak ada jalan mundur (`down()` melempar galat).
 - **Saran:** Matikan `AUTO_MIGRATE` di produksi. Migrasi dijalankan manual setelah `mysqldump`, atau skrip deploy diubah: cadangan, lalu `down`, lalu `migrate`, lalu `up`. Untuk UAT boleh tetap otomatis.
 - **Status:** Terbukti dari kode.
+- **Keputusan (2 Nov 2026):** produksi manual + cadangan otomatis di skrip; UAT tetap otomatis; database produksi baru/kosong; cadangan di folder VPS dengan retensi 14 hari. **Sudah dikerjakan, belum di-commit.**
+  - `AUTO_MIGRATE=false` di `docker-compose.prod.yml`. `scripts/deploy-prod.sh` ditulis ulang: build, daftar migrasi tertunda + konfirmasi, `artisan down`, cadangan (`mysqldump`, kata sandi lewat env), ganti kontainer, migrasi, `artisan up`.
+  - Cadangan gagal = deploy berhenti dan aplikasi dibuka lagi. Migrasi gagal = aplikasi tetap dalam mode pemeliharaan dan perintah pemulihan dicetak.
+  - Verifikasi: 21 pemeriksaan skrip bantu lulus (`bash scripts/test-deploy-lib.sh`), `docker compose config` menghasilkan `AUTO_MIGRATE: false`, dan simulasi dengan `docker`/`git` tiruan untuk empat skenario (sukses, cadangan gagal, migrasi gagal, konfirmasi ditolak) berurutan sesuai rancangan. **Belum dicoba di server sungguhan**: uji dulu di UAT atau dengan `--yes` pada lingkungan percobaan.
+  - Belum tercakup: salinan cadangan di luar VPS. Dokumen: `deployment-guide.md` bagian 17.
 
 ---
 
@@ -154,6 +159,9 @@ Filter pencarian (`'like', "%{$v}%"`) di enam repository tidak meng-escape `%` d
 
 ### F-27 — Retensi log audit 365 hari dan dapat dihapus
 `routes/console.php`: `logs:prune` harian dengan bawaan 365 hari. Jika log audit dipakai sebagai bukti, periode dan perlindungan perlu diputuskan, dan tabelnya dapat diubah oleh akun DB aplikasi.
+
+### F-28 — Contoh kata sandi lemah di panduan deployment
+`docs/deployment-guide.md` (sekitar baris 261 dan 263) memuat contoh `MYSQL_ROOT_PASSWORD: 'PasswordRootKuat123!'` dan `MYSQL_PASSWORD: 'PasswordSijebolKuat123!'` pada compose MySQL. Port MySQL hanya di-bind ke `127.0.0.1`, jadi tidak terbuka ke internet, tetapi bila nilai contoh ini dipakai apa adanya di server, kata sandi root dan aplikasi menjadi tebakan publik karena tertulis di repositori. Saran: ganti contoh dengan placeholder (`<ganti-dengan-sandi-acak>`). Dikonfirmasi pemilik: nilai tersebut hanya contoh dan tidak dipakai di server, jadi rotasi kata sandi tidak diperlukan; tersisa mengganti contoh dengan placeholder di panduan.
 
 ---
 
