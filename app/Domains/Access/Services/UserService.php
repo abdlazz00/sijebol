@@ -68,7 +68,9 @@ class UserService
         }
         $this->assertRoleAllowed($role, $data['school_id'] ?? null, $actor);
 
-        return DB::transaction(function () use ($user, $data, $role, $roleChanged) {
+        $emailBefore = $user->email;
+
+        $updated = DB::transaction(function () use ($user, $data, $role, $roleChanged) {
             $attributes = [
                 'name' => $data['name'],
                 'phone' => $data['phone'] ?? null,
@@ -86,6 +88,14 @@ class UserService
 
             return $user;
         });
+
+        // Email baru hanya mungkin pada akun belum aktif. Link lama sudah terkirim ke alamat sebelumnya, jadi dicabut
+        // (issue mencabut yang belum terpakai) dan link baru dikirim ke alamat baru.
+        if ($updated->email !== $emailBefore) {
+            $this->sendActivation($updated, $this->activations->issue($updated));
+        }
+
+        return $updated;
     }
 
     public function deactivate(User $user, User $actor): void

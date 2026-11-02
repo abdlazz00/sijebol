@@ -72,6 +72,32 @@ test('email tidak dapat diubah setelah akun aktif, tetapi dapat sebelum aktif', 
     expect($pending->fresh()->email)->toBe('p2@x.test');
 });
 
+test('mengganti email akun belum aktif mencabut link lama dan mengirim link baru ke alamat baru', function () {
+    ['user' => $user, 'token' => $lama] = $this->service->create(
+        payload(['email' => 'salah@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);
+    $aktivasi = app(ActivationService::class);
+
+    $this->service->update($user, payload(['email' => 'benar@x.test', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);
+
+    expect($aktivasi->findValid($lama))->toBeNull();
+    Notification::assertSentToTimes($user, StaffActivationNotification::class, 2);
+    Notification::assertSentTo($user, StaffActivationNotification::class, function ($n) use ($lama, $aktivasi) {
+        $baru = str_replace('/activation/', '', $n->url());
+
+        return $baru !== $lama && $aktivasi->findValid($baru)?->user->email === 'benar@x.test';
+    });
+});
+
+test('mengubah data lain tanpa mengganti email tidak menerbitkan link baru', function () {
+    ['user' => $user, 'token' => $token] = $this->service->create(
+        payload(['role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);
+
+    $this->service->update($user, payload(['name' => 'Nama Baru', 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id]), $this->super);
+
+    expect(app(ActivationService::class)->findValid($token))->not->toBeNull();
+    Notification::assertSentToTimes($user, StaffActivationNotification::class, 1);
+});
+
 test('tidak dapat mengubah role diri sendiri', function () {
     expect(fn () => $this->service->update($this->admin, payload([
         'email' => $this->admin->email, 'role_id' => $this->operatorRole->id, 'school_id' => $this->school->id,

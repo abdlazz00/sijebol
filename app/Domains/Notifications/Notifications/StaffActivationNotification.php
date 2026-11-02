@@ -3,10 +3,14 @@
 namespace App\Domains\Notifications\Notifications;
 
 use App\Domains\Access\Services\ActivationService;
+use Illuminate\Contracts\Queue\ShouldBeEncrypted;
 use Illuminate\Support\Str;
 
-/** Email aktivasi untuk staf. Tanpa kanal database agar link yang sudah mati tidak tersisa di lonceng. */
-class StaffActivationNotification extends BaseNotification
+/**
+ * Email aktivasi untuk staf. Tanpa kanal database agar link yang sudah mati tidak tersisa di lonceng;
+ * dienkripsi di antrean karena memuat token aktivasi mentah.
+ */
+class StaffActivationNotification extends BaseNotification implements ShouldBeEncrypted
 {
     public function __construct(
         private readonly string $token,
