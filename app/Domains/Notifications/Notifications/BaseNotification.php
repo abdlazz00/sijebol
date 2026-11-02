@@ -30,6 +30,11 @@ abstract class BaseNotification extends Notification implements ShouldQueue
     /** @return list<string> */
     public function via(object $notifiable): array
     {
+        // Akun dummy (data simulasi) hanya menerima notifikasi di aplikasi: alamatnya palsu dan akan bounce di penyedia email.
+        if (str_ends_with((string) $notifiable->email, config('sijebol.dummy_email_domain'))) {
+            return ['database'];
+        }
+
         return ['database', 'mail'];
     }
 

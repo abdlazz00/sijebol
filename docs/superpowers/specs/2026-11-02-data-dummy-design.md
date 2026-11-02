@@ -32,7 +32,9 @@ Mengisi database dengan data siswa, sesi, pendaftaran, dokumen, dan akun yang ba
 ## Bukan tujuan
 Tidak menambah atau mengubah sekolah. Tidak memakai `fake()` di luar factory. Tidak membuat log aktivitas (dimatikan selama pengisian). Tidak ada UI.
 
-## Menuju UAT (belum dikerjakan)
-1. `fakerphp/faker` masih `require-dev` dan image dibangun `--no-dev`: pindahkan ke `require`.
-2. Pengaman env perlu saklar eksplisit khusus UAT.
-3. Dummy ikut terlihat di daftar sekolah asli di UAT; kata sandi `password` hanya layak untuk UAT.
+## Tahap UAT (dikerjakan)
+- `fakerphp/faker` dipindah ke `require` (image dibangun `--no-dev`).
+- Pengaman env diganti saklar: jalan di `local`/`testing`, atau bila `SIJEBOL_ALLOW_DUMMY_DATA=true` (hanya UAT). Di luar lokal perintah meminta konfirmasi (`--force` melewati) dan menolak kata sandi bawaan: `--sandi` wajib, minimal 8 karakter.
+- Semua akun dummy memakai satu kata sandi dari `--sandi` (hash dihitung sekali). Admin dummy pembuat sesi dibuat nonaktif.
+- `BaseNotification::via` tidak memakai kanal email untuk alamat `@dummy.sijebol.test` (pengingat otomatis dan notifikasi verifikasi tidak boleh bounce di Resend). Akhiran dummy dan saklar ada di `config/sijebol.php`.
+- Dummy ikut tampil di daftar sekolah asli di UAT.

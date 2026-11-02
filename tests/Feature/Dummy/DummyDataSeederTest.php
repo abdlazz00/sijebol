@@ -11,6 +11,7 @@ use App\Models\User;
 use Database\Seeders\AccessSeeder;
 use Database\Seeders\DummyDataSeeder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 
@@ -155,4 +156,55 @@ it('menampilkan pesan ramah dan gagal bila pengaman menolak', function () {
     app()->detectEnvironment(fn () => 'production');
 
     $this->artisan('sijebol:isi-data-dummy')->expectsOutputToContain('lingkungan local')->assertFailed();
+});
+
+describe('di luar lokal (UAT)', function () {
+    beforeEach(fn () => app()->detectEnvironment(fn () => 'staging'));
+
+    it('menolak bila saklar SIJEBOL_ALLOW_DUMMY_DATA belum dinyalakan', function () {
+        expect(fn () => $this->seeder->generate(20))->toThrow(RuntimeException::class, 'SIJEBOL_ALLOW_DUMMY_DATA');
+        expect(dummyStudents()->count())->toBe(0);
+    });
+
+    it('berjalan bila saklar dinyalakan dan memakai kata sandi yang diberikan', function () {
+        config(['sijebol.allow_dummy_data' => true]);
+
+        $this->seeder->generate(40, 'RahasiaUAT1');
+
+        $operator = User::withoutGlobalScopes()->where('email', 'like', 'operator.%')->first();
+        $siswa = User::withoutGlobalScopes()->find(dummyStudents()->whereNotNull('user_id')->first()->user_id);
+        expect(Hash::check('RahasiaUAT1', $operator->password))->toBeTrue()
+            ->and(Hash::check('RahasiaUAT1', $siswa->password))->toBeTrue()
+            ->and(Hash::check('password', $operator->password))->toBeFalse();
+    });
+
+    it('membuat admin pembuat sesi tanpa bisa dipakai masuk', function () {
+        config(['sijebol.allow_dummy_data' => true]);
+
+        $this->seeder->generate(20, 'RahasiaUAT1');
+
+        expect(User::withoutGlobalScopes()->where('email', 'admin.dummy@dummy.sijebol.test')->first()->is_active)->toBeFalse();
+    });
+
+    it('perintah menolak kata sandi bawaan atau pendek', function () {
+        config(['sijebol.allow_dummy_data' => true]);
+
+        $this->artisan('sijebol:isi-data-dummy', ['--siswa' => 10, '--force' => true])->expectsOutputToContain('--sandi')->assertFailed();
+        $this->artisan('sijebol:isi-data-dummy', ['--siswa' => 10, '--force' => true, '--sandi' => 'pendek'])->assertFailed();
+        expect(dummyStudents()->count())->toBe(0);
+    });
+
+    it('perintah meminta konfirmasi dan batal bila dijawab tidak', function () {
+        config(['sijebol.allow_dummy_data' => true]);
+
+        $this->artisan('sijebol:isi-data-dummy', ['--siswa' => 10, '--sandi' => 'RahasiaUAT1'])->expectsConfirmation('Lingkungan staging. Data dummy akan ditambahkan ke sekolah yang ada. Lanjut?', 'no')->assertFailed();
+        expect(dummyStudents()->count())->toBe(0);
+    });
+
+    it('perintah jalan dengan --force dan kata sandi kuat', function () {
+        config(['sijebol.allow_dummy_data' => true]);
+
+        $this->artisan('sijebol:isi-data-dummy', ['--siswa' => 10, '--sandi' => 'RahasiaUAT1', '--force' => true])->assertSuccessful();
+        expect(dummyStudents()->count())->toBe(10);
+    });
 });

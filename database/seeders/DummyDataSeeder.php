@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -26,8 +27,6 @@ use RuntimeException;
  */
 class DummyDataSeeder extends Seeder
 {
-    public const EMAIL_DOMAIN = '@dummy.sijebol.test';
-
     public const DEFAULT_STUDENTS = 1500;
 
     private const ZONE = 'Asia/Jakarta';
@@ -73,6 +72,9 @@ class DummyDataSeeder extends Seeder
     /** @var array<int, int> Kursi yang ditahan per sesi selama pengisian. */
     private array $taken = [];
 
+    /** Hash kata sandi semua akun dummy (dihitung sekali agar pengisian tidak lambat). */
+    private string $hash = '';
+
     public function run(): void
     {
         $this->generate(self::DEFAULT_STUDENTS);
@@ -83,9 +85,9 @@ class DummyDataSeeder extends Seeder
      *
      * @return array{schedules: int, students: int, registrations: int, accounts: int}
      */
-    public function generate(int $students): array
+    public function generate(int $students, string $password = 'password'): array
     {
-        $this->guard();
+        $this->assertAllowed();
         $schools = School::query()->orderBy('id')->get();
         if ($schools->isEmpty()) {
             throw new RuntimeException('Belum ada sekolah. Data dummy dibuat di atas sekolah yang sudah ada.');
@@ -98,6 +100,8 @@ class DummyDataSeeder extends Seeder
 
         $this->clean();
 
+        $this->hash = Hash::make($password);
+
         return $this->quiet(fn () => DB::transaction(fn () => $this->fill($schools, $students)));
     }
 
@@ -108,12 +112,12 @@ class DummyDataSeeder extends Seeder
      */
     public function clean(): array
     {
-        $this->guard();
+        $this->assertAllowed();
 
         return $this->quiet(fn () => DB::transaction(function () {
             $students = Student::withoutGlobalScopes()->where('nik', 'like', '9999%');
             $entries = RegistrationStudent::withoutGlobalScopes()->whereIn('student_id', (clone $students)->select('id'));
-            $accounts = User::withoutGlobalScopes()->where('email', 'like', '%'.self::EMAIL_DOMAIN);
+            $accounts = User::withoutGlobalScopes()->where('email', 'like', '%'.config('sijebol.dummy_email_domain'));
 
             DB::table('registration_status_histories')->whereIn('registration_student_id', (clone $entries)->select('id'))->delete();
             $registrations = (clone $entries)->delete();
@@ -129,11 +133,11 @@ class DummyDataSeeder extends Seeder
         }));
     }
 
-    private function guard(): void
+    /** Hanya env local/testing, atau lingkungan yang menyalakan SIJEBOL_ALLOW_DUMMY_DATA (UAT). */
+    public function assertAllowed(): void
     {
-        // ponytail: hanya lokal; menyalakannya di UAT butuh faker di require dan saklar eksplisit (lihat spec, "Menuju UAT").
-        if (! app()->environment('local', 'testing')) {
-            throw new RuntimeException('Data dummy hanya boleh dibuat di lingkungan local.');
+        if (! app()->environment('local', 'testing') && ! config('sijebol.allow_dummy_data')) {
+            throw new RuntimeException('Data dummy hanya boleh dibuat di lingkungan local (atau UAT dengan SIJEBOL_ALLOW_DUMMY_DATA=true).');
         }
     }
 
@@ -152,7 +156,7 @@ class DummyDataSeeder extends Seeder
     private function fill(Collection $schools, int $total): array
     {
         $this->taken = [];
-        $admin = $this->account('admin.dummy', 'Admin Kecamatan Dummy', 'admin-kecamatan', null);
+        $admin = $this->account('admin.dummy', 'Admin Kecamatan Dummy', 'admin-kecamatan', null, canLogin: false);
         $accounts = 1;
         foreach ($schools as $school) {
             $this->account("operator.{$school->npsn}", "Operator {$school->name}", 'operator-sekolah', $school->id);
@@ -350,20 +354,22 @@ class DummyDataSeeder extends Seeder
     {
         $user = User::factory()->create([
             'name' => $student->name,
-            'email' => "siswa.{$student->nisn}".self::EMAIL_DOMAIN,
+            'email' => "siswa.{$student->nisn}".config('sijebol.dummy_email_domain'),
             'school_id' => $student->school_id,
+            'password' => $this->hash,
         ]);
         $user->assignRole(Role::SISWA);
         $student->update(['user_id' => $user->id]);
     }
 
-    private function account(string $local, string $name, string $role, ?int $schoolId): User
+    /** Akun staf dummy; `$canLogin` false untuk admin pembuat sesi, yang tidak perlu (dan tidak boleh) dipakai masuk. */
+    private function account(string $local, string $name, string $role, ?int $schoolId, bool $canLogin = true): User
     {
         // Dipakai ulang bila ada: akun yang masih memegang sesi dengan pendaftaran asli tidak ikut terhapus oleh clean().
-        $email = $local.self::EMAIL_DOMAIN;
+        $email = $local.config('sijebol.dummy_email_domain');
         $user = User::withoutGlobalScopes()->where('email', $email)->first();
         if ($user === null) {
-            $user = User::factory()->create(['name' => $name, 'email' => $email, 'school_id' => $schoolId]);
+            $user = User::factory()->create(['name' => $name, 'email' => $email, 'school_id' => $schoolId, 'password' => $this->hash, 'is_active' => $canLogin]);
             $user->assignRole($role);
         }
 

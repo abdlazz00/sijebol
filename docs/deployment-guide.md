@@ -674,9 +674,9 @@ php artisan db:seed --class=AccessSeeder --force   # WAJIB: membuat izin laporan
 - "Terbit" berarti **memenuhi syarat umur** (lebih dari 17 tahun pada tanggal sesi rekaman). Sistem tidak mencatat KTP-el yang sudah dicetak Disdukcapil.
 - Setiap unduhan tercatat di Log aktivitas (`laporan.diekspor`, `jenis: daftar-rekaman`, filter, `nik_penuh`, jumlah baris).
 
-## 15. Data dummy (khusus lokal)
+## 15. Data dummy (lokal dan UAT)
 
-Untuk menguji daftar, filter, laporan, dan Excel dengan data banyak:
+Untuk menguji daftar, filter, laporan, dan Excel dengan data banyak, serta sebagai bahan pengenalan ke sekolah dan simulasi client di UAT:
 
 ```bash
 php artisan sijebol:isi-data-dummy             # 1.500 siswa + sesi, pendaftaran (semua status), dokumen, akun
@@ -684,7 +684,25 @@ php artisan sijebol:isi-data-dummy --siswa=300 # jumlah lain
 php artisan sijebol:isi-data-dummy --bersihkan # hapus semua yang bertanda dummy
 ```
 
-- Memakai **sekolah yang sudah ada** (sekolah tidak diubah) dan butuh `AccessSeeder` sudah dijalankan. Perintah menolak jalan bila `APP_ENV` bukan `local`, jadi tidak ada risiko di UAT/produksi.
-- Penanda dummy: NIK berawalan `9999`, NISN `99`, email `@dummy.sijebol.test`. Menjalankan ulang membersihkan dummy lama dulu; data asli tidak disentuh. Kata sandi semua akun dummy: `password` (admin kecamatan `admin.dummy@…`, operator `operator.{NPSN}@…`, siswa `siswa.{NISN}@…`).
-- Log aktivitas dimatikan selama pengisian. Tidak ada email yang dikirim.
-- **Belum untuk UAT.** Menjalankannya di UAT (bahan pengenalan ke sekolah dan simulasi client) butuh `fakerphp/faker` dipindah dari `require-dev` ke `require` (image dibangun `--no-dev`) dan saklar eksplisit pengganti pengaman env; spec: `docs/superpowers/specs/2026-11-02-data-dummy-design.md`.
+- Memakai **sekolah yang sudah ada** di database tempat perintah dijalankan (sekolah tidak diubah) dan butuh `AccessSeeder` sudah dijalankan. Tidak perlu sekolah tertentu; tanpa sekolah perintah berhenti.
+- Penanda dummy: NIK berawalan `9999`, NISN `99`, email `@dummy.sijebol.test`. Menjalankan ulang membersihkan dummy lama dulu; data asli tidak disentuh. `--bersihkan` melewatkan sesi dummy yang sudah dipakai pendaftaran asli.
+- Akun: `operator.{NPSN}@dummy.sijebol.test` (satu per sekolah) dan `siswa.{NISN}@dummy.sijebol.test` (sekitar 30% siswa). Akun `admin.dummy@…` hanya pembuat sesi dan **tidak bisa dipakai masuk**.
+- Log aktivitas dimatikan selama pengisian. Akun dummy hanya menerima notifikasi di aplikasi; **email tidak pernah dikirim** ke `@dummy.sijebol.test` (pengingat otomatis dan notifikasi verifikasi tidak ikut bounce di Resend).
+
+### Lokal
+Kata sandi akun dummy `password`. Perintah hanya jalan bila `APP_ENV=local`.
+
+### UAT
+`fakerphp/faker` sudah di `require` (image dibangun `--no-dev`), jadi perintah tersedia setelah deploy. Perintah menolak jalan di UAT kecuali saklar dinyalakan; **jangan nyalakan di produksi**.
+
+```bash
+# 1. Di uat/.env, hanya selama data dummy dipakai:
+SIJEBOL_ALLOW_DUMMY_DATA=true
+# 2. Muat ulang konfigurasi, lalu isi dengan kata sandi yang kuat (akun dummy memakai kata sandi yang sama):
+docker exec -it sijebol-uat php artisan config:clear
+docker exec -it sijebol-uat php artisan sijebol:isi-data-dummy --siswa=600 --sandi='<kata sandi kuat>'
+```
+
+- Di luar lokal `--sandi` wajib diganti (minimal 8 karakter, bukan `password`) dan perintah meminta konfirmasi (lewati dengan `--force`). UAT terbuka ke internet dan alamat operator bisa ditebak dari NPSN, jadi kata sandi bawaan tidak boleh dipakai.
+- Bagikan kata sandi hanya kepada sekolah/client yang ikut simulasi. Setelah simulasi: `--bersihkan`, lalu hapus `SIJEBOL_ALLOW_DUMMY_DATA` dari `uat/.env`.
+- Dummy ikut tampil di daftar sekolah asli di UAT, dan jadwal otomatis (kedaluwarsa, tidak hadir) ikut memproses pendaftaran dummy seperti data biasa.
