@@ -553,7 +553,7 @@ php artisan migrate --force
 php artisan db:seed --class=AccessSeeder --force
 ```
 
-Seeder menyetel ulang izin tiga role bawaan (`admin-kecamatan`, `operator-sekolah`, `siswa`); perubahan izin yang pernah dibuat lewat UI pada role-role itu ikut tertimpa.
+> **Perilaku seeder berubah (2 Nov 2026, temuan F-01 review).** Sebelumnya seeder menyetel ulang izin tiga role bawaan sehingga perubahan lewat menu Role ikut tertimpa. Kini seeder **aditif** dan aman dijalankan ulang kapan saja. Detailnya di bagian 16. Catatan di bagian rilis lama di bawah yang menyebut "seeder menyetel ulang/mencabut izin" menggambarkan perilaku lama.
 
 ## 10. Catatan Sesi Rekaman Berkuota (Fase 7b)
 
@@ -706,3 +706,15 @@ docker exec -it sijebol-uat php artisan sijebol:isi-data-dummy --siswa=600 --san
 - Di luar lokal `--sandi` wajib diganti (minimal 8 karakter, bukan `password`) dan perintah meminta konfirmasi (lewati dengan `--force`). UAT terbuka ke internet dan alamat operator bisa ditebak dari NPSN, jadi kata sandi bawaan tidak boleh dipakai.
 - Bagikan kata sandi hanya kepada sekolah/client yang ikut simulasi. Setelah simulasi: `--bersihkan`, lalu hapus `SIJEBOL_ALLOW_DUMMY_DATA` dari `uat/.env`.
 - Dummy ikut tampil di daftar sekolah asli di UAT, dan jadwal otomatis (kedaluwarsa, tidak hadir) ikut memproses pendaftaran dummy seperti data biasa.
+
+## 16. Perilaku AccessSeeder (aditif)
+
+`php artisan db:seed --class=AccessSeeder --force` aman dijalankan ulang di server yang role-nya sudah diubah lewat menu **Role & Permission**.
+
+- **Role** dibuat bila belum ada. Role yang sudah ada tidak ditimpa: izin, deskripsi, dan pengaturan "terikat sekolah" tetap.
+- **Izin baru** (belum ada di database) dibuat, lalu diberikan hanya ke role bawaan yang memang mendapatkannya. Izin yang sudah ada tidak diberikan lagi, sehingga izin yang sengaja dicabut dari suatu role tidak kembali.
+- **Izin yang sudah dihapus dari kode** dibersihkan dari database dan dari semua role.
+- **`super-admin`** selalu disinkron penuh (role dilindungi, memegang semua izin).
+- Role bawaan yang terhapus dibuat kembali lengkap dengan izin bawaannya.
+
+Konsekuensinya: **mengurangi** izin bawaan sebuah role di kode tidak otomatis berlaku di server yang sudah berjalan. Pencabutan semacam itu harus dilakukan lewat menu Role atau lewat migrasi data, dan dicatat di bagian rilis yang bersangkutan.
