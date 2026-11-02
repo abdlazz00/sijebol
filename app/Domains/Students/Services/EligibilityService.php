@@ -54,9 +54,13 @@ class EligibilityService
     public function directKtp(Student $student, ?CarbonInterface $on = null): bool
     {
         // Dibandingkan sebagai tanggal (Y-m-d): tanggal lahir tersimpan tanpa zona, tanggal acuan di zona Jakarta.
-        $seventeenth = $student->birth_date->copy()->addYearsNoOverflow(self::DIRECT_KTP_AGE)->toDateString();
+        return $this->day($on)->toDateString() >= $this->directKtpFrom($student)->toDateString();
+    }
 
-        return $this->day($on)->toDateString() > $seventeenth;
+    /** Tanggal pertama KTP-el dapat langsung terbit: sehari setelah ulang tahun ke-17. */
+    public function directKtpFrom(Student $student): Carbon
+    {
+        return $student->birth_date->copy()->addYearsNoOverflow(self::DIRECT_KTP_AGE)->addDay();
     }
 
     /** Tanggal sesi pendaftaran aktif siswa (butuh `registrationEntries.schedule` termuat); null bila tidak ada. */

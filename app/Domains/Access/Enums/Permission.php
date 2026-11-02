@@ -43,6 +43,8 @@ enum Permission: string
     case RekamanPindai = 'rekaman.pindai';
 
     case LaporanLihat = 'laporan.lihat';
+    case LaporanRekaman = 'laporan.rekaman';
+    case LaporanUnduhNik = 'laporan.unduh-nik';
 
     case LogLihat = 'log.lihat';
 

@@ -4,11 +4,16 @@ namespace App\Domains\Reports\Services;
 
 use App\Domains\Registrations\Enums\RegistrationStatus;
 use App\Domains\Reports\Repositories\Contracts\ReportRepositoryInterface;
+use App\Domains\Students\Models\Student;
+use App\Domains\Students\Services\EligibilityService;
 use App\Models\User;
 
 class ReportService
 {
-    public function __construct(private readonly ReportRepositoryInterface $reports) {}
+    public function __construct(
+        private readonly ReportRepositoryInterface $reports,
+        private readonly EligibilityService $eligibility,
+    ) {}
 
     /**
      * Rekap sekolah × seluruh status pendaftaran sesi, lengkap dengan baris total.
@@ -77,10 +82,97 @@ class ReportService
         return $expected > 0 ? (int) round($came / $expected * 100) : null;
     }
 
-    public function recordExport(User $actor, ?string $from, ?string $to, ?string $kind = null): void
+    /** Kelompok daftar rekaman dan KTP-el (urutan = urutan tampil). */
+    public const GROUPS = ['langsung' => 'Langsung terbit', 'menunggu' => 'Menunggu genap 17', 'belum' => 'Belum rekaman'];
+
+    /**
+     * Satu baris per siswa menurut pendaftaran terkininya. `$filters`: school_id, schedule_id, search, dari, sampai
+     * (rentang tanggal sesi; siswa tanpa pendaftaran selalu lolos), group. `counts` dihitung sebelum filter `group`.
+     * Semua siswa dalam cakupan dimuat ke memori.
+     *
+     * @param  array{school_id?: ?int, schedule_id?: ?int, search?: ?string, dari?: ?string, sampai?: ?string, group?: ?string}  $filters
+     * @return array{rows: list<array<string, mixed>>, counts: array<string, int>}
+     */
+    public function studentRecords(array $filters): array
+    {
+        // ponytail: semua siswa dimuat ke memori; pindahkan ke query SQL bila siswa mencapai puluhan ribu.
+        $rows = $this->reports->studentsWithRegistrations($filters['school_id'] ?? null, $filters['search'] ?? null)
+            ->map(fn (Student $s) => $this->studentRecord($s))
+            ->filter(fn (array $r) => $this->inScope($r, $filters))
+            ->values();
+
+        $counts = array_fill_keys(array_keys(self::GROUPS), 0);
+        foreach ($rows as $row) {
+            $counts[$row['group']]++;
+        }
+
+        $order = array_flip(array_keys(self::GROUPS));
+        $group = $filters['group'] ?? null;
+
+        return [
+            'rows' => $rows->when($group, fn ($c) => $c->where('group', $group))
+                ->sortBy(fn (array $r) => $order[$r['group']])->values()->all(),
+            'counts' => $counts,
+        ];
+    }
+
+    /**
+     * Pilihan sesi untuk filter (sesi tidak dibatalkan, terbaru lebih dulu).
+     *
+     * @return list<array{id: int, label: string}>
+     */
+    public function sessionOptions(): array
+    {
+        return array_reverse(array_map(
+            fn (array $s) => ['id' => $s['id'], 'label' => "{$s['date']} · {$s['school']}"],
+            $this->reports->sessionStatusCounts(null, null),
+        ));
+    }
+
+    /** @return array<string, mixed> */
+    private function studentRecord(Student $student): array
+    {
+        $entry = $student->currentRegistration();
+        $recorded = $entry?->status === RegistrationStatus::SudahRekaman;
+        $sessionDate = $entry?->schedule->date;
+
+        return [
+            'id' => $student->id,
+            'name' => $student->name,
+            'nik' => $student->nik,
+            'nisn' => $student->nisn,
+            'birth_date' => $student->birth_date->toDateString(),
+            'gender' => $student->gender,
+            'school' => $student->school->name,
+            'group' => ! $recorded ? 'belum' : ($this->eligibility->directKtp($student, $sessionDate) ? 'langsung' : 'menunggu'),
+            'schedule_id' => $entry?->schedule_id,
+            'session_date' => $sessionDate?->toDateString(),
+            'eligible_from' => $this->eligibility->directKtpFrom($student)->toDateString(),
+            'reason' => $recorded ? null : ($entry?->status->label() ?? 'Belum mendaftar sesi'),
+        ];
+    }
+
+    /** @param array<string, mixed> $row */
+    private function inScope(array $row, array $filters): bool
+    {
+        $schedule = $filters['schedule_id'] ?? null;
+        if ($schedule !== null && $row['schedule_id'] !== $schedule) {
+            return false;
+        }
+        $date = $row['session_date'];
+        if ($date === null) {
+            return true;
+        }
+        [$from, $to] = [$filters['dari'] ?? null, $filters['sampai'] ?? null];
+
+        return ($from === null || $date >= $from) && ($to === null || $date <= $to);
+    }
+
+    /** @param  array<string, mixed>  $extra  Properti tambahan log, mis. filter dan jumlah baris. */
+    public function recordExport(User $actor, ?string $from, ?string $to, ?string $kind = null, array $extra = []): void
     {
         activity('laporan')->causedBy($actor)
-            ->withProperties(['dari' => $from, 'sampai' => $to, ...($kind !== null ? ['jenis' => $kind] : [])])
+            ->withProperties(['dari' => $from, 'sampai' => $to, ...($kind !== null ? ['jenis' => $kind] : []), ...$extra])
             ->log('laporan.diekspor');
     }
 }

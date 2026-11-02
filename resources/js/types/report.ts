@@ -20,6 +20,26 @@ export interface ReportFilters {
     sampai: string | null;
 }
 
+export type StudentRecordGroupKey = 'langsung' | 'menunggu' | 'belum';
+
+export interface StudentRecordGroup {
+    key: StudentRecordGroupKey;
+    label: string;
+    count: number;
+}
+
+/** Baris daftar rekaman & KTP-el; tanpa NIK (NIK hanya ada di Excel). */
+export type StudentRecordRow = {
+    id: number;
+    name: string;
+    nisn: string;
+    school: string;
+    group: StudentRecordGroupKey;
+    session_date: string | null;
+    eligible_from: string;
+    reason: string | null;
+};
+
 export interface SessionRecapRow {
     id: number;
     date: string;

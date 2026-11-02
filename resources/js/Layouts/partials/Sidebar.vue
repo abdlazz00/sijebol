@@ -16,8 +16,19 @@ defineProps<{ collapsed: boolean }>();
 const page = usePage<PageProps>();
 const groups = computed(() => page.props.menu ?? []);
 
+// Satu item aktif: alamat paling spesifik yang cocok dengan jalur halaman (tanpa query string),
+// agar /reports/students tidak ikut menyalakan /reports.
+const activeHref = computed(() => {
+    const path = page.url.split('?')[0];
+
+    return groups.value
+        .flatMap((group) => group.items.map((item) => item.href))
+        .filter((href) => path === href || path.startsWith(`${href}/`))
+        .sort((a, b) => b.length - a.length)[0];
+});
+
 function isActive(href: string) {
-    return page.url === href || page.url.startsWith(`${href}/`);
+    return href === activeHref.value;
 }
 </script>
 

@@ -40,6 +40,8 @@ export const PERMISSIONS = {
     RekamanPindai: 'rekaman.pindai',
 
     LaporanLihat: 'laporan.lihat',
+    LaporanRekaman: 'laporan.rekaman',
+    LaporanUnduhNik: 'laporan.unduh-nik',
 
     LogLihat: 'log.lihat',
 

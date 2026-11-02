@@ -6,7 +6,9 @@ use App\Domains\Registrations\Models\RegistrationStudent;
 use App\Domains\Reports\Repositories\Contracts\ReportRepositoryInterface;
 use App\Domains\Schedules\Models\Schedule;
 use App\Domains\Schools\Models\School;
+use App\Domains\Students\Models\Student;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class EloquentReportRepository implements ReportRepositoryInterface
 {
@@ -59,5 +61,16 @@ class EloquentReportRepository implements ReportRepositoryInterface
             'quota' => $s->quota,
             'counts' => $counts[$s->id] ?? [],
         ])->all();
+    }
+
+    public function studentsWithRegistrations(?int $schoolId, ?string $search): Collection
+    {
+        return Student::query()->with(['school', 'registrationEntries.schedule'])
+            ->when($schoolId !== null, fn (Builder $q) => $q->where('school_id', $schoolId))
+            // NIK sengaja tidak dicari sebagian: pencarian sebagian membongkar masker NIK.
+            ->when($search !== null && $search !== '', fn (Builder $q) => $q->where(
+                fn (Builder $w) => $w->where('name', 'like', "%{$search}%")->orWhere('nisn', 'like', "%{$search}%")
+            ))
+            ->orderBy('name')->orderBy('id')->get();
     }
 }

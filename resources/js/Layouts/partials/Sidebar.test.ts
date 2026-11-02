@@ -2,6 +2,8 @@ import { mount } from '@vue/test-utils';
 import { describe, expect, it, vi } from 'vitest';
 import Sidebar from './Sidebar.vue';
 
+const { state } = vi.hoisted(() => ({ state: { url: '/' } }));
+
 vi.mock('@inertiajs/vue3', async (importOriginal) => {
     const actual = await importOriginal<typeof import('@inertiajs/vue3')>();
     return {
@@ -37,11 +39,28 @@ vi.mock('@inertiajs/vue3', async (importOriginal) => {
                             },
                         ],
                     },
+                    {
+                        group: 'Laporan',
+                        items: [
+                            {
+                                label: 'Rekap pendaftaran',
+                                href: '/reports',
+                                icon: 'file-spreadsheet',
+                            },
+                            {
+                                label: 'Daftar rekaman & KTP-el',
+                                href: '/reports/students',
+                                icon: 'clipboard-list',
+                            },
+                        ],
+                    },
                 ],
                 permissions: [],
                 flash: {},
             },
-            url: '/',
+            get url() {
+                return state.url;
+            },
         }),
     };
 });
@@ -77,5 +96,25 @@ describe('Sidebar Navigation Component', () => {
         expect(wrapper.text()).toContain('Pelayanan');
         expect(wrapper.text()).toContain('Beranda');
         expect(wrapper.text()).toContain('Siswa');
+    });
+
+    const aktif = (url: string) => {
+        state.url = url;
+
+        return mount(Sidebar, { props: { collapsed: false } })
+            .findAll('a[aria-current="page"]')
+            .map((a) => a.attributes('aria-label'));
+    };
+
+    it('hanya menyalakan item dengan alamat paling spesifik', () => {
+        expect(aktif('/reports')).toEqual(['Rekap pendaftaran']);
+        expect(aktif('/reports/students')).toEqual(['Daftar rekaman & KTP-el']);
+    });
+
+    it('query string tidak mematikan penanda item aktif', () => {
+        expect(aktif('/reports/students?filter[group]=belum')).toEqual([
+            'Daftar rekaman & KTP-el',
+        ]);
+        expect(aktif('/siswa?page=2')).toEqual(['Siswa']);
     });
 });

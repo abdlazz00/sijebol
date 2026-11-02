@@ -53,6 +53,15 @@ test('menu Laporan tampil untuk pemegang laporan.lihat', function () {
         ->toBe(['label' => 'Rekap pendaftaran', 'href' => '/reports', 'icon' => 'file-spreadsheet']);
 });
 
+test('menu Daftar rekaman & KTP-el tampil hanya untuk pemegang laporan.rekaman', function () {
+    $item = ['label' => 'Daftar rekaman & KTP-el', 'href' => '/reports/students', 'icon' => 'clipboard-list'];
+    $laporan = fn (array $izin, string $role) => collect(app(MenuService::class)->forUser(makeUserWith($izin, roleName: $role)))
+        ->firstWhere('group', 'Laporan')['items'] ?? [];
+
+    expect($laporan(['laporan.rekaman'], 'pemegang-rekaman'))->toBe([$item])
+        ->and($laporan(['laporan.lihat'], 'pemegang-rekap'))->not->toContain($item);
+});
+
 test('menu Link pendaftaran tampil untuk operator dan tidak untuk siswa', function () {
     $this->seed(AccessSeeder::class);
     $operator = app(MenuService::class)->forUser(User::factory()->create()->assignRole('operator-sekolah'));

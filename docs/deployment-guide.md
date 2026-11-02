@@ -660,3 +660,16 @@ php artisan migrate --force    # menambah kolom schedules.registration_closes_at
 - Sesi yang sudah ada diisi otomatis: tanggal sesi dikurangi 2 hari, pukul 23.59.59 (sama dengan aturan lama), jadi perilakunya tidak berubah sampai admin mengubah batasnya lewat **Ubah** sesi.
 - `registration_close_days` di `config/sijebol.php` kini hanya isian awal form Buat sesi (batas = tanggal sesi dikurangi nilai ini, pukul 23.59). Admin bebas mengubahnya per sesi, termasuk ke hari yang sama untuk sesi mendadak.
 - Siswa yang sudah terdaftar tetap dapat membatalkan atau mengajukan ulang sampai sehari sebelum sesi (aturan terpisah dari batas pendaftaran).
+
+## 14. Catatan Daftar Rekaman & KTP-el
+
+Halaman baru **Laporan > Daftar rekaman & KTP-el** (daftar per siswa: sudah rekaman dengan KTP-el langsung terbit, sudah rekaman tetapi menunggu genap 17 tahun, dan belum rekaman) beserta unduhan Excel.
+
+```bash
+php artisan db:seed --class=AccessSeeder --force   # WAJIB: membuat izin laporan.rekaman dan laporan.unduh-nik; tanpa migrasi
+```
+
+- Tanpa seeder, item menu tidak muncul dan rutenya menjawab 403. Secara bawaan hanya `super-admin` dan `admin-kecamatan` yang memegang kedua izin; role lain diatur lewat menu **Role**.
+- `laporan.rekaman` membuka halaman dan Excel (NIK termasking). `laporan.unduh-nik` menambah NIK penuh di Excel. Pengguna terikat sekolah yang diberi izin ini hanya melihat siswa sekolahnya.
+- "Terbit" berarti **memenuhi syarat umur** (lebih dari 17 tahun pada tanggal sesi rekaman). Sistem tidak mencatat KTP-el yang sudah dicetak Disdukcapil.
+- Setiap unduhan tercatat di Log aktivitas (`laporan.diekspor`, `jenis: daftar-rekaman`, filter, `nik_penuh`, jumlah baris).

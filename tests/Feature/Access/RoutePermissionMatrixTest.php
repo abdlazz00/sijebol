@@ -65,6 +65,8 @@ dataset('rute', [
     ['GET', '/reports', 'laporan.lihat'],
     ['GET', '/reports/export', 'laporan.lihat'],
     ['GET', '/reports/export-sessions', 'laporan.lihat'],
+    ['GET', '/reports/students', 'laporan.rekaman'],
+    ['GET', '/reports/students/export', 'laporan.rekaman'],
     ['DELETE', '/schedules/{schedule}', 'jadwal.ubah'],
     ['POST', '/schedules/{schedule}/recording/{entry}/cancel', 'rekaman.tandai'],
     ['POST', '/verifications/approve-batch', 'verifikasi.putuskan'],
