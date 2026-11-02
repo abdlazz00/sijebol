@@ -27,4 +27,9 @@ class ScheduleFactory extends Factory
             'created_by' => User::factory(),
         ];
     }
+
+    public function cancelled(): static
+    {
+        return $this->state(['cancelled_at' => now()]);
+    }
 }

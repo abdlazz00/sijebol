@@ -673,3 +673,18 @@ php artisan db:seed --class=AccessSeeder --force   # WAJIB: membuat izin laporan
 - `laporan.rekaman` membuka halaman dan Excel (NIK termasking). `laporan.unduh-nik` menambah NIK penuh di Excel. Pengguna terikat sekolah yang diberi izin ini hanya melihat siswa sekolahnya.
 - "Terbit" berarti **memenuhi syarat umur** (lebih dari 17 tahun pada tanggal sesi rekaman). Sistem tidak mencatat KTP-el yang sudah dicetak Disdukcapil.
 - Setiap unduhan tercatat di Log aktivitas (`laporan.diekspor`, `jenis: daftar-rekaman`, filter, `nik_penuh`, jumlah baris).
+
+## 15. Data dummy (khusus lokal)
+
+Untuk menguji daftar, filter, laporan, dan Excel dengan data banyak:
+
+```bash
+php artisan sijebol:isi-data-dummy             # 1.500 siswa + sesi, pendaftaran (semua status), dokumen, akun
+php artisan sijebol:isi-data-dummy --siswa=300 # jumlah lain
+php artisan sijebol:isi-data-dummy --bersihkan # hapus semua yang bertanda dummy
+```
+
+- Memakai **sekolah yang sudah ada** (sekolah tidak diubah) dan butuh `AccessSeeder` sudah dijalankan. Perintah menolak jalan bila `APP_ENV` bukan `local`, jadi tidak ada risiko di UAT/produksi.
+- Penanda dummy: NIK berawalan `9999`, NISN `99`, email `@dummy.sijebol.test`. Menjalankan ulang membersihkan dummy lama dulu; data asli tidak disentuh. Kata sandi semua akun dummy: `password` (admin kecamatan `admin.dummy@…`, operator `operator.{NPSN}@…`, siswa `siswa.{NISN}@…`).
+- Log aktivitas dimatikan selama pengisian. Tidak ada email yang dikirim.
+- **Belum untuk UAT.** Menjalankannya di UAT (bahan pengenalan ke sekolah dan simulasi client) butuh `fakerphp/faker` dipindah dari `require-dev` ke `require` (image dibangun `--no-dev`) dan saklar eksplisit pengganti pengaman env; spec: `docs/superpowers/specs/2026-11-02-data-dummy-design.md`.
