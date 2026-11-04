@@ -40,6 +40,7 @@ export type UserRow = {
     status: UserStatusKey;
     last_login_at: string | null;
     can_manage: boolean;
+    is_student: boolean;
 };
 
 export type RoleRow = {

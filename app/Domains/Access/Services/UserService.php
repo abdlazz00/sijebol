@@ -32,6 +32,7 @@ class UserService
     public function create(array $data, User $actor): array
     {
         $role = $this->roles->find($data['role_id']);
+        $this->assertNotStudentRole($role);
         $this->assertRoleAllowed($role, $data['school_id'] ?? null, $actor);
 
         $created = DB::transaction(function () use ($data, $role, $actor) {
@@ -56,7 +57,9 @@ class UserService
     /** @param array{name: string, email: string, phone?: ?string, role_id: int, school_id?: ?int} $data */
     public function update(User $user, array $data, User $actor): User
     {
+        $this->assertEditable($user);
         $role = $this->roles->find($data['role_id']);
+        $this->assertNotStudentRole($role);
         $current = $user->currentRole();
         $roleChanged = $current?->id !== $role->id;
 
@@ -131,6 +134,25 @@ class UserService
     private function sendActivation(User $user, string $token): void
     {
         $user->notify(new StaffActivationNotification($token, $user->currentRole()?->name, $user->school?->name));
+    }
+
+    /**
+     * Akun siswa dikelola dari menu Siswa: mengubahnya di sini (terutama sekolah) membuat users.school_id
+     * tidak sinkron dengan students.school_id dan pendaftarannya. Nonaktifkan/aktifkan dan kirim ulang tetap boleh.
+     */
+    public function assertEditable(User $user): void
+    {
+        if ($user->isStudent()) {
+            throw new AccessRuleException('Akun siswa dikelola dari menu Siswa, bukan dari menu Pengguna.');
+        }
+    }
+
+    /** Akun siswa lahir dari pendaftaran lewat link sekolah, yang sekaligus membuat data siswanya. */
+    private function assertNotStudentRole(Role $role): void
+    {
+        if ($role->name === Role::SISWA) {
+            throw new AccessRuleException('Akun siswa dibuat lewat link pendaftaran sekolah, bukan dari menu Pengguna.');
+        }
     }
 
     private function assertRoleAllowed(Role $role, ?int $schoolId, User $actor): void

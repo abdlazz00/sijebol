@@ -64,6 +64,7 @@ class UserController extends Controller
     public function edit(User $user): Response
     {
         Gate::authorize('manage-user', $user);
+        $this->users->assertEditable($user);
 
         return Inertia::render('Pengguna/Form', [
             'user' => [
@@ -139,6 +140,7 @@ class UserController extends Controller
             'role' => $u->currentRole()?->name, 'school' => $u->school?->name,
             'status' => $u->status->value, 'last_login_at' => $u->last_login_at,
             'can_manage' => $actor->can('manage-user', $u),
+            'is_student' => $u->isStudent(),
         ];
     }
 
@@ -147,7 +149,7 @@ class UserController extends Controller
     {
         return [
             'roles' => $this->roles->list()
-                ->filter(fn (Role $r) => AccessGuard::canGrantRole(request()->user(), $r))
+                ->filter(fn (Role $r) => $r->name !== Role::SISWA && AccessGuard::canGrantRole(request()->user(), $r))
                 ->map(fn (Role $r) => $r->only(['id', 'name', 'is_school_scoped']))->values(),
             'schools' => $this->schools->options(),
         ];

@@ -34,7 +34,10 @@ const { can } = usePermission();
 const dialog = useDeactivateDialog();
 
 const canEdit = computed(
-    () => props.user.can_manage && can(PERMISSIONS.UserUbah),
+    () =>
+        props.user.can_manage &&
+        !props.user.is_student &&
+        can(PERMISSIONS.UserUbah),
 );
 
 const info = computed(() => [
@@ -146,7 +149,9 @@ const crumbs = [
                     <Link
                         v-if="can(PERMISSIONS.LogLihat)"
                         :href="
-                            route('audit-logs.index', { filter: { user: user.id } })
+                            route('audit-logs.index', {
+                                filter: { user: user.id },
+                            })
                         "
                         class="text-primary text-sm font-medium hover:underline"
                     >

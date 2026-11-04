@@ -196,3 +196,37 @@ test('isi email staf menyebut role, sekolah, dan masa berlaku', function () {
 
     expect($body)->toContain('Operator Sekolah')->toContain('SMAN 1')->toContain(ActivationService::TTL_DAYS.' hari');
 });
+
+describe('akun siswa tidak dikelola dari menu Pengguna (F-06)', function () {
+    beforeEach(function () {
+        $this->siswaRole = Role::findByName('siswa');
+        $this->lain = School::factory()->create();
+        $this->akunSiswa = User::factory()->create(['school_id' => $this->school->id])->assignRole('siswa');
+    });
+
+    test('akun siswa tidak dapat diubah, sekolahnya tetap', function () {
+        expect(fn () => $this->service->update($this->akunSiswa, payload([
+            'role_id' => $this->siswaRole->id, 'school_id' => $this->lain->id,
+        ]), $this->super))->toThrow(AccessRuleException::class, 'menu Siswa');
+
+        expect($this->akunSiswa->fresh()->school_id)->toBe($this->school->id);
+    });
+
+    test('role siswa tidak dapat diberikan saat membuat akun', function () {
+        expect(fn () => $this->service->create(payload([
+            'role_id' => $this->siswaRole->id, 'school_id' => $this->school->id,
+        ]), $this->super))->toThrow(AccessRuleException::class, 'link pendaftaran');
+
+        expect(User::where('email', 'budi@x.test')->exists())->toBeFalse();
+    });
+
+    test('staf tidak dapat dijadikan siswa lewat ubah role', function () {
+        $staf = User::factory()->create(['school_id' => $this->school->id])->assignRole('operator-sekolah');
+
+        expect(fn () => $this->service->update($staf, payload([
+            'email' => $staf->email, 'role_id' => $this->siswaRole->id, 'school_id' => $this->school->id,
+        ]), $this->super))->toThrow(AccessRuleException::class, 'link pendaftaran');
+
+        expect($staf->fresh()->hasRole('operator-sekolah'))->toBeTrue();
+    });
+});

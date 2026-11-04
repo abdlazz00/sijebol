@@ -128,3 +128,42 @@ test('pelanggaran aturan bisnis menjadi flash error', function () {
     $this->actingAs($this->admin)->from('/users')->post("/users/{$this->admin->id}/deactivate")
         ->assertRedirect('/users')->assertSessionHas('error');
 });
+
+describe('akun siswa di menu Pengguna (F-06)', function () {
+    beforeEach(function () {
+        $this->akunSiswa = User::factory()->create(['school_id' => $this->school->id])->assignRole('siswa');
+    });
+
+    test('baris daftar menandai akun siswa dan form tidak menawarkan role siswa', function () {
+        $this->actingAs($this->admin)->get('/users')->assertInertia(fn (Assert $p) => $p
+            ->where('users.data', fn ($rows) => collect($rows)->firstWhere('id', $this->akunSiswa->id)['is_student'] === true
+                && collect($rows)->firstWhere('id', $this->admin->id)['is_student'] === false));
+
+        $this->get('/users/create')->assertInertia(fn (Assert $p) => $p
+            ->where('roles', fn ($roles) => ! collect($roles)->contains('name', 'siswa') && collect($roles)->contains('name', 'operator-sekolah')));
+    });
+
+    test('halaman ubah dan simpan akun siswa ditolak dengan flash error', function () {
+        $this->actingAs($this->admin)->from('/users')->get("/users/{$this->akunSiswa->id}/edit")
+            ->assertRedirect('/users')->assertSessionHas('error');
+
+        $this->from('/users')->put("/users/{$this->akunSiswa->id}", [
+            'name' => 'Diganti', 'email' => $this->akunSiswa->email,
+            'role_id' => Role::findByName('siswa')->id, 'school_id' => School::factory()->create()->id,
+        ])->assertRedirect('/users')->assertSessionHas('error');
+
+        expect($this->akunSiswa->fresh()->school_id)->toBe($this->school->id)
+            ->and($this->akunSiswa->fresh()->name)->not->toBe('Diganti');
+    });
+
+    test('nonaktifkan, aktifkan, dan kirim ulang aktivasi akun siswa tetap berfungsi', function () {
+        $this->actingAs($this->admin)->post("/users/{$this->akunSiswa->id}/deactivate")->assertRedirect();
+        expect($this->akunSiswa->fresh()->is_active)->toBeFalse();
+
+        $this->post("/users/{$this->akunSiswa->id}/activate")->assertRedirect();
+        expect($this->akunSiswa->fresh()->is_active)->toBeTrue();
+
+        $pending = User::factory()->pending()->create(['school_id' => $this->school->id])->assignRole('siswa');
+        $this->post("/users/{$pending->id}/resend-activation")->assertRedirect("/users/{$pending->id}/done");
+    });
+});
