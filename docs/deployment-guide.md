@@ -780,3 +780,31 @@ Kunci uji Cloudflare (selalu lolos) untuk lokal: site `1x00000000000000000000AA`
 - Bila Cloudflare tidak terjangkau dari server, pendaftaran **ditolak** dengan pesan "Verifikasi keamanan gagal…" (sengaja gagal tertutup supaya kuota email tidak terkuras). Pendaftaran pulih sendiri saat Cloudflare terjangkau.
 - CSP (`SecurityHeaders`) otomatis mengizinkan `https://challenges.cloudflare.com` hanya pada rute `register.*` dan hanya bila site key terisi.
 - Kuota email gratis Resend (100/hari) tetap tidak cukup untuk pendaftaran massal; lihat F-29 di berkas review.
+
+## 19. Batas wewenang admin (F-04, F-05, F-06): pengecekan data lama
+
+Mulai 4 Nov 2026 pemeriksaan pelaku ditambahkan di tiga tempat. Tidak ada migrasi, tetapi sebelum rilis ke server yang sudah berisi data, cek dua hal berikut (MySQL).
+
+**1. Role terikat sekolah yang memegang izin kecamatan-wide** (F-04). Aplikasi kini menolak aksinya, tetapi izinnya sebaiknya dicabut lewat menu Role:
+
+```sql
+SELECT r.name AS role, p.name AS izin
+FROM roles r
+JOIN role_has_permissions rp ON rp.role_id = r.id
+JOIN permissions p ON p.id = rp.permission_id
+WHERE r.is_school_scoped = 1
+  AND p.name IN ('sekolah.buat', 'sekolah.ubah', 'sekolah.hapus', 'log.lihat', 'laporan.lihat');
+```
+
+**2. Akun siswa tanpa data siswa** (F-06; terjadi bila akun dengan role siswa pernah dibuat lewat menu Pengguna):
+
+```sql
+SELECT u.id, u.email, u.school_id
+FROM users u
+JOIN model_has_roles mr ON mr.model_id = u.id AND mr.model_type = 'App\\Models\\User'
+JOIN roles r ON r.id = mr.role_id AND r.name = 'siswa'
+LEFT JOIN students s ON s.user_id = u.id
+WHERE s.id IS NULL;
+```
+
+Perilaku baru: akun siswa tidak dapat diubah dari menu Pengguna (hanya nonaktif/aktif dan kirim ulang aktivasi) dan role siswa tidak ditawarkan di form; role dengan izin di luar izin penyunting hanya dapat diubah izinnya, bukan nama, deskripsi, atau jenis terikat sekolahnya.

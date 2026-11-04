@@ -75,18 +75,25 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Masalah:** Perbaikan IDOR sebelumnya memblokir role terikat sekolah dari izin `sekolah.buat/ubah/hapus` hanya untuk role yang dibuat atau diubah **sesudahnya** (`RoleService::assertScopeAllows`), dan menambah guard di `delete`. Role lama yang sudah memegang izin itu, dan tidak pernah disimpan ulang, masih lolos untuk **ubah** dan **tambah** sekolah (sekolah mana pun).
 - **Dampak:** Operator sekolah dengan role lama bisa mengubah data sekolah lain. Hanya berlaku bila ada role lama seperti itu **(perlu dikonfirmasi di UAT/produksi)**.
 - **Saran:** Tambahkan guard `$actor->school_id !== null` yang sama di `create`/`update` (dan teruskan `$actor` dari controller). Cek role terikat sekolah yang memegang izin ini di UAT/produksi.
+- **Keputusan (4 Nov 2026):** guard yang sama dengan `delete`, lewat satu metode privat `assertDistrictStaff`; pelaku terikat sekolah ditolak juga untuk sekolahnya sendiri (data sekolah mencakup seluruh kecamatan). **Sudah dikerjakan, belum di-commit.** Tes: dua tes baru di `SchoolTest.php` (gagal sebelum perbaikan). Kueri pengecekan role lama ada di `deployment-guide.md` bagian 19; guard sudah menetralkan dampaknya walau role lamanya ada.
 
 ### F-05 — Mengubah role tidak memeriksa apakah pelaku boleh mengelola role itu
 - **Lokasi:** `app/Domains/Access/Services/RoleService.php:44` (`update`), `RoleController::update` (`:64`) tanpa `Gate`/`canGrantRole`. Bandingkan `RoleService::delete` yang memeriksa `canGrantRole`.
 - **Masalah:** Pelaku dengan `role.ubah` yang izinnya lebih sedikit dapat mengubah nama, deskripsi, dan mencabut izin yang ia pegang dari role yang lebih tinggi (mis. `admin-kecamatan`). Eskalasi izin tetap tertahan (`assertOwned`), tetapi sabotase tidak.
 - **Dampak:** Admin menengah bisa melumpuhkan role admin lain atau mengganti namanya.
 - **Saran:** Terapkan `AccessGuard::canGrantRole($actor, $role)` pada `update` dan `edit`, sama seperti `delete`.
+- **Telaah (4 Nov 2026):** saran di atas bertabrakan dengan desain Fase 1 yang disengaja (penyunting boleh mengubah hanya izin miliknya; panduan UI menonaktifkan checkbox lain; tes `update menambah dan mencabut hanya izin milik penyunting`).
+- **Keputusan (4 Nov 2026):** pertahankan edit izin parsial, **kunci identitas role**: pada role yang izinnya melebihi milik penyunting, nama, deskripsi, dan `is_school_scoped` tidak dapat diubah (`RoleService::update`); `Role/Form.vue` menonaktifkan kolomnya lewat prop `identity_locked`. Pencabutan izin yang dipegang penyunting sendiri tetap boleh (risiko diterima). **Sudah dikerjakan, belum di-commit.** Tes: `RoleServiceTest` (tiga kasus gagal sebelum perbaikan, plus izin parsial, `''`≡`null`, super-admin, role dalam jangkauan) dan `RoleHttpTest` (`identity_locked`).
 
 ### F-06 — Mengedit akun siswa lewat menu Pengguna bisa memindahkan sekolahnya tanpa memindahkan data siswa
 - **Lokasi:** `app/Domains/Access/Services/UserService.php:77` (`school_id` ikut diubah untuk role terikat sekolah). Jalur yang benar ada di `StudentService::correct`, yang memindahkan `users.school_id`, `students.school_id`, dan melepas kursi dalam satu transaksi.
 - **Masalah:** Akun dengan role `siswa` ikut tampil dan bisa diedit di halaman Pengguna. Mengubah `school_id` di sana mengubah `users.school_id` saja.
 - **Dampak:** Akun siswa tidak sinkron dengan baris `students`/pendaftarannya. Scope sekolah membaca `users.school_id`, sehingga siswa kehilangan akses ke datanya sendiri atau melihat sesi sekolah yang salah.
 - **Saran:** Blokir perubahan sekolah (atau seluruh edit) untuk akun `siswa` di halaman Pengguna, dan arahkan ke koreksi siswa.
+- **Keputusan (4 Nov 2026):** blokir ubah dan role siswa; nonaktifkan/aktifkan dan kirim ulang aktivasi tetap. **Sudah dikerjakan, belum di-commit.**
+  - Temuan tambahan saat telaah: form Pengguna menawarkan role `siswa` (lolos `canGrantRole`), sehingga akun siswa tanpa baris `students` bisa dibuat dari menu Pengguna. Role itu kini ditolak di `create`/`update` dan disaring dari form.
+  - `UserService::assertEditable` (juga dipakai `UserController::edit`) menolak akun siswa; baris daftar membawa `is_student` dan tombol Ubah disembunyikan di `Pengguna/Index.vue` dan `Show.vue`. Kueri pengecekan akun siswa tanpa data siswa ada di `deployment-guide.md` bagian 19.
+  - Tes baru di `UserServiceTest` dan `UserHttpTest`. Dokumen: spec dan rencana `2026-11-04-batas-wewenang-admin`.
 
 ### F-07 — Ganti atau reset password tidak mengakhiri sesi di perangkat lain
 - **Lokasi:** `app/Http/Controllers/Auth/PasswordController.php:16` (tanpa `logoutOtherDevices`/rotasi `remember_token`); `NewPasswordController.php:51` merotasi `remember_token`, tetapi sesi database tetap hidup. Fitur "keluarkan perangkat lain" ada di `ProfileSessionController`, hanya manual.
