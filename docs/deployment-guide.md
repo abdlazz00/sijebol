@@ -808,3 +808,9 @@ WHERE s.id IS NULL;
 ```
 
 Perilaku baru: akun siswa tidak dapat diubah dari menu Pengguna (hanya nonaktif/aktif dan kirim ulang aktivasi) dan role siswa tidak ditawarkan di form; role dengan izin di luar izin penyunting hanya dapat diubah izinnya, bukan nama, deskripsi, atau jenis terikat sekolahnya.
+
+## 20. Sesi berakhir saat password diganti atau di-reset (F-07)
+
+Mulai 4 Nov 2026, **ganti password** (menu Profil) mengeluarkan semua perangkat lain (perangkat yang dipakai tetap masuk), dan **reset password** lewat email mengakhiri semua sesi akun itu. Cookie "Ingat saya" di perangkat lain ikut tidak berlaku.
+
+Pengakhiran sesi bekerja pada tabel `sessions`, jadi server **wajib** memakai `SESSION_DRIVER=database` (bawaan `.env.example`). Dengan driver lain, ganti dan reset password tetap berhasil tetapi sesi lama tidak ikut berakhir; tombol "Keluarkan perangkat lain" di Profil menolak dengan galat 501 pada driver selain database.

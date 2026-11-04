@@ -99,6 +99,7 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Lokasi:** `app/Http/Controllers/Auth/PasswordController.php:16` (tanpa `logoutOtherDevices`/rotasi `remember_token`); `NewPasswordController.php:51` merotasi `remember_token`, tetapi sesi database tetap hidup. Fitur "keluarkan perangkat lain" ada di `ProfileSessionController`, hanya manual.
 - **Dampak:** Bila password diganti karena akun dicurigai bocor, sesi penyerang tetap aktif sampai kedaluwarsa (120 menit, diperpanjang tiap aktivitas).
 - **Saran:** Setelah ganti atau reset password, hapus baris `sessions` milik pengguna selain sesi sekarang dan rotasi `remember_token`.
+- **Keputusan (4 Nov 2026):** sesuai saran, tanpa pilihan desain. Logika dari `ProfileSessionController` dipindah ke `SessionService` (`endOthers` untuk ganti password, `endAll` untuk reset) dan dipakai ketiganya. **Sudah dikerjakan, belum di-commit.** Tes: empat tes di `tests/Feature/Auth/SessionRevocationTest.php` (dua gagal sebelum perbaikan); `ProfileSessionTest` lama tetap lulus tanpa diubah. Syarat: `SESSION_DRIVER=database` di server (panduan bagian 20). Dokumen: spec dan rencana `2026-11-04-akhiri-sesi-saat-ganti-password`.
 
 ### F-08 — Pembatasan login hanya per kombinasi email dan IP; `trustProxies('*')`
 - **Lokasi:** `app/Http/Requests/Auth/LoginRequest.php` (`throttleKey`), `bootstrap/app.php:23`.
