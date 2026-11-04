@@ -22,6 +22,7 @@ interface FormRole {
     users_count: number;
     permissions: string[];
     protected: boolean;
+    identity_locked?: boolean;
 }
 
 const props = defineProps<{
@@ -32,6 +33,8 @@ const props = defineProps<{
 const isEdit = computed(() => props.role !== null);
 const readonly = computed(() => props.role?.protected === true);
 const scopeLocked = computed(() => (props.role?.users_count ?? 0) > 0);
+// Role dengan izin di luar milik penyunting: hanya izin miliknya yang bisa diubah.
+const identityLocked = computed(() => props.role?.identity_locked === true);
 
 const form = useForm({
     name: props.role?.name ?? '',
@@ -106,6 +109,11 @@ function submit() {
             <InlineAlert v-if="readonly" variant="warning">
                 Role ini dilindungi sistem dan tidak dapat diubah.
             </InlineAlert>
+            <InlineAlert v-else-if="identityLocked" variant="warning">
+                Role ini memiliki izin di luar izin Anda. Nama, deskripsi, dan
+                jenisnya tidak dapat diubah; Anda hanya dapat mengubah izin yang
+                Anda miliki.
+            </InlineAlert>
 
             <section class="bg-card flex flex-col gap-4 rounded-lg border p-6">
                 <div class="flex flex-col gap-1">
@@ -128,7 +136,7 @@ function submit() {
                             class="h-10"
                             placeholder="Contoh: verifikator"
                             autocomplete="off"
-                            :disabled="readonly"
+                            :disabled="readonly || identityLocked"
                             :aria-invalid="invalid"
                             :aria-describedby="describedBy"
                         />
@@ -144,7 +152,7 @@ function submit() {
                             :id="id"
                             v-model="form.description"
                             class="h-20"
-                            :disabled="readonly"
+                            :disabled="readonly || identityLocked"
                             :aria-describedby="describedBy"
                         />
                     </FormField>
@@ -154,7 +162,7 @@ function submit() {
                     <Checkbox
                         v-model="form.is_school_scoped"
                         class="mt-0.5"
-                        :disabled="readonly || scopeLocked"
+                        :disabled="readonly || scopeLocked || identityLocked"
                     />
                     <span>
                         <span class="font-medium">Role terikat sekolah</span>

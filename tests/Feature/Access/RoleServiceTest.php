@@ -198,3 +198,66 @@ test('role sistem siswa tidak dapat dihapus atau diganti namanya, tetapi izinnya
     expect(Role::findByName('siswa')->permissions->pluck('name')->sort()->values()->all())
         ->toBe(['profil.lihat', 'profil.ubah']);
 });
+
+describe('role dengan izin di luar milik penyunting (F-05)', function () {
+    beforeEach(function () {
+        $this->tinggi = Role::create(['name' => 'tinggi', 'description' => 'Asli']);
+        $this->tinggi->givePermissionTo(['siswa.hapus', 'user.lihat']); // siswa.hapus di luar milik penyunting
+    });
+
+    test('nama, deskripsi, dan jenis terikat sekolah tidak dapat diubah oleh penyunting', function (array $perubahan) {
+        expect(fn () => $this->service->update($this->tinggi, [
+            'name' => 'tinggi', 'description' => 'Asli', 'is_school_scoped' => false,
+            'permissions' => ['siswa.hapus', 'user.lihat'],
+            ...$perubahan,
+        ], $this->admin))->toThrow(AccessRuleException::class, 'tidak dapat mengubah nama');
+
+        expect($this->tinggi->fresh()->only(['name', 'description', 'is_school_scoped']))
+            ->toBe(['name' => 'tinggi', 'description' => 'Asli', 'is_school_scoped' => false]);
+    })->with([
+        'nama' => [['name' => 'diganti']],
+        'deskripsi' => [['description' => 'Menyesatkan']],
+        'jenis terikat sekolah' => [['is_school_scoped' => true]],
+    ]);
+
+    test('izin milik penyunting tetap dapat diubah selama identitas role sama', function () {
+        $this->service->update($this->tinggi, [
+            'name' => 'tinggi', 'description' => 'Asli', 'is_school_scoped' => false,
+            'permissions' => ['siswa.hapus', 'jadwal.lihat'], // cabut user.lihat, tambah jadwal.lihat
+        ], $this->admin);
+
+        expect($this->tinggi->fresh()->permissions->pluck('name')->sort()->values()->all())
+            ->toBe(['jadwal.lihat', 'siswa.hapus']);
+    });
+
+    test('deskripsi kosong dan null dianggap sama', function () {
+        $role = Role::create(['name' => 'tanpa-deskripsi']);
+        $role->givePermissionTo(['siswa.hapus']);
+
+        $this->service->update($role, [
+            'name' => 'tanpa-deskripsi', 'description' => '', 'is_school_scoped' => false, 'permissions' => ['siswa.hapus'],
+        ], $this->admin);
+
+        expect($role->fresh()->name)->toBe('tanpa-deskripsi');
+    });
+
+    test('super-admin tetap dapat mengganti nama dan deskripsi', function () {
+        $this->service->update($this->tinggi, [
+            'name' => 'diganti', 'description' => 'Baru', 'is_school_scoped' => false,
+            'permissions' => ['siswa.hapus', 'user.lihat'],
+        ], $this->super);
+
+        expect($this->tinggi->fresh()->only(['name', 'description']))->toBe(['name' => 'diganti', 'description' => 'Baru']);
+    });
+
+    test('role yang seluruh izinnya dimiliki penyunting tetap dapat diganti namanya olehnya', function () {
+        $biasa = Role::create(['name' => 'biasa']);
+        $biasa->givePermissionTo(['user.lihat']);
+
+        $this->service->update($biasa, [
+            'name' => 'biasa-baru', 'description' => 'x', 'is_school_scoped' => false, 'permissions' => ['user.lihat'],
+        ], $this->admin);
+
+        expect($biasa->fresh()->name)->toBe('biasa-baru');
+    });
+});

@@ -64,3 +64,16 @@ test('menghapus role super-admin menghasilkan flash error', function () {
     $this->actingAs($this->actor)->delete("/roles/{$super->id}")->assertSessionHas('error');
     expect(Role::where('name', 'super-admin')->exists())->toBeTrue();
 });
+
+test('form ubah role menandai identity_locked hanya bila izin role melebihi milik penyunting (F-05)', function () {
+    $tinggi = Role::create(['name' => 'tinggi-http']);
+    $tinggi->givePermissionTo(['siswa.hapus']);
+    $biasa = Role::create(['name' => 'biasa-http']);
+    $biasa->givePermissionTo(['user.lihat']);
+    $penyunting = makeUserWith(['role.lihat', 'role.ubah', 'user.lihat'], roleName: 'penyunting-http');
+
+    $this->actingAs($penyunting)->get("/roles/{$tinggi->id}/edit")
+        ->assertInertia(fn (Assert $p) => $p->where('role.identity_locked', true));
+    $this->get("/roles/{$biasa->id}/edit")
+        ->assertInertia(fn (Assert $p) => $p->where('role.identity_locked', false));
+});
