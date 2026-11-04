@@ -34,23 +34,24 @@ class SchoolService
     }
 
     /** @param array<string, mixed> $data */
-    public function create(array $data): School
+    public function create(array $data, User $actor): School
     {
+        $this->assertDistrictStaff($actor, 'menambah sekolah');
+
         return $this->schools->create($data);
     }
 
     /** @param array<string, mixed> $data */
-    public function update(School $school, array $data): School
+    public function update(School $school, array $data, User $actor): School
     {
+        $this->assertDistrictStaff($actor, 'mengubah data sekolah');
+
         return $this->schools->update($school, $data);
     }
 
     public function delete(School $school, User $actor): void
     {
-        // Pelindung untuk role lama yang terikat sekolah tetapi terlanjur memegang izin ini.
-        if ($actor->school_id !== null) {
-            throw new AccessRuleException('Hanya staf kecamatan yang dapat menghapus sekolah.');
-        }
+        $this->assertDistrictStaff($actor, 'menghapus sekolah');
         if ($school->students()->exists() || $school->users()->exists() || $school->schedules()->exists() || $school->registrationEntries()->exists()) {
             throw new AccessRuleException('Sekolah masih memiliki data terkait (siswa, sesi jadwal, atau pengguna) dan tidak dapat dihapus.');
         }
@@ -90,5 +91,16 @@ class SchoolService
     public function findByRegistrationToken(string $token): ?School
     {
         return $this->schools->findByRegistrationToken($token);
+    }
+
+    /**
+     * Data sekolah mencakup seluruh kecamatan. Pelindung untuk role lama yang terikat sekolah tetapi
+     * terlanjur memegang izin sekolah.* (RoleService hanya menolaknya pada role yang disimpan sesudahnya).
+     */
+    private function assertDistrictStaff(User $actor, string $aksi): void
+    {
+        if ($actor->school_id !== null) {
+            throw new AccessRuleException("Hanya staf kecamatan yang dapat {$aksi}.");
+        }
     }
 }

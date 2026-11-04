@@ -45,3 +45,29 @@ test('halaman form tambah dan ubah', function () {
     $this->get('/schools/create')->assertInertia(fn (Assert $p) => $p->component('Sekolah/Form')->where('school', null));
     $this->get("/schools/{$school->id}/edit")->assertInertia(fn (Assert $p) => $p->where('school.id', $school->id));
 });
+
+test('pengguna terikat sekolah ditolak menambah sekolah walau role-nya memegang izin sekolah.buat', function () {
+    $milik = School::factory()->create();
+    $operator = makeUserWith(['sekolah.buat'], $milik, true, 'operator-tambah-sekolah');
+
+    $this->actingAs($operator)
+        ->post('/schools', ['name' => 'SMA Baru', 'npsn' => '55555555', 'level' => 'SMA'])
+        ->assertSessionHas('error', 'Hanya staf kecamatan yang dapat menambah sekolah.');
+
+    expect(School::where('npsn', '55555555')->exists())->toBeFalse();
+});
+
+test('pengguna terikat sekolah ditolak mengubah sekolah mana pun, termasuk sekolahnya sendiri, walau role-nya memegang izin sekolah.ubah', function () {
+    $milik = School::factory()->create(['name' => 'Milik Sendiri']);
+    $lain = School::factory()->create(['name' => 'Sekolah Lain']);
+    $operator = makeUserWith(['sekolah.ubah'], $milik, true, 'operator-ubah-sekolah');
+
+    foreach ([$milik, $lain] as $sekolah) {
+        $this->actingAs($operator)
+            ->put("/schools/{$sekolah->id}", ['name' => 'Diganti', 'npsn' => $sekolah->npsn, 'level' => $sekolah->level])
+            ->assertSessionHas('error', 'Hanya staf kecamatan yang dapat mengubah data sekolah.');
+    }
+
+    expect($milik->fresh()->name)->toBe('Milik Sendiri')
+        ->and($lain->fresh()->name)->toBe('Sekolah Lain');
+});
