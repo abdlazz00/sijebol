@@ -48,12 +48,14 @@ class LoginRequest extends FormRequest
 
         if (! Auth::attempt($credentials, $this->boolean('remember'))) {
             RateLimiter::hit($this->throttleKey());
+            RateLimiter::hit($this->ipThrottleKey(), (int) config('security.login_ip_window'));
 
             throw ValidationException::withMessages([
                 'email' => trans('auth.failed'),
             ]);
         }
 
+        // Hitungan per IP sengaja tidak direset: penyerang bisa login ke akun miliknya untuk membersihkannya.
         RateLimiter::clear($this->throttleKey());
     }
 
@@ -64,13 +66,19 @@ class LoginRequest extends FormRequest
      */
     public function ensureIsNotRateLimited(): void
     {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
+        $blockedKey = match (true) {
+            RateLimiter::tooManyAttempts($this->throttleKey(), 5) => $this->throttleKey(),
+            RateLimiter::tooManyAttempts($this->ipThrottleKey(), (int) config('security.login_ip_failures')) => $this->ipThrottleKey(),
+            default => null,
+        };
+
+        if ($blockedKey === null) {
             return;
         }
 
         event(new Lockout($this));
 
-        $seconds = RateLimiter::availableIn($this->throttleKey());
+        $seconds = RateLimiter::availableIn($blockedKey);
 
         throw ValidationException::withMessages([
             'throttle' => trans('auth.throttle', [
@@ -86,5 +94,11 @@ class LoginRequest extends FormRequest
     public function throttleKey(): string
     {
         return Str::transliterate(Str::lower($this->string('email')).'|'.$this->ip());
+    }
+
+    /** Kegagalan dari satu IP dengan email apa pun (password spraying), terpisah dari batas per email|IP. */
+    private function ipThrottleKey(): string
+    {
+        return 'login-ip|'.$this->ip();
     }
 }

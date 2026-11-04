@@ -814,3 +814,25 @@ Perilaku baru: akun siswa tidak dapat diubah dari menu Pengguna (hanya nonaktif/
 Mulai 4 Nov 2026, **ganti password** (menu Profil) mengeluarkan semua perangkat lain (perangkat yang dipakai tetap masuk), dan **reset password** lewat email mengakhiri semua sesi akun itu. Cookie "Ingat saya" di perangkat lain ikut tidak berlaku.
 
 Pengakhiran sesi bekerja pada tabel `sessions`, jadi server **wajib** memakai `SESSION_DRIVER=database` (bawaan `.env.example`). Dengan driver lain, ganti dan reset password tetap berhasil tetapi sesi lama tidak ikut berakhir; tombol "Keluarkan perangkat lain" di Profil menolak dengan galat 501 pada driver selain database.
+
+## 21. Batas login per IP dan pengecekan IP pengunjung (F-08)
+
+Mulai 4 Nov 2026, selain batas 5 kegagalan per email+IP, login dikunci per IP setelah **50 kegagalan dalam 10 menit** (semua email digabung; login sukses tidak dihitung dan tidak mereset hitungan). Angkanya dapat diubah di `.env`:
+
+```
+SECURITY_LOGIN_IP_FAILURES=50
+SECURITY_LOGIN_IP_WINDOW=600   # detik
+```
+
+### Wajib dicek sebelum rilis: IP yang sampai ke aplikasi
+
+Semua batas per IP (login, `throttle:5,1` pendaftaran siswa, batas umum untuk tamu) hanya berguna bila aplikasi melihat **IP pengunjung asli**. Alur: pengunjung → Cloudflare → Nginx Proxy Manager → kontainer. `trustProxies('*')` di Laravel hanya mempercayai peer langsung (NPM) lalu membaca `X-Forwarded-For` dari kanan, dan kontainer tidak mempublikasikan port, jadi pemalsuan header dari luar tidak berlaku. Tetapi bila NPM tidak menerjemahkan IP Cloudflare menjadi IP pengunjung, semua orang terlihat berasal dari beberapa IP edge dan limiter akan mengunci banyak orang sekaligus.
+
+Cek di server (setelah ada beberapa orang login):
+
+```sql
+SELECT ip_address, COUNT(*) AS sesi FROM sessions GROUP BY ip_address ORDER BY sesi DESC LIMIT 10;
+```
+
+- IP beragam dan berasal dari jaringan pengguna (ISP/seluler) = benar.
+- Rentang Cloudflare (mis. `104.x`, `172.64.x`–`172.71.x`, `162.158.x`) atau IP Docker (`172.x` dari jaringan `sijebol-network`) mendominasi = proxy perlu dibenahi dulu (NPM: aktifkan penerjemahan IP asli Cloudflare / `real_ip_header`), atau naikkan angka di atas sementara.
