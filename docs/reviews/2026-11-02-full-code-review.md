@@ -21,7 +21,7 @@ Basis: branch `staging` @ `b085691`.
 |---|---|---|
 | Tinggi | 2 | F-01, F-02 |
 | Sedang | 9 | F-03 s.d. F-11 |
-| Rendah | 18 | F-12 s.d. F-29 |
+| Rendah | 19 | F-12 s.d. F-30 |
 
 Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding atau kolom tetap), XSS (tanpa `v-html`/`innerHTML`), eksekusi perintah dari input, mass assignment dari input mentah, atau rahasia yang ter-commit.
 
@@ -117,6 +117,12 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **PHP:** `symfony/mime` v8.1.7 terdampak CVE-2026-45070 (medium, header injection pada nama parameter MIME; diperbaiki di ≥ 8.1.10). Relevansi rendah karena aplikasi tidak menerima lampiran dari pengguna, tetapi mudah diperbaiki: `composer update symfony/mime`.
 - **npm:** 26 advisory (1 kritis, 8 tinggi, 17 sedang, 1 rendah). Yang kritis (`shell-quote` lewat `concurrently`) dan rantai `vite`/`stylus`/`css`/`decode-uri-component`, `eslint`, `body-parser`, `undici` adalah **alat build/dev**. `shadcn-vue` (CLI, menarik `zod`, `ts-morph`) berada di `dependencies`, seharusnya `devDependencies`. Dari paket runtime browser (`apexcharts`, `reka-ui`, `qrcode`, `qr-scanner`, `vue-sonner`, dll.) tidak ada advisory. Saran "fix" dari `npm audit` mengusulkan turun versi mayor (`eslint@4`, `vite@6.4.5`), jangan diikuti membabi buta.
 - **Saran:** Perbarui `symfony/mime`; pindahkan `shadcn-vue` ke `devDependencies`; jadwalkan pembaruan toolchain terpisah; jalankan audit di CI.
+- **Telaah (4 Nov 2026):** basis data advisori bertambah, sehingga `npm audit` kini melaporkan 47 (bukan 26). Tahap produksi Docker hanya menyalin `public/build`, jadi paket npm tidak ikut ke image yang melayani pengguna. `shadcn-vue` ternyata dipakai saat build (`@import 'shadcn-vue/tailwind.css'`), bukan hanya CLI, tetapi tetap tepat berada di `devDependencies`.
+- **Keputusan (4 Nov 2026):** kerjakan bagian yang aman, tunda toolchain mayor. **Sudah dikerjakan, belum di-commit.**
+  - `symfony/mime` v8.1.7 menjadi v8.1.10: `composer audit` bersih.
+  - `npm audit fix` (tanpa `--force`) menghilangkan dua advisori kritis dan tiga advisori tinggi, termasuk `shell-quote`/`concurrently`, `undici`, `body-parser`; ikut menaikkan `vite` 8.3.5 dan `shadcn-vue` 2.9.0. `shadcn-vue` dipindah ke `devDependencies`; `npm audit --omit=dev` kini 0.
+  - **Sisa 38 advisori npm** (6 tinggi, 31 sedang, 1 rendah), semuanya alat build/dev: rantai `stylus`/`css`/`decode-uri-component` (peer `vite`, `vue-metamorph` milik CLI `shadcn-vue`), `zod`/`deepmerge`/`ts-morph` (CLI `shadcn-vue`), serta `eslint` 8 dengan plugin-nya, `vue-tsc` 2, dan `js-beautify`. Perbaikannya butuh pembaruan mayor toolchain (ESLint 9/10 flat config, vue-tsc 3, dan sebagainya), dijadwalkan terpisah. Saran `npm audit fix --force` (turun ke `eslint@4`, `vite@6.4.5`, `shadcn-vue@0.11.4`) tidak diikuti.
+  - Verifikasi: `npm run build` sukses, `vue-tsc` bersih, ESLint 0 galat (332 peringatan), Pest 794/794, Vitest 274/274 (lihat F-30 untuk timeout di bawah beban). Dokumen: spec dan rencana `2026-11-04-perbarui-dependensi-aman`.
 
 ### F-11 — `sijebol:bersihkan-data-siswa` tanpa pengaman lingkungan
 - **Lokasi:** `app/Console/Commands/ResetStudentData.php:11`.
@@ -181,6 +187,9 @@ Filter pencarian (`'like', "%{$v}%"`) di enam repository tidak meng-escape `%` d
 
 ### F-29 — Kuota email gratis Resend (100/hari) tidak cukup untuk pendaftaran massal; throttle IP bisa mengenai siswa sah
 Ditemukan saat membahas F-03. Pendaftaran mandiri ±1.500 siswa mengirim satu email aktivasi per siswa, ditambah kirim ulang, reset password, dan notifikasi. Kuota gratis Resend 100 email per hari berarti pendaftaran massal tertahan berhari-hari dan email staf/reset ikut terhambat; pilihan: paket berbayar, atau pendaftaran bergelombang per sekolah. Terkait: `throttle:5,1` per IP di `routes/students.php` memakai IP sebagai kunci; siswa di Wi-Fi sekolah yang sama berbagi IP, sehingga siswa keenam dalam semenit mendapat 429. Setelah Turnstile aktif, batas ini bisa dilonggarkan (mis. 30 per menit). **Perlu keputusan pemilik** (rencana kuota email dan angka throttle).
+
+### F-30 — Vitest sering timeout 5 detik saat dijalankan penuh dengan beban CPU
+Ditemukan saat memverifikasi F-07, F-10. Pada `npx vitest run` penuh (default worker), 2 sampai 4 tes yang tidak berkaitan (mis. `Dashboard.test.ts`, `DocumentPreviewDialog.test.ts`, `Laporan/Siswa.test.ts`) gagal dengan `Test timed out in 5000ms`, padahal lulus bila dijalankan sendiri; kumpulan yang gagal berganti-ganti antarproses. Dengan `--maxWorkers=3` seluruh 274 tes lulus (189 detik). Sebab: beban jsdom per berkas (49 lingkungan dibuat) menekan CPU. Saran: naikkan `test.testTimeout` (mis. 15 detik) dan/atau batasi `maxWorkers` di konfigurasi Vitest; hal ini perlu diselesaikan sebelum Vitest menjadi syarat CI (F-09).
 
 ---
 
