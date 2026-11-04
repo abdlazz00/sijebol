@@ -535,10 +535,18 @@ Menghapus semua data siswa, pendaftaran, jadwal, dan berkas dokumen. Akun penggu
 
 ```bash
 php artisan sijebol:bersihkan-data-siswa          # meminta konfirmasi
-php artisan sijebol:bersihkan-data-siswa --force  # tanpa konfirmasi
+php artisan sijebol:bersihkan-data-siswa --force  # tanpa konfirmasi (hanya di lokal)
 ```
 
 Jalankan hanya sebelum rilis, dan cadangkan database lebih dulu.
+
+**Di UAT dan produksi (F-11):** `--force` tidak berlaku. Perintah menampilkan nama database dan jumlah baris yang akan dihapus, lalu meminta operator **mengetik nama lingkungan** (`APP_ENV`, mis. `production`). Untuk skrip tanpa terminal interaktif, beri nama lingkungan lewat opsi:
+
+```bash
+docker exec sijebol-prod php artisan sijebol:bersihkan-data-siswa --lingkungan=production
+```
+
+Nama yang salah atau kosong membatalkan perintah tanpa menghapus apa pun.
 
 ### Link pendaftaran sekolah
 

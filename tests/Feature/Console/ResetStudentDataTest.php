@@ -10,9 +10,11 @@ use App\Domains\Students\Models\Student;
 use App\Domains\Students\Models\StudentDocument;
 use App\Models\User;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Spatie\Activitylog\Models\Activity;
 
+const PERTANYAAN = 'Ketik nama lingkungan (production) untuk melanjutkan';
 const KONFIRMASI = 'Hapus SEMUA data siswa, pendaftaran, jadwal, dan dokumen? Akun pengguna tidak ikut dihapus.';
 
 function isiDataSiswa(): User
@@ -70,4 +72,45 @@ test('folder dokumen yang belum ada tidak membuat error', function () {
     Storage::fake('local');
 
     $this->artisan('sijebol:bersihkan-data-siswa', ['--force' => true])->assertExitCode(0);
+});
+
+describe('di luar lingkungan lokal (F-11)', function () {
+    beforeEach(function () {
+        isiDataSiswa();
+        app()->detectEnvironment(fn () => 'production');
+    });
+
+    test('--force saja tidak cukup dan tidak menghapus apa pun', function () {
+        $kode = Artisan::call('sijebol:bersihkan-data-siswa', ['--force' => true, '--no-interaction' => true]);
+
+        expect($kode)->toBe(1)
+            ->and(Student::withoutGlobalScopes()->count())->toBe(1)
+            ->and(Storage::disk('local')->allFiles('students'))->toHaveCount(1);
+    });
+
+    test('nama lingkungan yang salah ditolak', function () {
+        $this->artisan('sijebol:bersihkan-data-siswa', ['--force' => true, '--lingkungan' => 'staging'])->assertExitCode(1);
+        $this->artisan('sijebol:bersihkan-data-siswa')->expectsQuestion(PERTANYAAN, 'ya')->assertExitCode(1);
+        $this->artisan('sijebol:bersihkan-data-siswa')->expectsQuestion(PERTANYAAN, 'PRODUCTION')->assertExitCode(1);
+
+        expect(Student::withoutGlobalScopes()->count())->toBe(1);
+    });
+
+    test('mengetik nama lingkungan menghapus data dan menampilkan database serta jumlah baris lebih dulu', function () {
+        $this->artisan('sijebol:bersihkan-data-siswa')
+            ->expectsOutputToContain('Lingkungan production, database '.DB::connection()->getDatabaseName())
+            ->expectsOutputToContain('students: 1 baris akan dihapus')
+            ->expectsQuestion(PERTANYAAN, 'production')
+            ->assertExitCode(0);
+
+        expect(Student::withoutGlobalScopes()->count())->toBe(0)
+            ->and(Storage::disk('local')->allFiles('students'))->toBe([]);
+    });
+
+    test('--lingkungan yang cocok memungkinkan skrip tanpa terminal interaktif', function () {
+        $kode = Artisan::call('sijebol:bersihkan-data-siswa', ['--lingkungan' => 'production', '--no-interaction' => true]);
+
+        expect($kode)->toBe(0)
+            ->and(Student::withoutGlobalScopes()->count())->toBe(0);
+    });
 });

@@ -122,6 +122,7 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Lokasi:** `app/Console/Commands/ResetStudentData.php:11`.
 - **Masalah:** Menghapus seluruh siswa, pendaftaran, jadwal, dokumen (dan berkasnya). Dengan `--force` tidak ada konfirmasi. Command ikut terpasang di image produksi.
 - **Saran:** Tolak di `APP_ENV=production` kecuali ada flag tegas tambahan atau konfirmasi yang mengetik nama lingkungan. Pertimbangkan membuat cadangan otomatis sebelum menghapus.
+- **Keputusan (4 Nov 2026):** ketik nama lingkungan. Di luar lokal/testing `--force` diabaikan; perintah menampilkan database dan jumlah baris per tabel, lalu meminta nama lingkungan (atau `--lingkungan=<nama>` untuk skrip); salah atau kosong = batal. Ditolak total di produksi tidak dipilih karena alur rilis terdokumentasi memakai perintah ini. **Sudah dikerjakan, belum di-commit.** Tes: empat tes baru di `ResetStudentDataTest.php` (gagal sebelum perbaikan), tes lama tidak diubah. Cadangan otomatis tidak dibuat oleh perintah (mysqldump ada di `deploy-prod.sh`); panduan tetap meminta cadangan manual. Dokumen: `deployment-guide.md` bagian "Memulai dari data kosong", spec dan rencana `2026-11-04-pengaman-bersihkan-data-siswa`.
 
 ---
 
