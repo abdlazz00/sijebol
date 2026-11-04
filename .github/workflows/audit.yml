@@ -1,0 +1,37 @@
+name: Audit dependensi
+
+# Terpisah dari CI: basis data advisori berubah setiap hari, sehingga CVE baru tidak boleh menggagalkan
+# merge yang tidak berkaitan. Dijalankan mingguan; kegagalan = ada advisori baru yang perlu ditinjau (F-10).
+on:
+  schedule:
+    - cron: '0 2 * * 1' # Senin 02:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: composer audit dan npm audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: composer audit
+        run: composer audit
+
+      # Hanya dependensi produksi. Alat build/dev (ESLint, vue-tsc, dsb.) tidak ikut image produksi dan
+      # advisorinya dicatat di F-10 sampai toolchain dinaikkan.
+      - name: npm audit (tanpa devDependencies)
+        run: npm audit --omit=dev

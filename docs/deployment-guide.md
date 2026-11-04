@@ -844,3 +844,24 @@ SELECT ip_address, COUNT(*) AS sesi FROM sessions GROUP BY ip_address ORDER BY s
 
 - IP beragam dan berasal dari jaringan pengguna (ISP/seluler) = benar.
 - Rentang Cloudflare (mis. `104.x`, `172.64.x`–`172.71.x`, `162.158.x`) atau IP Docker (`172.x` dari jaringan `sijebol-network`) mendominasi = proxy perlu dibenahi dulu (NPM: aktifkan penerjemahan IP asli Cloudflare / `real_ip_header`), atau naikkan angka di atas sementara.
+
+## 22. CI (GitHub Actions) dan syarat merge (F-09)
+
+Workflow di `.github/workflows/`:
+
+- `ci.yml` berjalan pada setiap push dan pull request ke `main` dan `staging`:
+  - **Backend**: Pint, PHPStan, Pest (PHP 8.4, MySQL 8.0 seperti server), dan tes pustaka skrip deploy.
+  - **Frontend**: ESLint (galat saja), Vitest, dan `npm run build` (vue-tsc + Vite) dengan Node 20 seperti tahap build Docker.
+- `audit.yml` berjalan tiap Senin 02:00 UTC dan manual: `composer audit` dan `npm audit --omit=dev`. Gagal = ada advisori baru yang perlu ditinjau; tidak menghalangi merge.
+
+Server men-deploy dengan `git pull` dari `staging`/`main`, jadi cara menjadikan CI sebagai syarat deploy adalah **mewajibkannya sebelum kode masuk ke dua cabang itu** (dilakukan sekali oleh pemilik repositori di GitHub):
+
+1. Repositori → **Settings** → **Branches** (atau **Rules** → **Rulesets**) → tambah aturan untuk `main` dan `staging`.
+2. Aktifkan **Require a pull request before merging** dan **Require status checks to pass before merging**; pilih check **Backend** dan **Frontend**.
+3. (Disarankan) aktifkan **Do not allow bypassing the above settings** supaya `git push` langsung ke cabang itu juga ditolak.
+
+Catatan: fitur branch protection pada repositori **privat** membutuhkan paket GitHub berbayar (Pro/Team); pada repositori publik tersedia gratis. Tanpa itu CI tetap memberi tanda merah/hijau, tetapi tidak bisa memblokir.
+
+Alur kerja harian: kerjakan di cabang fitur, buka pull request ke `staging`, tunggu Backend dan Frontend hijau, merge, lalu `deploy-uat` di server. Setelah UAT, pull request `staging` ke `main`, hijau lagi, merge, lalu `deploy-prod`.
+
+Catatan teknis: run pertama di GitHub perlu diamati (belum pernah dijalankan di sana saat bagian ini ditulis). Peringatan format ESLint/Prettier (F-21) belum menjadi syarat.

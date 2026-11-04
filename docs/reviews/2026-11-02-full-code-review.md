@@ -112,6 +112,10 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Lokasi:** tidak ada `.github/`; `scripts/deploy-*.sh` melakukan `git pull` lalu build langsung di server.
 - **Dampak:** Pest, Vitest, PHPStan, `vue-tsc`, dan Pint hanya berjalan bila diingat. Branch yang gagal tes bisa ter-deploy.
 - **Saran:** Workflow CI (tes, analisis statis, lint, `composer audit`) sebagai syarat sebelum push ke `staging`/`main`.
+- **Keputusan (4 Nov 2026):** GitHub Actions; syarat merge lewat branch protection (check `Backend` dan `Frontend`), bukan lewat skrip deploy; audit dependensi terpisah (mingguan, tidak memblokir). **Sudah dikerjakan, belum di-commit dan belum dijalankan di GitHub.**
+  - `.github/workflows/ci.yml`: Backend (PHP 8.4, MySQL 8.0, Pint, PHPStan, Pest, tes pustaka skrip deploy) dan Frontend (Node 20, ESLint galat saja, Vitest, `npm run build`). `.github/workflows/audit.yml`: `composer audit` dan `npm audit --omit=dev` tiap Senin.
+  - Dibuktikan lokal: YAML valid, setiap perintah job dijalankan manual, Pest penuh dengan lingkungan tiruan CI (`.env.example` + kunci baru). **Belum dibuktikan:** run di GitHub. **Tindakan pemilik:** aktifkan branch protection (panduan bagian 22; repositori privat butuh paket berbayar).
+  - Belum menjadi syarat: Prettier `--check` dan ESLint `--max-warnings 0` (F-21). Dokumen: spec dan rencana `2026-11-04-ci-github-actions`.
 
 ### F-10 — Kerentanan dependensi
 - **PHP:** `symfony/mime` v8.1.7 terdampak CVE-2026-45070 (medium, header injection pada nama parameter MIME; diperbaiki di ≥ 8.1.10). Relevansi rendah karena aplikasi tidak menerima lampiran dari pengguna, tetapi mudah diperbaiki: `composer update symfony/mime`.
@@ -190,6 +194,8 @@ Ditemukan saat membahas F-03. Pendaftaran mandiri ±1.500 siswa mengirim satu em
 
 ### F-30 — Vitest sering timeout 5 detik saat dijalankan penuh dengan beban CPU
 Ditemukan saat memverifikasi F-07, F-10. Pada `npx vitest run` penuh (default worker), 2 sampai 4 tes yang tidak berkaitan (mis. `Dashboard.test.ts`, `DocumentPreviewDialog.test.ts`, `Laporan/Siswa.test.ts`) gagal dengan `Test timed out in 5000ms`, padahal lulus bila dijalankan sendiri; kumpulan yang gagal berganti-ganti antarproses. Dengan `--maxWorkers=3` seluruh 274 tes lulus (189 detik). Sebab: beban jsdom per berkas (49 lingkungan dibuat) menekan CPU. Saran: naikkan `test.testTimeout` (mis. 15 detik) dan/atau batasi `maxWorkers` di konfigurasi Vitest; hal ini perlu diselesaikan sebelum Vitest menjadi syarat CI (F-09).
+
+**Status (4 Nov 2026):** `testTimeout: 15_000` ditambahkan di `vitest.config.ts`; `npx vitest run` penuh dengan worker bawaan lulus 274/274 (sebelumnya 2 sampai 4 gagal). **Sudah dikerjakan bersama F-09, belum di-commit.**
 
 ---
 
