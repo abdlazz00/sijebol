@@ -11,11 +11,7 @@ import { DropdownMenuItem } from '@/Components/ui/dropdown-menu';
 import { Textarea } from '@/Components/ui/textarea';
 import { usePermission } from '@/composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import {
-    formatDateTime,
-    formatDateWithDay,
-    formatTimeRange,
-} from '@/lib/date';
+import { formatDateTime, formatDateWithDay, formatTimeRange } from '@/lib/date';
 import { PERMISSIONS } from '@/lib/permissions';
 import { registrationStatus } from '@/lib/status';
 import type { ParticipantRow, ScheduleDetail } from '@/types/schedule';
@@ -103,7 +99,8 @@ const canCancelEntries = computed(
 );
 const columns = computed(() => [
     { key: 'student', label: 'Siswa' },
-    { key: 'status', label: 'Status', class: 'w-[176px]' },
+    // Di HP badge status ada di bawah nama (sel Siswa), jadi tidak ada kolom yang harus digeser.
+    { key: 'status', label: 'Status', class: 'hidden w-[176px] md:table-cell' },
     ...(canCancelEntries.value
         ? [{ key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' }]
         : []),
@@ -183,7 +180,7 @@ const crumbs = computed(() => [
                 </p>
             </div>
             <div
-                class="flex w-full items-center gap-2 sm:w-auto [&>*]:flex-1 sm:[&>*]:flex-none"
+                class="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center [&>*:only-child]:col-span-2"
             >
                 <Button
                     v-if="canEdit && !schedule.cancelled"
@@ -210,9 +207,11 @@ const crumbs = computed(() => [
                     v-if="can(PERMISSIONS.RekamanLihat)"
                     as-child
                     variant="outline"
-                    class="h-10 px-4"
+                    class="col-span-2 h-10 px-4 sm:col-span-1"
                 >
-                    <Link :href="route('schedules.recording.show', schedule.id)">
+                    <Link
+                        :href="route('schedules.recording.show', schedule.id)"
+                    >
                         <ClipboardCheck class="size-4" aria-hidden="true" />
                         Penandaan rekaman
                     </Link>
@@ -227,19 +226,17 @@ const crumbs = computed(() => [
                     <Ban class="size-4" aria-hidden="true" />
                     Batalkan sesi
                 </Button>
-                <RowActions
-                    v-if="canDelete"
-                    label="Aksi lainnya untuk sesi ini"
-                    outlined
-                >
-                    <DropdownMenuItem
-                        class="text-danger h-10 gap-3 px-3 text-sm font-medium"
-                        @select="deleteOpen = true"
-                    >
-                        <Trash2 class="size-4" aria-hidden="true" />
-                        Hapus sesi
-                    </DropdownMenuItem>
-                </RowActions>
+                <div v-if="canDelete" class="flex justify-end sm:block">
+                    <RowActions label="Aksi lainnya untuk sesi ini" outlined>
+                        <DropdownMenuItem
+                            class="text-danger h-10 gap-3 px-3 text-sm font-medium"
+                            @select="deleteOpen = true"
+                        >
+                            <Trash2 class="size-4" aria-hidden="true" />
+                            Hapus sesi
+                        </DropdownMenuItem>
+                    </RowActions>
+                </div>
             </div>
         </div>
 
@@ -255,25 +252,21 @@ const crumbs = computed(() => [
             </section>
 
             <section class="flex flex-col gap-4">
-                <h2 class="text-base leading-6 font-semibold">Peserta</h2>
-                <p
-                    class="text-muted-foreground flex items-center gap-2 text-xs leading-4 md:hidden"
-                >
-                    <span aria-hidden="true">↔</span> Geser tabel untuk melihat
-                    kolom lainnya
-                </p>
+                <h2 class="text-base leading-6 font-semibold">
+                    Peserta ({{ participants.length }})
+                </h2>
                 <DataTable
                     label="Peserta sesi"
                     :columns="columns"
                     :rows="participants"
                     row-class="h-16"
-                    table-class="min-w-[560px]"
+                    table-class="md:min-w-[560px]"
                 >
                     <template #cell-student="{ row }">
                         <div class="min-w-0">
                             <Link
                                 :href="route('students.show', row.student.id)"
-                                class="block truncate py-1 text-sm leading-5 font-semibold hover:underline"
+                                class="block py-1 text-sm leading-5 font-semibold break-words whitespace-normal hover:underline md:truncate"
                             >
                                 {{ row.student.name }}
                             </Link>
@@ -282,6 +275,12 @@ const crumbs = computed(() => [
                             >
                                 NISN {{ row.student.nisn }}
                             </p>
+                            <div class="mt-1 py-1 md:hidden">
+                                <StatusBadge
+                                    :status="row.status"
+                                    kind="registration"
+                                />
+                            </div>
                         </div>
                     </template>
                     <template #cell-status="{ row }">
