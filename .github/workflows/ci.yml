@@ -100,7 +100,8 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '20' # sama dengan tahap frontend di Dockerfile
+          # Vitest 5, jsdom 30, @vueuse/core 15, dan concurrently 10 mensyaratkan Node >= 22. 24 = Node di mesin pengembang.
+          node-version: '24'
           cache: npm
 
       - run: npm ci

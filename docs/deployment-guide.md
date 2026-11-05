@@ -851,7 +851,7 @@ Workflow di `.github/workflows/`:
 
 - `ci.yml` berjalan pada setiap push dan pull request ke `main` dan `staging`:
   - **Backend**: Pint, PHPStan, Pest (PHP 8.4, MySQL 8.0 seperti server), dan tes pustaka skrip deploy.
-  - **Frontend**: ESLint (galat saja), Vitest, dan `npm run build` (vue-tsc + Vite) dengan Node 20 seperti tahap build Docker.
+  - **Frontend**: ESLint (galat saja), Vitest, dan `npm run build` (vue-tsc + Vite) dengan Node 24 (Vitest 5, jsdom 30, dan `@vueuse/core` 15 mensyaratkan Node >= 22).
 - `audit.yml` berjalan tiap Senin 02:00 UTC dan manual: `composer audit` dan `npm audit --omit=dev`. Gagal = ada advisori baru yang perlu ditinjau; tidak menghalangi merge.
 
 Server men-deploy dengan `git pull` dari `staging`/`main`, jadi cara menjadikan CI sebagai syarat deploy adalah **mewajibkannya sebelum kode masuk ke dua cabang itu** (dilakukan sekali oleh pemilik repositori di GitHub):

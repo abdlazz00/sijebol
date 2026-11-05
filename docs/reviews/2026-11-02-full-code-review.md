@@ -21,7 +21,7 @@ Basis: branch `staging` @ `b085691`.
 |---|---|---|
 | Tinggi | 2 | F-01, F-02 |
 | Sedang | 9 | F-03 s.d. F-11 |
-| Rendah | 19 | F-12 s.d. F-30 |
+| Rendah | 20 | F-12 s.d. F-31 |
 
 Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding atau kolom tetap), XSS (tanpa `v-html`/`innerHTML`), eksekusi perintah dari input, mass assignment dari input mentah, atau rahasia yang ter-commit.
 
@@ -113,9 +113,10 @@ Tidak ditemukan: SQL injection (semua `selectRaw`/`orderByRaw` memakai binding a
 - **Dampak:** Pest, Vitest, PHPStan, `vue-tsc`, dan Pint hanya berjalan bila diingat. Branch yang gagal tes bisa ter-deploy.
 - **Saran:** Workflow CI (tes, analisis statis, lint, `composer audit`) sebagai syarat sebelum push ke `staging`/`main`.
 - **Keputusan (4 Nov 2026):** GitHub Actions; syarat merge lewat branch protection (check `Backend` dan `Frontend`), bukan lewat skrip deploy; audit dependensi terpisah (mingguan, tidak memblokir). **Sudah dikerjakan, belum di-commit dan belum dijalankan di GitHub.**
-  - `.github/workflows/ci.yml`: Backend (PHP 8.4, MySQL 8.0, Pint, PHPStan, Pest, tes pustaka skrip deploy) dan Frontend (Node 20, ESLint galat saja, Vitest, `npm run build`). `.github/workflows/audit.yml`: `composer audit` dan `npm audit --omit=dev` tiap Senin.
+  - `.github/workflows/ci.yml`: Backend (PHP 8.4, MySQL 8.0, Pint, PHPStan, Pest, tes pustaka skrip deploy) dan Frontend (Node 24, ESLint galat saja, Vitest, `npm run build`). `.github/workflows/audit.yml`: `composer audit` dan `npm audit --omit=dev` tiap Senin.
   - Dibuktikan lokal: YAML valid, setiap perintah job dijalankan manual, Pest penuh dengan lingkungan tiruan CI (`.env.example` + kunci baru). **Belum dibuktikan:** run di GitHub. **Tindakan pemilik:** aktifkan branch protection (panduan bagian 22; repositori privat butuh paket berbayar).
   - Belum menjadi syarat: Prettier `--check` dan ESLint `--max-warnings 0` (F-21). Dokumen: spec dan rencana `2026-11-04-ci-github-actions`.
+  - **Run pertama di GitHub (5 Nov 2026) gagal di job Frontend pada `npm ci`**, dua sebab: (1) `package-lock.json` hasil `npm audit fix` dengan npm 11 tidak sinkron untuk npm 10 (`shadcn-vue` 2.9.0 membawa `vue-sfc-transformer` dengan peer `@vue/language-core ^3`; npm 10 menuntut entri bersarangnya, npm 11 tidak). Ini juga akan merusak `npm ci` di build Docker produksi. Diperbaiki dengan regenerasi lockfile memakai npm 10.9.2 (hanya menambah 11 entri bersarang, tanpa mengubah versi paket); `npm ci --dry-run` lulus di npm 10.8.2, 10.9.2, dan 11. (2) Node 20 tidak memenuhi syarat engine Vitest 5/jsdom 30 (lihat F-31); CI dipindah ke Node 24. Seluruh job Frontend kemudian dijalankan pada salinan bersih (clone tanpa `node_modules`, `.env`, `public/build`): `npm ci`, ESLint, Vitest 274/274, dan build lulus. Pelajaran: lockfile harus diperiksa dengan `npx npm@10 ci --dry-run` sebelum commit.
 
 ### F-10 — Kerentanan dependensi
 - **PHP:** `symfony/mime` v8.1.7 terdampak CVE-2026-45070 (medium, header injection pada nama parameter MIME; diperbaiki di ≥ 8.1.10). Relevansi rendah karena aplikasi tidak menerima lampiran dari pengguna, tetapi mudah diperbaiki: `composer update symfony/mime`.
@@ -196,6 +197,9 @@ Ditemukan saat membahas F-03. Pendaftaran mandiri ±1.500 siswa mengirim satu em
 Ditemukan saat memverifikasi F-07, F-10. Pada `npx vitest run` penuh (default worker), 2 sampai 4 tes yang tidak berkaitan (mis. `Dashboard.test.ts`, `DocumentPreviewDialog.test.ts`, `Laporan/Siswa.test.ts`) gagal dengan `Test timed out in 5000ms`, padahal lulus bila dijalankan sendiri; kumpulan yang gagal berganti-ganti antarproses. Dengan `--maxWorkers=3` seluruh 274 tes lulus (189 detik). Sebab: beban jsdom per berkas (49 lingkungan dibuat) menekan CPU. Saran: naikkan `test.testTimeout` (mis. 15 detik) dan/atau batasi `maxWorkers` di konfigurasi Vitest; hal ini perlu diselesaikan sebelum Vitest menjadi syarat CI (F-09).
 
 **Status (4 Nov 2026):** `testTimeout: 15_000` ditambahkan di `vitest.config.ts`; `npx vitest run` penuh dengan worker bawaan lulus 274/274 (sebelumnya 2 sampai 4 gagal). **Sudah dikerjakan bersama F-09, belum di-commit.**
+
+### F-31 — Build image Docker memakai Node 20 (sudah EOL) padahal beberapa dependensi build mensyaratkan Node >= 22
+`Dockerfile` tahap `frontend` memakai `node:20-alpine`. Node 20 berakhir dukungannya April 2026, dan `npm ci` di sana menampilkan peringatan EBADENGINE untuk `vitest` 5, `jsdom` 30, `@vueuse/core` 15, `concurrently` 10, dan lainnya (Vite 8 masih memenuhi `^20.19`, sehingga build produksi tetap berjalan). Ditemukan saat run CI pertama di GitHub gagal pada Node 20; CI kini memakai Node 24. Saran: naikkan tahap `frontend` ke `node:24-alpine` (atau 22) dan uji `docker build --target frontend .` sebelum dirilis. **Belum dikerjakan; perubahan image produksi perlu uji build.**
 
 ---
 

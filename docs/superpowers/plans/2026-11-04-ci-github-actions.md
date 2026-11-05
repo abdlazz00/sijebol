@@ -6,12 +6,12 @@
 
 **Architecture:** Dua workflow GitHub Actions (CI dan audit mingguan); syarat merge lewat branch protection di pengaturan repositori.
 
-**Tech Stack:** GitHub Actions, PHP 8.4, MySQL 8.0, Node 20.
+**Tech Stack:** GitHub Actions, PHP 8.4, MySQL 8.0, Node 24.
 
 **Spec:** `docs/superpowers/specs/2026-11-04-ci-github-actions-design.md`
 
 ## Global Constraints
-- Versi runtime sama dengan produksi (PHP 8.4, MySQL 8.0, Node 20).
+- Versi runtime sama dengan produksi untuk PHP 8.4 dan MySQL 8.0; Node 24 (syarat engine Vitest 5/jsdom 30), bukan Node 20 milik Dockerfile.
 - Tidak ada rahasia di workflow; `permissions: contents: read`.
 - Audit tidak menjadi required check.
 

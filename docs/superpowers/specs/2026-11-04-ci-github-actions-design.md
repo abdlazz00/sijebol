@@ -17,7 +17,7 @@ Tidak ada CI. Pest, Vitest, PHPStan, `vue-tsc`, dan Pint hanya berjalan bila dii
 `.github/workflows/ci.yml` (push dan PR ke `main`/`staging`, batalkan run lama pada ref yang sama, izin `contents: read`):
 
 - **Backend** (ubuntu, PHP 8.4 seperti image produksi, MySQL 8.0 seperti server, root/root, database `sijebol_test`): `composer install`, `cp .env.example .env` + `key:generate`, `pint --test`, `phpstan analyse`, `pest`, `bash scripts/test-deploy-lib.sh`.
-- **Frontend** (ubuntu, Node 20 seperti tahap build Dockerfile): `composer install --no-scripts` (Ziggy dibaca `vue-tsc` dan Vite), `npm ci`, ESLint `--quiet` (hanya galat; 332 peringatan format ditangani di F-21), `vitest run`, `npm run build` (vue-tsc + Vite).
+- **Frontend** (ubuntu, Node 24 seperti mesin pengembang; Vitest 5, jsdom 30, dan `@vueuse/core` 15 mensyaratkan Node >= 22, sehingga Node 20 di Dockerfile tidak cukup untuk CI): `composer install --no-scripts` (Ziggy dibaca `vue-tsc` dan Vite), `npm ci`, ESLint `--quiet` (hanya galat; 332 peringatan format ditangani di F-21), `vitest run`, `npm run build` (vue-tsc + Vite).
 
 `.github/workflows/audit.yml` (Senin 02:00 UTC dan manual): `composer audit` dan `npm audit --omit=dev`. Advisori alat build/dev dicatat di F-10, bukan di sini.
 
