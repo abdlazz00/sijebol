@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Domains\Access\Services\SessionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class ProfileSessionController extends Controller
 {
+    public function __construct(private readonly SessionService $sessions) {}
+
     /** Keluarkan semua perangkat lain; sesi dan perangkat saat ini tetap masuk. */
     public function destroy(Request $request): RedirectResponse
     {
@@ -18,15 +18,7 @@ class ProfileSessionController extends Controller
 
         $request->validate(['current_password' => ['required', 'current_password']]);
 
-        // Putar remember token supaya cookie "Ingat saya" di perangkat lain tidak masuk lagi. logoutOtherDevices
-        // tidak memutarnya sendiri; ia hanya memasang ulang cookie perangkat ini dengan token baru.
-        $request->user()->forceFill(['remember_token' => Str::random(60)])->save();
-        Auth::logoutOtherDevices($request->input('current_password'));
-
-        DB::table(config('session.table'))
-            ->where('user_id', $request->user()->id)
-            ->where('id', '!=', $request->session()->getId())
-            ->delete();
+        $this->sessions->endOthers($request->user(), $request, $request->input('current_password'));
 
         return back()->with('success', 'Perangkat lain sudah dikeluarkan.');
     }

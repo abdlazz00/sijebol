@@ -4,6 +4,7 @@ namespace App\Domains\Access\Http\Controllers;
 
 use App\Domains\Access\Http\Requests\RoleRequest;
 use App\Domains\Access\Models\Role;
+use App\Domains\Access\Services\AccessGuard;
 use App\Domains\Access\Services\PermissionCatalog;
 use App\Domains\Access\Services\RoleService;
 use App\Http\Controllers\Controller;
@@ -56,6 +57,8 @@ class RoleController extends Controller
                 'users_count' => $role->users_count,
                 'permissions' => $role->permissions->pluck('name')->values(),
                 'protected' => $role->isProtected(),
+                // Role dengan izin di luar milik penyunting: nama, deskripsi, dan jenisnya terkunci (RoleService::update).
+                'identity_locked' => ! AccessGuard::canGrantRole($request->user(), $role),
             ],
             'catalog' => PermissionCatalog::forActor($request->user()),
         ]);

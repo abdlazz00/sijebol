@@ -12,5 +12,8 @@ export default defineConfig({
     test: {
         environment: 'jsdom',
         include: ['resources/js/**/*.test.ts'],
+        // Setiap berkas membuat lingkungan jsdom; di mesin yang sibuk (atau runner CI kecil) tes yang tidak
+        // berkaitan melewati 5 detik bawaan padahal lulus bila dijalankan sendiri.
+        testTimeout: 15_000,
     },
 });

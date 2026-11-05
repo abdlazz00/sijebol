@@ -6,6 +6,7 @@ use App\Domains\Access\Services\ActivationService;
 use App\Domains\Schools\Services\SchoolService;
 use App\Domains\Students\Http\Requests\StudentSignupRequest;
 use App\Domains\Students\Services\StudentSignupService;
+use App\Domains\Students\Support\TurnstileVerifier;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -18,7 +19,7 @@ class StudentSignupController extends Controller
         private readonly StudentSignupService $signup
     ) {}
 
-    public function show(string $token): Response
+    public function show(string $token, TurnstileVerifier $turnstile): Response
     {
         $school = $this->schools->findByRegistrationToken($token);
 
@@ -27,6 +28,7 @@ class StudentSignupController extends Controller
             ...($school !== null ? ['school' => $school->name] : []),
             'sent' => (bool) session('sent'),
             'ttl_days' => ActivationService::TTL_DAYS,
+            'turnstile_site_key' => $turnstile->enabled() ? config('services.turnstile.site_key') : null,
         ]);
     }
 

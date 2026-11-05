@@ -535,10 +535,18 @@ Menghapus semua data siswa, pendaftaran, jadwal, dan berkas dokumen. Akun penggu
 
 ```bash
 php artisan sijebol:bersihkan-data-siswa          # meminta konfirmasi
-php artisan sijebol:bersihkan-data-siswa --force  # tanpa konfirmasi
+php artisan sijebol:bersihkan-data-siswa --force  # tanpa konfirmasi (hanya di lokal)
 ```
 
 Jalankan hanya sebelum rilis, dan cadangkan database lebih dulu.
+
+**Di UAT dan produksi (F-11):** `--force` tidak berlaku. Perintah menampilkan nama database dan jumlah baris yang akan dihapus, lalu meminta operator **mengetik nama lingkungan** (`APP_ENV`, mis. `production`). Untuk skrip tanpa terminal interaktif, beri nama lingkungan lewat opsi:
+
+```bash
+docker exec sijebol-prod php artisan sijebol:bersihkan-data-siswa --lingkungan=production
+```
+
+Nama yang salah atau kosong membatalkan perintah tanpa menghapus apa pun.
 
 ### Link pendaftaran sekolah
 
@@ -553,7 +561,7 @@ php artisan migrate --force
 php artisan db:seed --class=AccessSeeder --force
 ```
 
-Seeder menyetel ulang izin tiga role bawaan (`admin-kecamatan`, `operator-sekolah`, `siswa`); perubahan izin yang pernah dibuat lewat UI pada role-role itu ikut tertimpa.
+> **Perilaku seeder berubah (2 Nov 2026, temuan F-01 review).** Sebelumnya seeder menyetel ulang izin tiga role bawaan sehingga perubahan lewat menu Role ikut tertimpa. Kini seeder **aditif** dan aman dijalankan ulang kapan saja. Detailnya di bagian 16. Catatan di bagian rilis lama di bawah yang menyebut "seeder menyetel ulang/mencabut izin" menggambarkan perilaku lama.
 
 ## 10. Catatan Sesi Rekaman Berkuota (Fase 7b)
 
@@ -706,3 +714,154 @@ docker exec -it sijebol-uat php artisan sijebol:isi-data-dummy --siswa=600 --san
 - Di luar lokal `--sandi` wajib diganti (minimal 8 karakter, bukan `password`) dan perintah meminta konfirmasi (lewati dengan `--force`). UAT terbuka ke internet dan alamat operator bisa ditebak dari NPSN, jadi kata sandi bawaan tidak boleh dipakai.
 - Bagikan kata sandi hanya kepada sekolah/client yang ikut simulasi. Setelah simulasi: `--bersihkan`, lalu hapus `SIJEBOL_ALLOW_DUMMY_DATA` dari `uat/.env`.
 - Dummy ikut tampil di daftar sekolah asli di UAT, dan jadwal otomatis (kedaluwarsa, tidak hadir) ikut memproses pendaftaran dummy seperti data biasa.
+
+## 16. Perilaku AccessSeeder (aditif)
+
+`php artisan db:seed --class=AccessSeeder --force` aman dijalankan ulang di server yang role-nya sudah diubah lewat menu **Role & Permission**.
+
+- **Role** dibuat bila belum ada. Role yang sudah ada tidak ditimpa: izin, deskripsi, dan pengaturan "terikat sekolah" tetap.
+- **Izin baru** (belum ada di database) dibuat, lalu diberikan hanya ke role bawaan yang memang mendapatkannya. Izin yang sudah ada tidak diberikan lagi, sehingga izin yang sengaja dicabut dari suatu role tidak kembali.
+- **Izin yang sudah dihapus dari kode** dibersihkan dari database dan dari semua role.
+- **`super-admin`** selalu disinkron penuh (role dilindungi, memegang semua izin).
+- Role bawaan yang terhapus dibuat kembali lengkap dengan izin bawaannya.
+
+Konsekuensinya: **mengurangi** izin bawaan sebuah role di kode tidak otomatis berlaku di server yang sudah berjalan. Pencabutan semacam itu harus dilakukan lewat menu Role atau lewat migrasi data, dan dicatat di bagian rilis yang bersangkutan.
+
+## 17. Deploy produksi: cadangan dan migrasi terkendali
+
+Mulai 2 Nov 2026 (temuan F-02), migrasi di **produksi tidak lagi otomatis** saat kontainer mulai (`AUTO_MIGRATE=false` di `docker-compose.prod.yml`). Sebelumnya setiap start/restart kontainer menjalankan `migrate --force`; migrasi yang gagal membuat kontainer crash-loop dan tidak ada cadangan. **UAT tetap otomatis** (`AUTO_MIGRATE=true`).
+
+```bash
+bash scripts/deploy-prod.sh          # interaktif (menanyakan konfirmasi)
+bash scripts/deploy-prod.sh --yes    # tanpa konfirmasi, untuk otomasi
+```
+
+Urutan skrip:
+
+1. `git pull origin main`, lalu **build image baru** (aplikasi lama tetap melayani).
+2. Menampilkan **migrasi yang akan dijalankan** dan meminta konfirmasi. Dibatalkan = tidak ada yang berubah.
+3. `artisan down` (mode pemeliharaan; status tersimpan di `storage`, jadi kontainer baru juga langsung dalam mode itu).
+4. **Cadangan database** (`mysqldump --single-transaction`) ke `/opt/sijebol/backups/<db>-<stempel>.sql.gz` (izin folder 700, berkas 600). **Cadangan gagal = deploy berhenti** dan aplikasi dibuka kembali. Cadangan lebih dari **14 hari** dihapus, hanya setelah cadangan baru berhasil.
+5. Mengganti kontainer, menunggu siap, lalu `migrate --force`, `queue:restart`, cache, dan `artisan up`.
+
+Bila migrasi gagal, aplikasi **tetap dalam mode pemeliharaan** dan skrip mencetak lokasi cadangan serta perintah pemulihan. Setelah diperbaiki: `docker exec sijebol-prod php artisan up`.
+
+Memulihkan cadangan:
+
+```bash
+export MYSQL_PWD='<DB_PASSWORD dari .env>'
+gunzip -c /opt/sijebol/backups/sijebol_prod-YYYYMMDD-HHMMSS.sql.gz \
+  | docker exec -i -e MYSQL_PWD sijebol-mysql mysql -usijebol sijebol_prod
+unset MYSQL_PWD
+```
+
+Catatan:
+- Cadangan hanya ada di VPS yang sama. **Salinan di luar VPS tetap harus diatur terpisah** (tidak ditangani skrip ini).
+- Pada instalasi pertama, pesan "status migrasi tidak terbaca" saat langkah 2 wajar (tabel `migrations` belum ada).
+- Rilis produksi pertama: migrasi `convert_registrations_to_session_registrations` menolak berjalan bila `registration_students` atau `schedules` sudah berisi data. Database produksi saat ini kosong, sehingga lolos. Bila kelak ada data uji, jalankan `php artisan sijebol:bersihkan-data-siswa` lebih dulu.
+- Skrip bantu (`scripts/lib/deploy.sh`) diuji dengan `bash scripts/test-deploy-lib.sh` (tanpa Docker sungguhan).
+
+## 18. Pengaman pendaftaran siswa: Cloudflare Turnstile dan batas per email
+
+Mulai 2 Nov 2026 (temuan F-03) halaman pendaftaran siswa publik (`/register/{token}`) dilindungi dua lapis:
+
+- **Batas per alamat email**: maksimal 3 email pendaftaran per alamat per 15 menit. Di atas batas, permintaan diabaikan diam-diam dan respons ke pengguna tetap sama. Tidak perlu pengaturan.
+- **Cloudflare Turnstile** (captcha gratis, tak terlihat kecuali Cloudflare butuh interaksi). **Aktif hanya bila `TURNSTILE_SECRET_KEY` terisi.** Kosong = nonaktif, jadi pendaftaran terbuka tanpa captcha.
+
+### Mengaktifkan di UAT dan produksi (wajib)
+
+1. Dashboard Cloudflare → **Turnstile** → **Add widget**. Isi domain `sungaibeduk.sijebol.online` (produksi) dan domain UAT; satu widget boleh mencakup keduanya. Mode: **Managed**.
+2. Salin **Site Key** dan **Secret Key** ke `.env` masing-masing lingkungan:
+
+   ```
+   TURNSTILE_SITE_KEY=...
+   TURNSTILE_SECRET_KEY=...
+   ```
+
+3. Terapkan: `docker exec <kontainer> php artisan config:cache` (kunci dibaca saat runtime, tidak perlu build ulang image).
+4. Cek: buka link pendaftaran sekolah; tombol "Buat akun" aktif setelah teks "Memeriksa keamanan…" hilang, dan pendaftaran berhasil.
+
+Kunci uji Cloudflare (selalu lolos) untuk lokal: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`.
+
+### Perilaku yang perlu diketahui
+
+- Bila Cloudflare tidak terjangkau dari server, pendaftaran **ditolak** dengan pesan "Verifikasi keamanan gagal…" (sengaja gagal tertutup supaya kuota email tidak terkuras). Pendaftaran pulih sendiri saat Cloudflare terjangkau.
+- CSP (`SecurityHeaders`) otomatis mengizinkan `https://challenges.cloudflare.com` hanya pada rute `register.*` dan hanya bila site key terisi.
+- Kuota email gratis Resend (100/hari) tetap tidak cukup untuk pendaftaran massal; lihat F-29 di berkas review.
+
+## 19. Batas wewenang admin (F-04, F-05, F-06): pengecekan data lama
+
+Mulai 4 Nov 2026 pemeriksaan pelaku ditambahkan di tiga tempat. Tidak ada migrasi, tetapi sebelum rilis ke server yang sudah berisi data, cek dua hal berikut (MySQL).
+
+**1. Role terikat sekolah yang memegang izin kecamatan-wide** (F-04). Aplikasi kini menolak aksinya, tetapi izinnya sebaiknya dicabut lewat menu Role:
+
+```sql
+SELECT r.name AS role, p.name AS izin
+FROM roles r
+JOIN role_has_permissions rp ON rp.role_id = r.id
+JOIN permissions p ON p.id = rp.permission_id
+WHERE r.is_school_scoped = 1
+  AND p.name IN ('sekolah.buat', 'sekolah.ubah', 'sekolah.hapus', 'log.lihat', 'laporan.lihat');
+```
+
+**2. Akun siswa tanpa data siswa** (F-06; terjadi bila akun dengan role siswa pernah dibuat lewat menu Pengguna):
+
+```sql
+SELECT u.id, u.email, u.school_id
+FROM users u
+JOIN model_has_roles mr ON mr.model_id = u.id AND mr.model_type = 'App\\Models\\User'
+JOIN roles r ON r.id = mr.role_id AND r.name = 'siswa'
+LEFT JOIN students s ON s.user_id = u.id
+WHERE s.id IS NULL;
+```
+
+Perilaku baru: akun siswa tidak dapat diubah dari menu Pengguna (hanya nonaktif/aktif dan kirim ulang aktivasi) dan role siswa tidak ditawarkan di form; role dengan izin di luar izin penyunting hanya dapat diubah izinnya, bukan nama, deskripsi, atau jenis terikat sekolahnya.
+
+## 20. Sesi berakhir saat password diganti atau di-reset (F-07)
+
+Mulai 4 Nov 2026, **ganti password** (menu Profil) mengeluarkan semua perangkat lain (perangkat yang dipakai tetap masuk), dan **reset password** lewat email mengakhiri semua sesi akun itu. Cookie "Ingat saya" di perangkat lain ikut tidak berlaku.
+
+Pengakhiran sesi bekerja pada tabel `sessions`, jadi server **wajib** memakai `SESSION_DRIVER=database` (bawaan `.env.example`). Dengan driver lain, ganti dan reset password tetap berhasil tetapi sesi lama tidak ikut berakhir; tombol "Keluarkan perangkat lain" di Profil menolak dengan galat 501 pada driver selain database.
+
+## 21. Batas login per IP dan pengecekan IP pengunjung (F-08)
+
+Mulai 4 Nov 2026, selain batas 5 kegagalan per email+IP, login dikunci per IP setelah **50 kegagalan dalam 10 menit** (semua email digabung; login sukses tidak dihitung dan tidak mereset hitungan). Angkanya dapat diubah di `.env`:
+
+```
+SECURITY_LOGIN_IP_FAILURES=50
+SECURITY_LOGIN_IP_WINDOW=600   # detik
+```
+
+### Wajib dicek sebelum rilis: IP yang sampai ke aplikasi
+
+Semua batas per IP (login, `throttle:5,1` pendaftaran siswa, batas umum untuk tamu) hanya berguna bila aplikasi melihat **IP pengunjung asli**. Alur: pengunjung → Cloudflare → Nginx Proxy Manager → kontainer. `trustProxies('*')` di Laravel hanya mempercayai peer langsung (NPM) lalu membaca `X-Forwarded-For` dari kanan, dan kontainer tidak mempublikasikan port, jadi pemalsuan header dari luar tidak berlaku. Tetapi bila NPM tidak menerjemahkan IP Cloudflare menjadi IP pengunjung, semua orang terlihat berasal dari beberapa IP edge dan limiter akan mengunci banyak orang sekaligus.
+
+Cek di server (setelah ada beberapa orang login):
+
+```sql
+SELECT ip_address, COUNT(*) AS sesi FROM sessions GROUP BY ip_address ORDER BY sesi DESC LIMIT 10;
+```
+
+- IP beragam dan berasal dari jaringan pengguna (ISP/seluler) = benar.
+- Rentang Cloudflare (mis. `104.x`, `172.64.x`–`172.71.x`, `162.158.x`) atau IP Docker (`172.x` dari jaringan `sijebol-network`) mendominasi = proxy perlu dibenahi dulu (NPM: aktifkan penerjemahan IP asli Cloudflare / `real_ip_header`), atau naikkan angka di atas sementara.
+
+## 22. CI (GitHub Actions) dan syarat merge (F-09)
+
+Workflow di `.github/workflows/`:
+
+- `ci.yml` berjalan pada setiap push dan pull request ke `main` dan `staging`:
+  - **Backend**: Pint, PHPStan, Pest (PHP 8.4, MySQL 8.0 seperti server), dan tes pustaka skrip deploy.
+  - **Frontend**: ESLint (galat saja), Vitest, dan `npm run build` (vue-tsc + Vite) dengan Node 24 (Vitest 5, jsdom 30, dan `@vueuse/core` 15 mensyaratkan Node >= 22).
+- `audit.yml` berjalan tiap Senin 02:00 UTC dan manual: `composer audit` dan `npm audit --omit=dev`. Gagal = ada advisori baru yang perlu ditinjau; tidak menghalangi merge.
+
+Server men-deploy dengan `git pull` dari `staging`/`main`, jadi cara menjadikan CI sebagai syarat deploy adalah **mewajibkannya sebelum kode masuk ke dua cabang itu** (dilakukan sekali oleh pemilik repositori di GitHub):
+
+1. Repositori → **Settings** → **Branches** (atau **Rules** → **Rulesets**) → tambah aturan untuk `main` dan `staging`.
+2. Aktifkan **Require a pull request before merging** dan **Require status checks to pass before merging**; pilih check **Backend** dan **Frontend**.
+3. (Disarankan) aktifkan **Do not allow bypassing the above settings** supaya `git push` langsung ke cabang itu juga ditolak.
+
+Catatan: fitur branch protection pada repositori **privat** membutuhkan paket GitHub berbayar (Pro/Team); pada repositori publik tersedia gratis. Tanpa itu CI tetap memberi tanda merah/hijau, tetapi tidak bisa memblokir.
+
+Alur kerja harian: kerjakan di cabang fitur, buka pull request ke `staging`, tunggu Backend dan Frontend hijau, merge, lalu `deploy-uat` di server. Setelah UAT, pull request `staging` ke `main`, hijau lagi, merge, lalu `deploy-prod`.
+
+Catatan teknis: run pertama di GitHub perlu diamati (belum pernah dijalankan di sana saat bagian ini ditulis). Peringatan format ESLint/Prettier (F-21) belum menjadi syarat.

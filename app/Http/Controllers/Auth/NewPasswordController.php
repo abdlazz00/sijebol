@@ -2,13 +2,13 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Domains\Access\Services\SessionService;
 use App\Http\Controllers\Controller;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
-use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -48,12 +48,14 @@ class NewPasswordController extends Controller
             function ($user) use ($request) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
-                    'remember_token' => Str::random(60),
                     // Email terbukti dimiliki lewat link reset: akun yang belum aktif ikut aktif.
                     'activated_at' => $user->activated_at ?? now(),
                 ])->save();
 
                 event(new PasswordReset($user));
+
+                // Reset biasanya karena lupa atau akun dicurigai bocor: semua sesi lama, termasuk milik penyerang, berakhir.
+                app(SessionService::class)->endAll($user);
             }
         );
 

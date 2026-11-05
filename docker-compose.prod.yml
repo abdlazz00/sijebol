@@ -10,7 +10,8 @@ services:
     volumes:
       - ./storage:/var/www/html/storage
     environment:
-      - AUTO_MIGRATE=true
+      # Produksi: migrasi hanya dijalankan scripts/deploy-prod.sh setelah cadangan DB, tidak otomatis saat kontainer mulai.
+      - AUTO_MIGRATE=false
     networks:
       - sijebol-network
 

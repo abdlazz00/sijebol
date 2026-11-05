@@ -49,6 +49,15 @@ class RoleService
         if ($role->name === Role::SISWA && $data['name'] !== Role::SISWA) {
             throw new AccessRuleException('Role siswa adalah role sistem; nama tidak dapat diubah.');
         }
+        // Role yang izinnya melebihi milik penyunting: hanya izin miliknya yang boleh disentuh (lihat $final di bawah),
+        // identitas role (nama, deskripsi, jenis) tidak, supaya role yang lebih tinggi tidak bisa disabotase.
+        if (! AccessGuard::canGrantRole($actor, $role) && (
+            $data['name'] !== $role->name
+            || (string) ($data['description'] ?? '') !== (string) $role->description
+            || (bool) $data['is_school_scoped'] !== (bool) $role->is_school_scoped
+        )) {
+            throw new AccessRuleException('Role ini memiliki izin di luar izin Anda; Anda tidak dapat mengubah nama, deskripsi, atau jenis terikat sekolahnya.');
+        }
         if ((bool) $data['is_school_scoped'] !== (bool) $role->is_school_scoped && $this->roles->userCount($role) > 0) {
             throw new AccessRuleException('Pengaturan "terikat sekolah" tidak dapat diubah selama role masih dipakai pengguna.');
         }

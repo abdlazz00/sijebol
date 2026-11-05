@@ -1,0 +1,117 @@
+name: CI
+
+# Syarat sebelum kode masuk ke staging/main (cabang yang ditarik server lewat deploy-*.sh).
+# Jadikan job "Backend" dan "Frontend" sebagai required status check di branch protection (lihat docs/deployment-guide.md bagian 22).
+on:
+  push:
+    branches: [main, staging]
+  pull_request:
+    branches: [main, staging]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  backend:
+    name: Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      mysql:
+        image: mysql:8.0 # sama dengan server (docs/deployment-guide.md)
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: sijebol_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+    env:
+      DB_HOST: 127.0.0.1
+      DB_PORT: 3306
+      DB_USERNAME: root
+      DB_PASSWORD: root
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4' # sama dengan image produksi (Dockerfile)
+          extensions: bcmath, exif, fileinfo, gd, intl, mbstring, pdo_mysql, zip
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Siapkan aplikasi
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Pint (gaya kode)
+        run: vendor/bin/pint --test
+
+      - name: PHPStan (analisis statis)
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Pest
+        run: vendor/bin/pest
+
+      - name: Pustaka skrip deploy
+        run: bash scripts/test-deploy-lib.sh
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      # vue-tsc dan Vite membaca vendor/tightenco/ziggy (Dockerfile menyalinnya dengan cara yang sama).
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/composer/files
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - run: composer install --no-interaction --prefer-dist --no-progress --no-scripts
+
+      - uses: actions/setup-node@v4
+        with:
+          # Vitest 5, jsdom 30, @vueuse/core 15, dan concurrently 10 mensyaratkan Node >= 22. 24 = Node di mesin pengembang.
+          node-version: '24'
+          cache: npm
+
+      - run: npm ci
+
+      # --quiet: hanya galat. Peringatan format yang menumpuk (F-21) belum menjadi syarat.
+      - name: ESLint
+        run: npx eslint resources/js --ext .js,.ts,.vue --quiet
+
+      - name: Vitest
+        run: npx vitest run
+
+      - name: Build (vue-tsc + Vite)
+        run: npm run build

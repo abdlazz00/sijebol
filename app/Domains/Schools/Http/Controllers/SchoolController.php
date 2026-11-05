@@ -30,7 +30,7 @@ class SchoolController extends Controller
 
     public function store(SchoolRequest $request): RedirectResponse
     {
-        $this->schools->create($request->validated());
+        $this->schools->create($request->validated(), $request->user());
 
         return redirect()->route('schools.index')->with('success', 'Sekolah ditambahkan.');
     }
@@ -42,7 +42,7 @@ class SchoolController extends Controller
 
     public function update(SchoolRequest $request, School $school): RedirectResponse
     {
-        $this->schools->update($school, $request->validated());
+        $this->schools->update($school, $request->validated(), $request->user());
 
         return redirect()->route('schools.index')->with('success', 'Sekolah diperbarui.');
     }

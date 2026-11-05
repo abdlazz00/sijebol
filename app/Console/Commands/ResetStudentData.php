@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Storage;
 
 class ResetStudentData extends Command
 {
-    protected $signature = 'sijebol:bersihkan-data-siswa {--force : Lewati konfirmasi}';
+    protected $signature = 'sijebol:bersihkan-data-siswa {--force : Lewati konfirmasi (hanya di lokal)} {--lingkungan= : Nama lingkungan, untuk skrip di luar lokal}';
 
     protected $description = 'Hapus semua data siswa, pendaftaran, jadwal, dan dokumen (akun pengguna tetap) untuk memulai dari kosong';
 
@@ -23,7 +23,7 @@ class ResetStudentData extends Command
 
     public function handle(): int
     {
-        if (! $this->option('force') && ! $this->confirm('Hapus SEMUA data siswa, pendaftaran, jadwal, dan dokumen? Akun pengguna tidak ikut dihapus.')) {
+        if (! $this->confirmed()) {
             $this->warn('Dibatalkan. Tidak ada data yang dihapus.');
 
             return self::FAILURE;
@@ -40,5 +40,27 @@ class ResetStudentData extends Command
         $this->info('Selesai.');
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Lokal dan tes: konfirmasi biasa (--force melewatinya). Di luar itu (UAT, produksi) --force tidak cukup:
+     * operator harus mengetik nama lingkungan, sesudah melihat database dan jumlah baris yang akan dihapus.
+     */
+    private function confirmed(): bool
+    {
+        if (app()->environment('local', 'testing')) {
+            return $this->option('force')
+                || $this->confirm('Hapus SEMUA data siswa, pendaftaran, jadwal, dan dokumen? Akun pengguna tidak ikut dihapus.');
+        }
+
+        $environment = app()->environment();
+        $this->warn("Lingkungan {$environment}, database ".DB::connection()->getDatabaseName().'.');
+        foreach (self::TABLES as $table) {
+            $this->line("{$table}: ".DB::table($table)->count().' baris akan dihapus');
+        }
+
+        $typed = $this->option('lingkungan') ?? $this->ask("Ketik nama lingkungan ({$environment}) untuk melanjutkan");
+
+        return $typed === $environment;
     }
 }

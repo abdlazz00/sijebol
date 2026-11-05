@@ -68,7 +68,9 @@ const columns = [
     { key: 'actions', label: 'Aksi', class: 'w-[72px] text-right' },
 ];
 
-const canEdit = (u: UserRow) => u.can_manage && can(PERMISSIONS.UserUbah);
+// Akun siswa dikelola dari menu Siswa; di sini hanya status dan aktivasi.
+const canEdit = (u: UserRow) =>
+    u.can_manage && !u.is_student && can(PERMISSIONS.UserUbah);
 
 const dialog = useDeactivateDialog();
 </script>
