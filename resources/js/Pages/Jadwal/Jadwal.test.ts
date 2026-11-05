@@ -185,7 +185,9 @@ const formUbah = (over: { has_participants?: boolean } = {}) => ({
 
 describe('Jadwal/Form', () => {
     it('membuat sesi: jam selesai harus setelah jam mulai dan kuota 1–1000', async () => {
-        const w = mount(Form, { props: { schedule: null, schools: null, close_days: 2 } });
+        const w = mount(Form, {
+            props: { schedule: null, schools: null, close_days: 2 },
+        });
         const [mulai, selesai] = w.findAll('input[type="time"]');
         await w.find('input[type="date"]').setValue('2099-01-01');
         await w.find('input[placeholder^="Contoh"]').setValue('Aula');
@@ -201,7 +203,9 @@ describe('Jadwal/Form', () => {
     });
 
     it('data valid dikirim lewat POST', async () => {
-        const w = mount(Form, { props: { schedule: null, schools: null, close_days: 2 } });
+        const w = mount(Form, {
+            props: { schedule: null, schools: null, close_days: 2 },
+        });
         const [mulai, selesai] = w.findAll('input[type="time"]');
         await w.find('input[type="date"]').setValue('2099-01-01');
         await w.find('input[placeholder^="Contoh"]').setValue('Aula');
@@ -238,7 +242,9 @@ describe('Jadwal/Form', () => {
             await tanggal.setValue('2099-01-20');
             expect(batas(w).value).toBe('2099-01-18T23:59');
 
-            await w.find('input[type="datetime-local"]').setValue('2099-01-19T10:00');
+            await w
+                .find('input[type="datetime-local"]')
+                .setValue('2099-01-19T10:00');
             await tanggal.setValue('2099-02-01');
             expect(batas(w).value).toBe('2099-01-19T10:00');
         });
@@ -267,7 +273,9 @@ describe('Jadwal/Form', () => {
             await flushPromises();
             expect(w.text()).toContain('Batas pendaftaran wajib diisi.');
 
-            await w.find('input[type="datetime-local"]').setValue('2099-01-01T08:01');
+            await w
+                .find('input[type="datetime-local"]')
+                .setValue('2099-01-01T08:01');
             await w.find('form').trigger('submit');
             await flushPromises();
             expect(w.text()).toContain(
@@ -275,7 +283,9 @@ describe('Jadwal/Form', () => {
             );
             expect(post).not.toHaveBeenCalled();
 
-            await w.find('input[type="datetime-local"]').setValue('2099-01-01T08:00');
+            await w
+                .find('input[type="datetime-local"]')
+                .setValue('2099-01-01T08:00');
             await w.find('form').trigger('submit');
             await flushPromises();
             expect(post).toHaveBeenCalledOnce();
@@ -419,6 +429,85 @@ describe('Jadwal/Show', () => {
             props: { ...base, participants: [peserta(1, 'ditolak')] },
         });
         expect(berisi.text()).not.toContain('Hapus sesi');
+    });
+});
+
+describe('Jadwal/Show — tampilan HP', () => {
+    // jsdom tidak menghitung CSS; yang diuji adalah kelas yang menjaga halaman tidak melebar dan status tetap terlihat.
+    it('tombol header disusun grid 2 kolom di HP, tidak dipaksa satu baris; Penandaan rekaman satu baris penuh', () => {
+        permissions.push('jadwal.ubah', 'rekaman.pindai', 'rekaman.lihat');
+        const w = mount(Show, {
+            props: { schedule: detail, participants: [] },
+        });
+
+        const penandaan = w
+            .findAll('a')
+            .find((a) => a.text().includes('Penandaan rekaman'))!;
+        const grup = penandaan.element.parentElement!;
+
+        expect(grup.className).toContain('grid-cols-2');
+        expect(grup.className).not.toContain('flex-1');
+        expect(penandaan.classes()).toContain('col-span-2');
+        expect(penandaan.classes()).toContain('sm:col-span-1');
+    });
+
+    it('tombol tunggal di header HP mengambil dua kolom (penuh lebar), bukan setengah', () => {
+        permissions.push('rekaman.lihat');
+        const w = mount(Show, {
+            props: {
+                schedule: { ...detail, cancelled: true },
+                participants: [],
+            },
+        });
+
+        const penandaan = w
+            .findAll('a')
+            .find((a) => a.text().includes('Penandaan rekaman'))!;
+
+        expect(penandaan.element.parentElement!.className).toContain(
+            '[&>*:only-child]:col-span-2',
+        );
+    });
+
+    it('nama siswa boleh turun baris di HP dan baru dipotong di md ke atas; judul Peserta memuat jumlahnya', () => {
+        const w = mount(Show, {
+            props: {
+                schedule: detail,
+                participants: [peserta(1, 'terdaftar'), peserta(2, 'ditolak')],
+            },
+        });
+
+        const nama = w.findAll('td a')[0];
+        // Sel tabel shadcn memakai whitespace-nowrap; tanpa whitespace-normal nama tidak turun baris.
+        expect(nama.classes()).toContain('break-words');
+        expect(nama.classes()).toContain('whitespace-normal');
+        expect(nama.classes()).toContain('md:truncate');
+        expect(nama.classes()).not.toContain('truncate');
+
+        expect(w.find('h2').exists()).toBe(true);
+        expect(w.text()).toContain('Peserta (2)');
+    });
+
+    it('kolom Status hanya di layar md ke atas; di HP badge status ada di bawah nama dan tidak perlu geser', () => {
+        const w = mount(Show, {
+            props: {
+                schedule: detail,
+                participants: [peserta(1, 'terdaftar')],
+            },
+        });
+
+        const kepala = w.findAll('th').find((th) => th.text() === 'Status')!;
+        expect(kepala.classes()).toContain('hidden');
+        expect(kepala.classes()).toContain('md:table-cell');
+
+        const sel = w.find('td');
+        const badgeHp = sel.find('[class~="md:hidden"]');
+        expect(badgeHp.exists()).toBe(true);
+        expect(badgeHp.text()).toContain('Terdaftar');
+
+        expect(w.find('table').classes()).not.toContain('min-w-[560px]');
+        expect(w.find('table').classes()).toContain('md:min-w-[560px]');
+        expect(w.text()).not.toContain('Geser tabel');
     });
 });
 
