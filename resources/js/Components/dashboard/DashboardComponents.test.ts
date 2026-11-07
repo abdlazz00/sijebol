@@ -177,6 +177,49 @@ describe('DashboardCharts', () => {
         expect(wrapper.text()).toContain('Tren Perekaman Tahunan');
     });
 
+    describe('bar rekap sekolah', () => {
+        const charts = (jumlah: number): DashboardChartsType => ({
+            school_recap: {
+                categories: Array.from({ length: jumlah }, (_, i) => `Sekolah ${i + 1}`),
+                series: [
+                    { name: 'Pendaftar', data: Array.from({ length: jumlah }, (_, i) => i) },
+                ],
+            },
+            recording_status: { labels: ['A'], series: [1], total: 1 },
+            monthly_trend: { categories: ['Okt'], series: [{ name: 'Pendaftar', data: [1] }] },
+        });
+        const bar = (w: ReturnType<typeof mount>) =>
+            w.findAllComponents({ name: 'ApexChart' })[0];
+
+        it('staf: semua sekolah dalam bar horizontal; tinggi mengikuti jumlah sekolah, minimal 260', () => {
+            const sedikit = bar(mount(DashboardCharts, { props: { charts: charts(3), isOperator: false } }));
+            const banyak = bar(mount(DashboardCharts, { props: { charts: charts(40), isOperator: false } }));
+
+            expect(sedikit.props('options').plotOptions.bar.horizontal).toBe(true);
+            expect(sedikit.props('height')).toBe(260);
+            expect(banyak.props('height')).toBeGreaterThan(40 * 20);
+            expect(banyak.props('series')[0].data).toHaveLength(40);
+        });
+
+        it('staf: daftar panjang berada di area gulir yang bisa difokus keyboard dan berlabel', () => {
+            const w = mount(DashboardCharts, { props: { charts: charts(40), isOperator: false } });
+            const area = w.find('[aria-label="Daftar pendaftar per sekolah, dapat digulir"]');
+
+            expect(area.exists()).toBe(true);
+            expect(area.attributes('tabindex')).toBe('0');
+            expect(area.classes()).toContain('overflow-y-auto');
+            expect(w.text()).toContain('Siswa terdaftar, semua sekolah');
+        });
+
+        it('operator: kesiapan berkas tetap bar vertikal tanpa area gulir', () => {
+            const w = mount(DashboardCharts, { props: { charts: charts(4), isOperator: true } });
+
+            expect(bar(w).props('options').plotOptions.bar.horizontal).toBeFalsy();
+            expect(bar(w).props('height')).toBe(260);
+            expect(w.find('[aria-label="Daftar pendaftar per sekolah, dapat digulir"]').exists()).toBe(false);
+        });
+    });
+
     it('menampilkan judul kesiapan berkas jika pengguna adalah operator sekolah', () => {
         const charts: DashboardChartsType = {
             school_recap: {

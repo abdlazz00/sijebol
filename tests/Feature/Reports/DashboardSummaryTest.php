@@ -2,6 +2,7 @@
 
 use App\Domains\Registrations\Enums\RegistrationStatus as S;
 use App\Domains\Schools\Models\School;
+use App\Domains\Students\Models\Student;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -128,28 +129,106 @@ test('tren bulanan Sudah Rekam mengikuti bulan tanggal sesi, bukan updated_at', 
 
     $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
         ->where('charts.monthly_trend.series.1.name', 'Sudah Rekam')
-        ->where('charts.monthly_trend.series.1.data', [0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0])
-        ->where('charts.monthly_trend.series.0.name', 'Terdaftar'));
+        ->where('charts.monthly_trend.series.1.data', [1, 0, 0, 0, 0, 0, 0, 0, 1])
+        ->where('charts.monthly_trend.categories', ['Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt'])
+        ->where('charts.monthly_trend.series.0.name', 'Pendaftar'));
 
     Carbon\Carbon::setTestNow();
 });
 
-test('tren bulanan Terdaftar menghitung pendaftaran dibuat pada tahun berjalan per bulan', function () {
+/** Pendaftaran dengan created_at tertentu (created_at tidak bisa diisi massal). */
+function makePendaftarAt(S $status, School $school, string $createdAt, ?Student $student = null): void
+{
+    makeEntry($status, $school, $student)->forceFill(['created_at' => $createdAt])->saveQuietly();
+}
+
+test('tren bulanan Pendaftar menghitung siswa unik sekali pada bulan pendaftaran non-gugur pertamanya', function () {
     Carbon\Carbon::setTestNow(Carbon\Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
     $sekolah = School::factory()->create();
-    $a = makeEntry(S::Terdaftar, $sekolah);
-    $a->forceFill(['created_at' => '2026-01-10 10:00:00'])->saveQuietly();
-    $b = makeEntry(S::Ditolak, $sekolah);
-    $b->forceFill(['created_at' => '2026-01-20 10:00:00'])->saveQuietly();
-    $lama = makeEntry(S::Terdaftar, $sekolah);
-    $lama->forceFill(['created_at' => '2025-01-10 10:00:00'])->saveQuietly();
+    $siswa = fn () => Student::factory()->for($sekolah)->create();
+
+    makePendaftarAt(S::Terdaftar, $sekolah, '2026-01-10 10:00:00'); // Jan: dihitung
+    $ulang = $siswa(); // ditolak dulu (Jan), lolos kemudian (Mar): dihitung di Mar
+    makePendaftarAt(S::Ditolak, $sekolah, '2026-01-20 10:00:00', $ulang);
+    makePendaftarAt(S::Terdaftar, $sekolah, '2026-03-05 10:00:00', $ulang);
+    $dua = $siswa(); // dua pendaftaran non-gugur (Feb, Apr): dihitung sekali, di Feb
+    makePendaftarAt(S::TidakHadir, $sekolah, '2026-02-02 10:00:00', $dua);
+    makePendaftarAt(S::Terdaftar, $sekolah, '2026-04-02 10:00:00', $dua);
+    makePendaftarAt(S::Ditolak, $sekolah, '2026-01-15 10:00:00'); // hanya gugur: tidak dihitung
+    makePendaftarAt(S::Terdaftar, $sekolah, '2025-01-10 10:00:00'); // tahun lalu: tidak dihitung
     $staf = makeUserWith(['jadwal.lihat'], roleName: 'staf-tren-daftar');
 
     $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
-        ->where('charts.monthly_trend.series.0.data.0', 2)
-        ->where('charts.monthly_trend.series.0.data.9', 0));
+        ->where('charts.monthly_trend.categories', ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt'])
+        ->where('charts.monthly_trend.series.0.name', 'Pendaftar')
+        ->where('charts.monthly_trend.series.0.data', [1, 1, 1, 0, 0, 0, 0, 0, 0, 0]));
 
     Carbon\Carbon::setTestNow();
+});
+
+test('tren bulanan dimulai dari bulan pertama yang berdata dan berakhir di bulan berjalan', function () {
+    Carbon\Carbon::setTestNow(Carbon\Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+    $staf = makeUserWith(['jadwal.lihat'], roleName: 'staf-tren-kosong');
+
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->where('charts.monthly_trend.categories', ['Okt'])
+        ->where('charts.monthly_trend.series.0.data', [0])
+        ->where('charts.monthly_trend.series.1.data', [0]));
+
+    makePendaftarAt(S::Terdaftar, School::factory()->create(), '2026-08-03 10:00:00');
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->where('charts.monthly_trend.categories', ['Agu', 'Sep', 'Okt'])
+        ->where('charts.monthly_trend.series.0.data', [1, 0, 0]));
+
+    Carbon\Carbon::setTestNow();
+});
+
+test('tren bulanan operator hanya menghitung siswa sekolahnya', function () {
+    Carbon\Carbon::setTestNow(Carbon\Carbon::parse('2026-10-19 10:00:00', 'Asia/Jakarta'));
+    $sekolah = School::factory()->create();
+    makePendaftarAt(S::Terdaftar, $sekolah, '2026-10-02 10:00:00');
+    makePendaftarAt(S::Terdaftar, School::factory()->create(), '2026-10-03 10:00:00');
+    $op = makeUserWith(['jadwal.lihat', 'siswa.lihat'], $sekolah, true, 'op-tren');
+
+    $this->actingAs($op)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->where('charts.monthly_trend.categories', ['Okt'])
+        ->where('charts.monthly_trend.series.0.data', [1]));
+
+    Carbon\Carbon::setTestNow();
+});
+
+test('rekap per sekolah menampilkan semua sekolah dari terbanyak, siswa unik non-gugur, tanpa Lainnya', function () {
+    $a = School::factory()->create(['name' => 'Sekolah A']);
+    $b = School::factory()->create(['name' => 'Sekolah B']);
+    $c = School::factory()->create(['name' => 'Sekolah C']);
+    School::factory()->count(5)->create(); // tanpa pendaftar tetap tampil
+
+    makeEntry(S::Terdaftar, $b);
+    makeEntry(S::SudahRekaman, $b);
+    makeEntry(S::Ditolak, $b); // gugur: tidak dihitung
+    $ganda = Student::factory()->for($c)->create();
+    makeEntry(S::TidakHadir, $c, $ganda);
+    makeEntry(S::Terdaftar, $c, $ganda); // siswa yang sama: sekali
+    makeEntry(S::Terdaftar, $a);
+    makeEntry(S::Terdaftar, $a);
+    makeEntry(S::Terdaftar, $a);
+    $staf = makeUserWith(['jadwal.lihat'], roleName: 'staf-rekap-sekolah');
+
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->has('charts.school_recap.categories', 8)
+        ->where('charts.school_recap.categories.0', 'Sekolah A')
+        ->where('charts.school_recap.categories.1', 'Sekolah B')
+        ->where('charts.school_recap.categories.2', 'Sekolah C')
+        ->where('charts.school_recap.series.0.name', 'Pendaftar')
+        ->where('charts.school_recap.series.0.data', [3, 2, 1, 0, 0, 0, 0, 0]));
+});
+
+test('rekap per sekolah tanpa sekolah menampilkan satu kategori kosong', function () {
+    $staf = makeUserWith(['jadwal.lihat'], roleName: 'staf-tanpa-sekolah');
+
+    $this->actingAs($staf)->get('/dashboard')->assertInertia(fn (Assert $p) => $p
+        ->where('charts.school_recap.categories', ['Belum ada sekolah'])
+        ->where('charts.school_recap.series.0.data', [0]));
 });
 
 test('aksi cepat: Pindai Tiket bagi pemegang rekaman.pindai, tanpa Input Hasil Perekaman', function () {

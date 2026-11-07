@@ -10,6 +10,7 @@ use App\Domains\Schools\Models\School;
 use App\Domains\Students\Models\Student;
 use App\Domains\Students\Services\EligibilityService;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 class DashboardService
 {
@@ -214,20 +215,17 @@ class DashboardService
 
         // 2. Bar: Rekap per Sekolah (Admin) vs Kesiapan Berkas (Operator)
         if ($user->school_id === null) {
-            $schools = School::query()
-                ->withCount('registrationEntries')
-                ->orderByDesc('registration_entries_count')
-                ->get();
-            $top = $schools->take(5);
-            $others = (int) $schools->slice(5)->sum('registration_entries_count');
+            // Siswa unik dengan pendaftaran non-gugur per sekolah; semua sekolah tampil, termasuk yang 0.
+            $perSchool = RegistrationStudent::query()->whereNotIn('status', $this->dropped())
+                ->selectRaw('school_id, COUNT(DISTINCT student_id) as total')->groupBy('school_id')
+                ->toBase()->pluck('total', 'school_id');
+            $schools = School::query()->get(['id', 'name'])
+                ->map(fn (School $school) => ['name' => (string) $school->name, 'total' => (int) ($perSchool[$school->id] ?? 0)])
+                ->sortBy([['total', 'desc'], ['name', 'asc']])->values();
 
-            $categories = $top->pluck('name')->map(fn ($name) => (string) $name)->all();
-            $data = $top->pluck('registration_entries_count')->map(fn ($c) => (int) $c)->all();
+            $categories = $schools->pluck('name')->all();
+            $data = $schools->pluck('total')->all();
 
-            if ($others > 0) {
-                $categories[] = 'Lainnya';
-                $data[] = $others;
-            }
             if (empty($categories)) {
                 $categories = ['Belum ada sekolah'];
                 $data = [0];
@@ -250,15 +248,18 @@ class DashboardService
             ];
         }
 
-        // 3. Line: Tren Perekaman Jan - Des Tahun Berjalan
+        // 3. Line: Tren tahun berjalan, dari bulan pertama yang berdata sampai bulan berjalan
         $year = (int) now()->year;
         $months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
 
-        // Terdaftar: pendaftaran dibuat pada bulan itu. Sudah Rekam: menurut bulan tanggal sesi (updated_at bergeser tiap pembaruan).
+        // Pendaftar: siswa unik, dihitung sekali pada bulan pendaftaran non-gugurnya yang paling awal.
+        // Sudah Rekam: menurut bulan tanggal sesi (updated_at bergeser tiap pembaruan).
+        $first = RegistrationStudent::query()->whereNotIn('status', $this->dropped())
+            ->groupBy('student_id')->selectRaw('MIN(created_at) as first_at');
         $registered = array_fill(0, 12, 0);
-        RegistrationStudent::query()->whereYear('created_at', $year)
-            ->selectRaw('MONTH(created_at) as month, COUNT(*) as total')->groupBy('month')
-            ->toBase()->get()->each(function ($row) use (&$registered) {
+        DB::query()->fromSub($first, 'first_entries')->whereYear('first_at', $year)
+            ->selectRaw('MONTH(first_at) as month, COUNT(*) as total')->groupBy('month')
+            ->get()->each(function ($row) use (&$registered) {
                 $registered[(int) $row->month - 1] = (int) $row->total;
             });
 
@@ -269,11 +270,18 @@ class DashboardService
                 $recorded[(int) $s->date->format('n') - 1] += $s->present_count;
             });
 
+        // Bulan sebelum data pertama hanya garis datar, dan bulan setelah hari ini belum terjadi.
+        $withData = array_keys(array_filter(array_map(fn (int $a, int $b) => $a + $b > 0, $registered, $recorded)));
+        $current = (int) now()->month - 1;
+        $from = $withData === [] ? $current : min($withData);
+        $to = max($current, $withData === [] ? 0 : max($withData));
+        $slice = fn (array $values): array => array_slice($values, $from, $to - $from + 1);
+
         $monthlyTrend = [
-            'categories' => $months,
+            'categories' => $slice($months),
             'series' => [
-                ['name' => 'Terdaftar', 'data' => $registered],
-                ['name' => 'Sudah Rekam', 'data' => $recorded],
+                ['name' => 'Pendaftar', 'data' => $slice($registered)],
+                ['name' => 'Sudah Rekam', 'data' => $slice($recorded)],
             ],
         ];
 
@@ -282,6 +290,16 @@ class DashboardService
             'recording_status' => $recordingStatus,
             'monthly_trend' => $monthlyTrend,
         ];
+    }
+
+    /**
+     * Pendaftaran yang sudah gugur; tidak dihitung sebagai pelajar terdaftar.
+     *
+     * @return list<string>
+     */
+    private function dropped(): array
+    {
+        return S::values([S::Ditolak, S::Dibatalkan, S::Kedaluwarsa]);
     }
 
     /** @return array{label: string, value: int, caption: string, icon: string} */

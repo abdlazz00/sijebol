@@ -10,50 +10,82 @@ const props = defineProps<{
     isOperator?: boolean;
 }>();
 
-// 1. Bar Chart Options
-const barOptions = computed<ApexOptions>(() => ({
-    chart: {
-        type: 'bar',
-        toolbar: { show: false },
-        fontFamily: 'inherit',
-        animations: { enabled: true },
-    },
-    plotOptions: {
-        bar: {
-            borderRadius: 6,
-            columnWidth: '50%',
-            distributed: true,
+// 1. Bar Chart Options. Staf: semua sekolah, bar horizontal satu warna. Operator: 4 kategori kesiapan berkas, vertikal.
+const BAR_MIN_HEIGHT = 260;
+const BAR_ROW_HEIGHT = 28;
+
+const schoolCount = computed(() => props.charts.school_recap.categories.length);
+const barHeight = computed(() =>
+    props.isOperator
+        ? BAR_MIN_HEIGHT
+        : Math.max(BAR_MIN_HEIGHT, schoolCount.value * BAR_ROW_HEIGHT + 40),
+);
+
+const barOptions = computed<ApexOptions>(() => {
+    const horizontal = !props.isOperator;
+
+    return {
+        chart: {
+            type: 'bar',
+            toolbar: { show: false },
+            fontFamily: 'inherit',
+            animations: { enabled: true },
         },
-    },
-    colors: ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'],
-    dataLabels: { enabled: false },
-    legend: { show: false },
-    xaxis: {
-        categories: props.charts.school_recap.categories,
-        labels: {
-            style: { fontSize: '11px', colors: '#64748b' },
-            trim: true,
-            maxHeight: 60,
+        plotOptions: {
+            bar: {
+                borderRadius: 4,
+                horizontal,
+                columnWidth: '50%',
+                barHeight: '70%',
+                distributed: !horizontal,
+                // Angka di ujung luar batang (bukan di dalamnya) agar tetap terbaca di batang pendek.
+                dataLabels: { position: 'top' },
+            },
         },
-        axisBorder: { show: false },
-        axisTicks: { show: false },
-    },
-    yaxis: {
-        labels: {
-            style: { fontSize: '11px', colors: '#64748b' },
-            formatter: (val: number) => `${Math.round(val)}`,
+        colors: horizontal
+            ? ['#3b82f6']
+            : ['#3b82f6', '#10b981', '#f59e0b', '#ec4899', '#8b5cf6', '#64748b'],
+        dataLabels: horizontal
+            ? {
+                  enabled: true,
+                  textAnchor: 'start',
+                  offsetX: 6,
+                  style: { fontSize: '11px', colors: ['#334155'] },
+                  background: { enabled: false },
+              }
+            : { enabled: false },
+        legend: { show: false },
+        xaxis: {
+            categories: props.charts.school_recap.categories,
+            labels: {
+                style: { fontSize: '11px', colors: '#64748b' },
+                trim: true,
+                maxHeight: 60,
+                formatter: horizontal ? (val: string) => `${Math.round(Number(val))}` : undefined,
+            },
+            axisBorder: { show: false },
+            axisTicks: { show: false },
         },
-    },
-    grid: {
-        borderColor: '#e2e8f0',
-        strokeDashArray: 4,
-        yaxis: { lines: { show: true } },
-    },
-    tooltip: {
-        theme: 'light',
-        y: { formatter: (val: number) => `${val} siswa` },
-    },
-}));
+        yaxis: {
+            labels: {
+                style: { fontSize: '11px', colors: '#64748b' },
+                maxWidth: horizontal ? 190 : undefined,
+                formatter: horizontal ? undefined : (val: number) => `${Math.round(val)}`,
+            },
+        },
+        grid: {
+            borderColor: '#e2e8f0',
+            strokeDashArray: 4,
+            yaxis: { lines: { show: !horizontal } },
+            xaxis: { lines: { show: horizontal } },
+            padding: horizontal ? { top: -30 } : undefined,
+        },
+        tooltip: {
+            theme: 'light',
+            y: { formatter: (val: number) => `${val} siswa` },
+        },
+    };
+});
 
 // 2. Donut Chart Options
 const donutOptions = computed<ApexOptions>(() => ({
@@ -192,15 +224,24 @@ const lineOptions = computed<ApexOptions>(() => ({
                             {{ isOperator ? 'Kesiapan Berkas Siswa' : 'Rekap Pendaftar per Sekolah' }}
                         </h3>
                         <p class="text-xs text-muted-foreground">
-                            {{ isOperator ? 'Distribusi kelengkapan dokumen' : 'Top pendaftar terbanyak' }}
+                            {{ isOperator ? 'Distribusi kelengkapan dokumen' : 'Siswa terdaftar, semua sekolah' }}
                         </p>
                     </div>
                 </div>
             </div>
-            <div class="mt-3 min-h-[260px]">
+            <div
+                class="mt-3 min-h-[260px]"
+                :class="{
+                    'max-h-[260px] overflow-y-auto rounded-md focus-visible:ring-[3px] focus-visible:ring-ring/50 focus-visible:outline-none':
+                        !isOperator,
+                }"
+                :tabindex="isOperator ? undefined : 0"
+                :role="isOperator ? undefined : 'region'"
+                :aria-label="isOperator ? undefined : 'Daftar pendaftar per sekolah, dapat digulir'"
+            >
                 <ApexChart
                     type="bar"
-                    height="260"
+                    :height="barHeight"
                     :options="barOptions"
                     :series="charts.school_recap.series"
                 />
@@ -254,7 +295,7 @@ const lineOptions = computed<ApexOptions>(() => ({
                             Tren Perekaman Tahunan
                         </h3>
                         <p class="text-xs text-muted-foreground">
-                            Januari – Desember tahun berjalan
+                            Per bulan, tahun berjalan
                         </p>
                     </div>
                 </div>
