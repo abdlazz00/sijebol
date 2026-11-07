@@ -9,7 +9,9 @@ const { scanners, hasCamera, postJson, permissions, kamera } = vi.hoisted(
         scanners: [] as {
             video: HTMLVideoElement;
             onDecode: (r: { data: string }) => void;
-            options: Record<string, unknown>;
+            options: Record<string, unknown> & {
+                onDecodeError?: (e: Error | string) => void;
+            };
             start: ReturnType<typeof vi.fn>;
             stop: ReturnType<typeof vi.fn>;
             destroy: ReturnType<typeof vi.fn>;
@@ -24,6 +26,7 @@ const { scanners, hasCamera, postJson, permissions, kamera } = vi.hoisted(
 vi.mock('qr-scanner', () => ({
     default: class {
         static hasCamera = hasCamera;
+        static NO_QR_CODE_FOUND = 'No QR code found';
         start = vi.fn(() =>
             kamera.startError
                 ? Promise.reject(kamera.startError)
@@ -205,6 +208,42 @@ describe('Jadwal/Pindai — kamera', () => {
             w
                 .findAll('a')
                 .some((a) => a.attributes('href') === '/schedules.recording.show/5'),
+        ).toBe(true);
+    });
+
+    it('frame tanpa QR (normal, terjadi tiap frame) tidak mengganggu pemindaian', async () => {
+        const w = pasang();
+        const s = await mulai(w);
+
+        s.options.onDecodeError!('No QR code found');
+        await flushPromises();
+
+        expect(s.stop).not.toHaveBeenCalled();
+        expect(w.text()).toContain('Hentikan');
+        expect(w.text()).not.toContain('tidak dapat membaca QR');
+    });
+
+    it('galat mesin pemindai (mis. worker diblokir) menghentikan kamera dan menjelaskan jalan keluar', async () => {
+        const w = pasang();
+        const s = await mulai(w);
+
+        s.options.onDecodeError!('Scanner error: [object Event]');
+        s.options.onDecodeError!('Scanner error: [object Event]'); // frame berikutnya
+        await flushPromises();
+
+        expect(s.stop).toHaveBeenCalledOnce();
+        expect(s.destroy).toHaveBeenCalledOnce();
+        expect(w.text()).toContain('tidak dapat membaca QR');
+        expect(w.text()).toContain('Mulai memindai');
+        expect(w.text().match(/tidak dapat membaca QR/g)).toHaveLength(1);
+        expect(
+            w
+                .findAll('a')
+                .some(
+                    (a) =>
+                        a.attributes('href') ===
+                        '/schedules.recording.show/5',
+                ),
         ).toBe(true);
     });
 
