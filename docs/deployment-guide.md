@@ -865,3 +865,11 @@ Catatan: fitur branch protection pada repositori **privat** membutuhkan paket Gi
 Alur kerja harian: kerjakan di cabang fitur, buka pull request ke `staging`, tunggu Backend dan Frontend hijau, merge, lalu `deploy-uat` di server. Setelah UAT, pull request `staging` ke `main`, hijau lagi, merge, lalu `deploy-prod`.
 
 Catatan teknis: run pertama di GitHub perlu diamati (belum pernah dijalankan di sana saat bagian ini ditulis). Peringatan format ESLint/Prettier (F-21) belum menjadi syarat.
+
+## 23. Pindai tiket di laptop/webcam: CSP `worker-src`
+
+Pemindai QR memakai `BarcodeDetector` bawaan peramban bila ada (Chrome Android, macOS). Di Chrome Windows/Linux dan di iPhone/iPad API itu tidak ada, sehingga pustaka `qr-scanner` membuat worker dari alamat `blob:`. CSP aplikasi (`SecurityHeaders`) sekarang memuat `worker-src 'self' blob:` untuk itu; `script-src` tidak berubah.
+
+- CSP tidak aktif di lingkungan `local`, jadi gejala "QR tidak terbaca di laptop" hanya muncul di UAT/produksi. Tes Pest `SecurityHeadersTest` menjaga direktif ini.
+- Setelah deploy, uji sekali di laptop (Chrome Windows) dan, bila ada, iPhone: halaman **Pindai tiket** → **Mulai memindai** → arahkan ke QR tiket.
+- Bila peramban tetap tidak bisa membaca QR, halaman menampilkan pesan "Aplikasi tidak dapat membaca QR di peramban ini" setelah ±10 detik (batas waktu pustaka) beserta tautan penandaan manual. Cek konsol peramban untuk pesan `Content Security Policy`; bila ada proxy di depan (Nginx Proxy Manager/Cloudflare) yang menambah header CSP sendiri, header itu juga harus mengizinkan `worker-src blob:`.

@@ -84,6 +84,17 @@ function cameraMessage(e: unknown): string {
         : 'Kamera tidak dapat dinyalakan. Tutup aplikasi lain yang memakai kamera, lalu coba lagi.';
 }
 
+// Dipanggil tiap frame. "Tidak ada QR" itu normal; galat lain berarti mesin pemindai sendiri gagal
+// (mis. worker diblokir) dan tidak akan pulih, jadi hentikan dan beri tahu petugas.
+function onDecodeError(e: Error | string) {
+    if (!scanner || e === QrScanner.NO_QR_CODE_FOUND) return;
+
+    disposeScanner();
+    state.value = 'idle';
+    cameraError.value =
+        'Aplikasi tidak dapat membaca QR di peramban ini. Coba peramban lain atau muat ulang halaman, atau gunakan penandaan manual di bawah.';
+}
+
 async function startCamera() {
     cameraError.value = null;
     if (!window.isSecureContext) {
@@ -106,6 +117,7 @@ async function startCamera() {
             maxScansPerSecond: 5,
             highlightScanRegion: false,
             returnDetailedScanResult: true,
+            onDecodeError,
         });
         await scanner.start();
         state.value = 'scanning';

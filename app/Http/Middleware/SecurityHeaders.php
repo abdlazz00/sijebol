@@ -70,6 +70,9 @@ class SecurityHeaders
             "font-src 'self' https://fonts.bunny.net data:",
             "img-src 'self' data:",
             "connect-src 'self'{$cloudflare}",
+            // qr-scanner membuat worker dari blob: di peramban tanpa BarcodeDetector (Chrome desktop, iOS).
+            // Berlaku di semua halaman: navigasi Inertia tidak memuat ulang dokumen, jadi CSP halaman pertama yang berlaku.
+            "worker-src 'self' blob:",
             $allowTurnstile ? "frame-src{$cloudflare}" : null,
             $frameAncestors,
             "base-uri 'self'",

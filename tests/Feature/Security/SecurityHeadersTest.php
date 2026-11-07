@@ -46,7 +46,9 @@ test('CSP diberlakukan di luar local dengan nonce yang sama dengan tag skrip dan
         ->and($csp)->toContain("font-src 'self' https://fonts.bunny.net data:")
         ->and($csp)->toContain("frame-ancestors 'none'")
         ->and($csp)->toContain("object-src 'none'")
-        ->and($csp)->toContain("form-action 'self'");
+        ->and($csp)->toContain("form-action 'self'")
+        // qr-scanner membuat worker dari blob: di peramban tanpa BarcodeDetector (Chrome desktop, iOS).
+        ->and($csp)->toContain("worker-src 'self' blob:");
     $pertama->assertSee('nonce="'.$nonce.'"', false);
 
     $kedua = (string) $this->get('/login')->headers->get('Content-Security-Policy');
