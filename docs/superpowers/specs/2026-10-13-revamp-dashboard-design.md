@@ -74,7 +74,7 @@ Tata letak disusun secara vertikal dari atas ke bawah:
 - **Teknologi**: Menggunakan paket `apexcharts` dan `vue3-apexcharts`.
 - **Komponen**: Dibuat komponen pembungkus yang aman dari SSR Inertia (hanya merender di client dengan dynamic import/onMounted).
 - **Grafik 1 (Bar Chart) — Rekap Pendaftaran per Sekolah**:
-  - *Staf Kecamatan*: Bar vertikal warna-warni Top 5 sekolah pendaftar terbanyak + kategori "Lainnya".
+  - *Staf Kecamatan*: Bar horizontal semua sekolah (siswa unik non-gugur, terbanyak di atas, area gulir). Diubah 7 Nov 2026 dari Top 5 + "Lainnya" (lihat `2026-11-07-dashboard-chart-sekolah-tren-design.md`).
   - *Operator Sekolah*: Bar perbandingan kesiapan berkas siswa (KK lengkap, Akta lengkap, Kedua dokumen lengkap).
 - **Grafik 2 (Donut Chart) — Proporsi Status Perekaman**:
   - Donut ring dengan angka total pelajar di tengah lingkaran.
@@ -84,9 +84,9 @@ Tata letak disusun secara vertikal dari atas ke bawah:
     - Kuning: Belum Dijadwalkan
   - Legenda di samping/bawah kartu dengan angka dan persentase.
 - **Grafik 3 (Line / Area Chart) — Tren Perekaman Tahunan**:
-  - Rentang waktu: Januari hingga Desember tahun berjalan saat ini (Jan – Des).
+  - Rentang waktu: dari bulan pertama yang berdata di tahun berjalan sampai bulan berjalan (diubah 7 Nov 2026 dari Jan – Des).
   - Dua kurva area halus:
-    - Garis Biru: Pelajar Terdaftar
+    - Garis Biru: Pendaftar (siswa unik non-gugur, sekali pada bulan pendaftaran pertamanya)
     - Garis Hijau: Sudah Rekaman
 
 ### D. Tabel Jadwal Perekaman Terdekat
