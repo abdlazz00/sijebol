@@ -1,5 +1,5 @@
 # Stage 1: Install Composer dependencies
-FROM composer:2.8 AS vendor
+FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
 RUN composer install \
@@ -10,7 +10,7 @@ RUN composer install \
     --no-scripts
 
 # Stage 2: Build frontend assets
-FROM node:20-alpine AS frontend
+FROM node:24-alpine AS frontend
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
@@ -25,8 +25,10 @@ FROM php:8.4-fpm-bookworm AS production
 
 WORKDIR /var/www/html
 
-# Install required system packages
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# Apply Debian security patches and install required system packages
+RUN apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get upgrade -y \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     nginx \
     supervisor \
     cron \
@@ -51,7 +53,7 @@ RUN docker-php-ext-configure gd --with-freetype --with-jpeg \
         pcntl
 
 # Install Composer CLI in production container
-COPY --from=composer:2.8 /usr/bin/composer /usr/bin/composer
+COPY --from=vendor /usr/bin/composer /usr/bin/composer
 
 # Copy application source files
 COPY . /var/www/html

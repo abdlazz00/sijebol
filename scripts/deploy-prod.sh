@@ -1,8 +1,24 @@
 #!/bin/bash
 # Deploy produksi: build -> cek migrasi tertunda -> mode pemeliharaan -> cadangan DB -> ganti kontainer -> migrasi -> buka.
 # Migrasi TIDAK otomatis saat kontainer mulai (AUTO_MIGRATE=false); hanya dijalankan di langkah ini, setelah cadangan.
-# Pemakaian: scripts/deploy-prod.sh [--yes]   (--yes melewati konfirmasi, untuk otomasi)
+# Pemakaian: scripts/deploy-prod.sh [--yes] [--no-cache]
+#   --yes       lewati konfirmasi (untuk otomasi)
+#   --no-cache  bangun ulang semua layer Docker tanpa cache (dipakai saat patch OS/nginx/PHP)
 set -euo pipefail
+
+AUTO_YES=false
+BUILD_FLAGS=(--pull)
+for arg in "$@"; do
+    case "$arg" in
+        --yes) AUTO_YES=true ;;
+        --no-cache) BUILD_FLAGS+=(--no-cache) ;;
+        *)
+            echo "❌ Opsi tidak dikenal: $arg"
+            echo "   Pemakaian: $0 [--yes] [--no-cache]"
+            exit 1
+            ;;
+    esac
+done
 
 PROJECT_DIR="${PROJECT_DIR:-/opt/sijebol/prod/app}"
 BACKUP_DIR="${BACKUP_DIR:-/opt/sijebol/backups}"
@@ -46,13 +62,13 @@ on_error() {
 trap on_error ERR
 
 echo "🐳 Membangun image baru (aplikasi lama tetap melayani)..."
-compose build
+compose build "${BUILD_FLAGS[@]}"
 
 echo "🔎 Migrasi yang akan dijalankan:"
 compose run --rm -T --no-deps --entrypoint php app artisan migrate:status --pending \
     || echo "   (status migrasi tidak terbaca; wajar pada instalasi pertama karena tabel migrations belum ada)"
 
-if [ "${1:-}" != "--yes" ]; then
+if [ "$AUTO_YES" != "true" ]; then
     read -r -p "Lanjutkan deploy? Aplikasi akan masuk mode pemeliharaan sebentar. [y/N] " answer
     if [[ ! "$answer" =~ ^[yY]$ ]]; then
         echo "Dibatalkan. Tidak ada yang berubah (image baru sudah dibangun, kontainer lama masih berjalan)."

@@ -732,8 +732,9 @@ Konsekuensinya: **mengurangi** izin bawaan sebuah role di kode tidak otomatis be
 Mulai 2 Nov 2026 (temuan F-02), migrasi di **produksi tidak lagi otomatis** saat kontainer mulai (`AUTO_MIGRATE=false` di `docker-compose.prod.yml`). Sebelumnya setiap start/restart kontainer menjalankan `migrate --force`; migrasi yang gagal membuat kontainer crash-loop dan tidak ada cadangan. **UAT tetap otomatis** (`AUTO_MIGRATE=true`).
 
 ```bash
-bash scripts/deploy-prod.sh          # interaktif (menanyakan konfirmasi)
-bash scripts/deploy-prod.sh --yes    # tanpa konfirmasi, untuk otomasi
+bash scripts/deploy-prod.sh              # interaktif (menanyakan konfirmasi; otomatis --pull base image)
+bash scripts/deploy-prod.sh --yes        # tanpa konfirmasi, untuk otomasi
+bash scripts/deploy-prod.sh --no-cache   # bangun ulang semua layer Docker tanpa cache (patch OS/nginx/PHP)
 ```
 
 Urutan skrip:
@@ -873,3 +874,93 @@ Pemindai QR memakai `BarcodeDetector` bawaan peramban bila ada (Chrome Android, 
 - CSP tidak aktif di lingkungan `local`, jadi gejala "QR tidak terbaca di laptop" hanya muncul di UAT/produksi. Tes Pest `SecurityHeadersTest` menjaga direktif ini.
 - Setelah deploy, uji sekali di laptop (Chrome Windows) dan, bila ada, iPhone: halaman **Pindai tiket** → **Mulai memindai** → arahkan ke QR tiket.
 - Bila peramban tetap tidak bisa membaca QR, halaman menampilkan pesan "Aplikasi tidak dapat membaca QR di peramban ini" setelah ±10 detik (batas waktu pustaka) beserta tautan penandaan manual. Cek konsol peramban untuk pesan `Content Security Policy`; bila ada proxy di depan (Nginx Proxy Manager/Cloudflare) yang menambah header CSP sendiri, header itu juga harus mengizinkan `worker-src blob:`.
+
+## 24. Playbook Patch Keamanan Stack (Nov 2026) & Migrasi MySQL 8.4 LTS
+
+Pembaruan stack pada 20 Nov 2026 menutup kerentanan kritis PHP 8.4 (`CVE-2026-129289`, `CVE-2026-129496`, `CVE-2026-126714` pada PHP `< 8.4.28`), NGINX/OpenResty *nginx2root* (`CVE-2026-123007`, `CVE-2026-123633`, `CVE-2026-118899`), advisori Laravel & Symfony (`composer.lock`), menaikkan `composer:2` (`>= 2.11.2`) dan `node:24-alpine` (menggantikan Node 20 EOL / F-31), serta menambahkan `apt-get upgrade -y` di `Dockerfile` dan `--pull` di skrip deploy.
+
+### 1. Update Nginx Proxy Manager (Prioritas Tertinggi di VPS)
+
+NPM berada di garis depan (port 80/443). Perbarui ke image `jc21/nginx-proxy-manager:latest` (`>= v2.17.1`, rilis 19 Nov 2026):
+
+```bash
+cd /opt/sijebol/npm
+docker compose pull
+docker compose up -d --force-recreate
+docker logs --tail=50 nginx-proxy-manager
+```
+
+- Uji akses HTTPS ke `https://uat-seibeduk.sijebol.online` dan `https://sungaibeduk.sijebol.online`.
+- Disarankan membatasi port admin `81` di UFW hanya untuk IP admin (atau diakses lewat SSH tunnel) dan tidak membiarkan port 81 terbuka ke publik.
+
+### 2. Rebuild UAT lalu Production dengan `--no-cache`
+
+`deploy-uat.sh` dan `deploy-prod.sh` kini selalu memakai `build --pull` sehingga base image (`php:8.4-fpm-bookworm`, `node:24-alpine`, `composer:2`) otomatis dicek pembaruannya di Docker Hub. Tambahkan `--no-cache` saat menerapkan patch OS/NGINX Debian (`apt-get upgrade -y`):
+
+```bash
+# UAT (staging) lebih dulu
+cd /opt/sijebol/uat/app
+git pull origin staging
+chmod +x scripts/deploy-uat.sh scripts/deploy-prod.sh scripts/lib/deploy.sh
+deploy-uat --no-cache
+
+# Verifikasi versi runtime di dalam kontainer UAT
+docker exec sijebol-uat php -v                  # pastikan >= PHP 8.4.28
+docker exec sijebol-uat dpkg -l nginx           # pastikan paket nginx Bookworm terbaru
+docker exec sijebol-uat composer --version      # pastikan >= Composer 2.11
+```
+
+Setelah UAT terverifikasi normal (login, dashboard, upload/ekspor Excel, pindai QR, notifikasi) dan `staging` telah di-merge ke `main`:
+
+```bash
+# Production (main)
+cd /opt/sijebol/prod/app
+git pull origin main
+chmod +x scripts/deploy-prod.sh scripts/lib/deploy.sh
+deploy-prod --no-cache
+
+# Verifikasi versi runtime Production
+docker exec sijebol-prod php -v
+docker exec sijebol-prod dpkg -l nginx
+```
+
+### 3. Update Host Ubuntu, Kernel, dan Docker Engine
+
+```bash
+apt update && apt upgrade -y
+docker version   # pastikan Docker Engine & containerd pada rilis terpatch terbaru
+# Jika muncul /var/run/reboot-required, jadwalkan reboot di jam sepi:
+# [ -f /var/run/reboot-required ] && echo "Perlu reboot"
+```
+
+### 4. Migrasi Terjadwal: MySQL 8.0 (EOL 30 Apr 2026) → MySQL 8.4 LTS
+
+Source code aplikasi SIJEBOL (query SQL, migrasi, driver `pdo_mysql`) sudah kompatibel dengan MySQL 8.4 LTS. **Jangan langsung mengganti tag `mysql:8.0` ke `mysql:8.4` tanpa menghapus flag lama** karena `--default-authentication-plugin=mysql_native_password` di `/opt/sijebol/database/docker-compose.yml` telah **dihapus di MySQL 8.4** dan akan membuat kontainer gagal start.
+
+Lakukan di jendela pemeliharaan terpisah:
+
+1. Aktifkan mode pemeliharaan di Production dan UAT (`docker exec sijebol-prod php artisan down` dan `sijebol-uat`), lalu buat cadangan penuh SQL dan salinan folder data:
+   ```bash
+   mkdir -p /opt/sijebol/backups/pre-mysql84
+   docker exec sijebol-mysql sh -c 'mysqldump --all-databases --single-transaction --routines --triggers -uroot -p"$MYSQL_ROOT_PASSWORD"' \
+     | gzip > /opt/sijebol/backups/pre-mysql84/all-databases-$(date +%Y%m%d-%H%M%S).sql.gz
+   ```
+2. Migrasikan autentikasi user aplikasi ke `caching_sha2_password` (standar MySQL 8.4, didukung penuh oleh PHP 8.4 `mysqlnd`):
+   ```bash
+   docker exec -it sijebol-mysql mysql -uroot -p -e "
+     ALTER USER 'sijebol'@'%' IDENTIFIED WITH caching_sha2_password BY '<DB_PASSWORD_SIJEBOL>';
+     FLUSH PRIVILEGES;
+   "
+   ```
+   *(Cek dulu user mana yang masih memakai `mysql_native_password`: `SELECT user, host, plugin FROM mysql.user;`)*
+3. Ubah `/opt/sijebol/database/docker-compose.yml`:
+   - Ganti `image: 'mysql:8.0'` menjadi `image: 'mysql:8.4'`.
+   - **Hapus** baris `- --default-authentication-plugin=mysql_native_password`. *(Jika masih perlu dukungan `mysql_native_password` sementara bagi klien lama, gunakan `- --mysql-native-password=ON`.)*
+4. Jalankan upgrade dan pantau log hingga MySQL 8.4 selesai memperbarui data dictionary:
+   ```bash
+   cd /opt/sijebol/database
+   docker compose pull
+   docker compose up -d
+   docker logs -f sijebol-mysql
+   ```
+5. Uji koneksi dari kedua kontainer aplikasi (`docker exec sijebol-prod php artisan migrate:status` dan `sijebol-uat`), lalu buka kembali mode pemeliharaan (`php artisan up`). Setelah produksi memakai MySQL 8.4, selaraskan pula image service MySQL di `.github/workflows/ci.yml` ke `mysql:8.4`.

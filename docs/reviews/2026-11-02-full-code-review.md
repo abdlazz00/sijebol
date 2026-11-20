@@ -199,7 +199,8 @@ Ditemukan saat memverifikasi F-07, F-10. Pada `npx vitest run` penuh (default wo
 **Status (4 Nov 2026):** `testTimeout: 15_000` ditambahkan di `vitest.config.ts`; `npx vitest run` penuh dengan worker bawaan lulus 274/274 (sebelumnya 2 sampai 4 gagal). **Sudah dikerjakan bersama F-09, belum di-commit.**
 
 ### F-31 — Build image Docker memakai Node 20 (sudah EOL) padahal beberapa dependensi build mensyaratkan Node >= 22
-`Dockerfile` tahap `frontend` memakai `node:20-alpine`. Node 20 berakhir dukungannya April 2026, dan `npm ci` di sana menampilkan peringatan EBADENGINE untuk `vitest` 5, `jsdom` 30, `@vueuse/core` 15, `concurrently` 10, dan lainnya (Vite 8 masih memenuhi `^20.19`, sehingga build produksi tetap berjalan). Ditemukan saat run CI pertama di GitHub gagal pada Node 20; CI kini memakai Node 24. Saran: naikkan tahap `frontend` ke `node:24-alpine` (atau 22) dan uji `docker build --target frontend .` sebelum dirilis. **Belum dikerjakan; perubahan image produksi perlu uji build.**
+`Dockerfile` tahap `frontend` memakai `node:20-alpine`. Node 20 berakhir dukungannya April 2026, dan `npm ci` di sana menampilkan peringatan EBADENGINE untuk `vitest` 5, `jsdom` 30, `@vueuse/core` 15, `concurrently` 10, dan lainnya (Vite 8 masih memenuhi `^20.19`, sehingga build produksi tetap berjalan). Ditemukan saat run CI pertama di GitHub gagal pada Node 20; CI kini memakai Node 24. Saran: naikkan tahap `frontend` ke `node:24-alpine` (atau 22) dan uji `docker build --target frontend .` sebelum dirilis.
+- **Selesai (20 Nov 2026):** `Dockerfile` tahap `frontend` dinaikkan ke `node:24-alpine` (selaras dengan CI Node 24; seluruh native binding `musl` Alpine sudah ada di `package-lock.json`), bersamaan dengan pembaruan `composer:2`, `apt-get upgrade -y` di tahap produksi, dan `--pull` pada skrip deploy.
 
 ---
 
